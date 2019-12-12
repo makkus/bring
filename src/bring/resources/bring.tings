@@ -1,0 +1,55 @@
+finder: plugin-finder
+
+
+find_data:
+  plugins:
+    - files:
+        config:
+          base_paths: "{{:: base_paths ::}}"
+          matchers:
+            - path-regex:
+                regex: "\\.bring$"
+        seed_spec:
+            properties:
+              - path-parts:
+                  path_property: _seed_path
+                  target_property: _alias
+                  include_dir_name: false
+                  include_extension: false
+              - path-parts:
+                  path_property: _rel_seed_path
+                  target_property: _id
+                  include_dir_name: true
+                  include_extension: false
+                  repl_map:
+                    ".": "_"
+              - text-content:
+                  path_property: _seed_path
+                  target_property: _file_content
+              - dict-content:
+                  source_property: _file_content
+                  target_property: _dict_content
+                  content_string_format: "auto"
+
+spec:
+  ting_class_name: BringTing
+  properties:
+    - mirror:
+        source_property: _id
+        target_property: id
+    - mirror:
+        source_property: _alias
+        target_property: alias
+    - mirror:
+        source_property: _dict_content
+        target_property: data
+    - lookup-data:
+        source_property: data
+        lookup_key: lookup
+    - bring-parents:
+        id_property: id
+        alias_property: alias
+        target_property: parents
+    - dict-merge:
+        source_properties: [parents, data]
+        target_property: bring_data
