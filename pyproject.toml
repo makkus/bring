@@ -35,3 +35,6 @@ name = "material"
 [tool.portray.mkdocs]
 repo_url = "https://gitlab.com/frkl/bring"
 repo_name = "bring"
+
+[tool.dephell.main]
+from = {format = "setuppy", path = "setup.py"}

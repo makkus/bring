@@ -11,7 +11,7 @@
 
 ## Description
 
-Documentation still to be done. 
+Documentation still to be done.
 
 # Development
 
@@ -22,7 +22,7 @@ Assuming you use [pyenv](https://github.com/pyenv/pyenv) and [pyenv-virtualenv](
     git clone https://gitlab.com/frkl/bring
     cd <bring_dir>
     pyenv local bring
-    pip install -e .[develop,testing,docs]
+    pip install -e .[all-dev]
     pre-commit install
 
 

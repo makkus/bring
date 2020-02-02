@@ -1,75 +1,72 @@
 # -*- coding: utf-8 -*-
-import click
-from click import File, Path
-from pathlib import Path as PPath
-from click_aliases import ClickAliasedGroup
 
-from bring.bring import BringTings
-from frutils.cli.exceptions import handle_exc
-from frutils.cli.logging import logzero_option
-from frutils.formats import SmartInput
-from frutils.templating import replace_strings_in_obj, get_global_jinja_env
-from tings import create_tings
-from tings.interfaces.cli import TingWatcher
+import asyncclick as click
+
+# from click import Path
+# from click_aliases import ClickAliasedGroup
+from asyncclick import Path
+
+from bring.bring import Bringistry
+from frtls.cli.exceptions import handle_exc
+from frtls.cli.logging import logzero_option_async
+from tings.tingistry import TingistryTingistry
+
+click.anyio_backend = "asyncio"
 
 
-@click.group(cls=ClickAliasedGroup)
-@click.option("--base-path", "-p", help="A path where to look for '*.bring' files.", multiple=True, type=Path(exists=True, file_okay=True, dir_okay=True, readable=True, allow_dash=False))
-@logzero_option()
+# @click.group(cls=ClickAliasedGroup)
+@click.group()
+@click.option(
+    "--base-path",
+    "-p",
+    help="A path where to look for '*.bring' files.",
+    multiple=True,
+    type=Path(
+        exists=True, file_okay=True, dir_okay=True, readable=True, allow_dash=False
+    ),
+)
+@logzero_option_async()
 @click.pass_context
-def cli(ctx, base_path):
-
-    if not base_path:
-        base_paths = [PPath.cwd().as_posix()]
-    else:
-        base_paths = []
-        for p in base_path:
-          base_paths.append(PPath(p).as_posix())
+async def cli(ctx, base_path):
 
     ctx.obj = {}
-    ctx.obj["base_paths"] = base_paths
+    ctx.obj["base_paths"] = base_path
 
-    bt = BringTings(base_paths=base_paths)
-    ctx.obj["bring_tings"] = bt
+    bringistry = TingistryTingistry().add_tingistry(
+        "bring", tingistry_class="bringistry", paths=base_path
+    )
+    ctx.obj["bringistry"] = bringistry
 
 
-@cli.command(name="list", aliases=["l", "li"])
+@cli.command(name="list")
 @click.pass_context
 @handle_exc
-def list_packages(ctx):
+async def list_packages(ctx):
 
-    bt = ctx.obj["bring_tings"]
-    import pp
-    t = bt.get_index("alias")["bat"]
-    # print(t._ting_get_requirement_values_for_property_("bring_data"))
+    bringistry: Bringistry = ctx.obj["bringistry"]
+    bringistry.sync()
+    # print(bt)
+    for v in bringistry.pkg_tings.tings.values():
 
-    # print(t._ting_retrieve_property_values_("bring_data"))
-    print(t.lookup_data)
-    # for t in bt.bring_pkgs():
-    #     print(t.alias)
-    #     t.data
-    #     print(t.bring_data)
+        vals = await v.get_values("versions")
+        print(vals)
 
-        # print(t.bring_data)
-        # pp(t.bring_data)
 
-@cli.command(name="watch")
-@click.option("--property", "-p", multiple=True)
-@click.pass_context
-def watch(ctx, property):
-
-    bt = ctx.obj["bring_tings"]
-
-    tw = TingWatcher(tings=bt, finder=bt.finder, index="id", properties=property)
-    tw.watch()
-
-@cli.command(name="install", aliases=["in"])
-@click.pass_context
-@handle_exc
-def install(ctx):
-
-    print("HH")
-
+# @cli.command(name="watch")
+# @click.option("--property", "-p", multiple=True)
+# @click.pass_context
+# async def watch(ctx, property):
+#
+#     bring_repo: Bringistry = ctx.obj["bring_repo"]
+#
+#     await bring_repo.watch()
+#
+# # @cli.command(name="install", aliases=["in"])
+# # @click.pass_context
+# # @handle_exc
+# # def install(ctx):
+# #
+# #     print("HH")
 
 
 if __name__ == "__main__":

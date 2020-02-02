@@ -2,127 +2,151 @@
 
 """Main module."""
 import os
-from typing import List, Dict, Any
+from collections import Mapping
+from pathlib import Path
+from typing import List, Union, Dict, Any
 
-import requests
+from bring.pkg_resolvers import PkgResolver
+from frtls.exceptions import FrklException
+from frtls.formats import auto_parse_string
+from frtls.types.typistry import Typistry
+from tings.exceptions import TingException
+from tings.sources import FileWatchSource
+from tings.ting import SimpleTing
+from tings.ting.tings import Tings
+from tings.tingistry import Tingistry
 
-from frutils.downloads import download_cached_text_file
-from frutils.formats import SmartInput
-from frutils.templating import replace_strings_in_obj, get_global_jinja_env
-from tings import Tings, TingFindersPlugting, TingSpec
-from tings.defaults import TINGS_INPUT_KEY
-from tings.properties import TingProperty
-from tings.ting import TingCallbackInput
 
+class BringPkgDetails(SimpleTing):
+    def __init__(self, name, meta: Dict[str, Any]):
 
-class BringTings(Tings):
-    def __init__(self, base_paths):
+        super().__init__(name=name, meta=meta)
 
-        self._base_paths = base_paths
-        src = SmartInput(
-            input_value="/home/markus/projects/new/bring/src/bring/resources/bring.tings",
-            force_content="dict",
-        )
-        finder_conf = src.content.get("finder", "plugin-finder")
+        self._bringistry: Bringistry = self._tingistry
+        if not isinstance(self._bringistry, Bringistry):
+            raise TingException(f"Invalid registry type: {type(self._tingistry)}")
 
-        pt = TingFindersPlugting()
-        self._finder = pt.create_obj(init_data=finder_conf)
+    def provides(self) -> Dict[str, str]:
 
-        spec = src.content.get("spec")
-        spec = TingSpec.from_dict(spec)
+        return {"source": "dict", "versions": "list"}
 
-        repl = {"base_paths": base_paths}
+    def requires(self) -> Dict[str, str]:
 
-        find_data = src.content.get("find_data")
-        self._find_data = replace_strings_in_obj(
-            find_data,
-            replacement_dict=repl,
-            jinja_env=get_global_jinja_env(delimiter_profile="frkl", env_type="native"),
-        )
+        return {"string_content": "string"}
 
-        super(BringTings, self).__init__(ting_spec=spec)
-        self.add_index("alias")
-        self.add_index("id")
+    async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
 
-        self._finder.register_tings(self, find_data=self._find_data)
+        parsed_dict = requirements.get("_parsed_dict", None)
+        if parsed_dict is None:
+            parsed_dict = auto_parse_string(requirements["string_content"])
 
-    @property
-    def finder(self):
-        return self._finder
+        source = parsed_dict["source"]
+        result = {}
+        if "source" in value_names:
+            result["source"] = source
 
-    def bring_pkgs(self):
+        if "versions" in value_names:
 
-        result = []
-        for ting in self.tings:
-            if ting.alias == "_bring":
-                continue
-            result.append(ting)
+            versions = await self._bringistry.get_pkg_versions(source)
+            result["versions"] = versions
+
         return result
 
 
-class BringParents(TingProperty):
-    def __init__(self, id_property, alias_property, target_property):
+class Bringistry(Tingistry):
+    def __init__(self, name: str, paths: List[Union[str, Path]] = None):
 
-        self._id_property = id_property
-        self._target_property = target_property
-        self._alias_property = alias_property
+        preload_modules = [
+            "bring",
+            "bring.pkg_resolvers",
+            "bring.pkg_resolvers.git_repo",
+            "bring.pkg_resolvers.github_release",
+        ]
+        base_classes = [PkgResolver]
 
-    def provides(self) -> List[str]:
-        return [self._target_property]
+        self._typistry = Typistry(
+            base_classes=base_classes, preload_modules=preload_modules
+        )
 
-    def requires(self) -> List[str]:
+        self._resolvers = {}
+        self._resolver_sources = {}
+        for k, v in self._typistry.get_subclass_map(PkgResolver).items():
+            resolver = v()
+            r_name = resolver.get_resolver_name()
+            if r_name in self._resolvers.keys():
+                raise FrklException(
+                    msg=f"Can't register resolver of class '{v}'",
+                    reason=f"Duplicate resolver name: {r_name}",
+                )
+            self._resolvers[r_name] = resolver
+            for r_type in resolver.get_supported_source_types():
+                self._resolver_sources[r_type] = resolver
 
-        return [self._id_property, self._alias_property, TINGS_INPUT_KEY]
+        super().__init__(name=name, meta={"namespace": "bring"})
 
-    def get_value(self, requirements: Dict[str, Any], property_name):
+        self.register_ting_type("bring_pkg_metadata", "bring_pkg_details")
+        self.register_ting_type(
+            "bring_pkg", "ting_ting", ting_types=["file_details", "bring_pkg_metadata"]
+        )
+        self.register_ting_type("bring_pkgs", "tings", ting_type="bring_pkg")
+        self.register_ting_type("bring_resolver", "ting_ting", ting_types=[""])
 
-        id = requirements[self._id_property]
-        alias = requirements[self._alias_property]
+        if not paths:
+            paths = [Path.cwd()]
+        elif isinstance(paths, str):
+            paths = [paths]
 
-        if alias == "_bring":
-            return None
+        self._paths = []
+        for p in paths:
+            if isinstance(p, str):
+                self._paths.append(os.path.realpath(p))
+            elif isinstance(p, Path):
+                self._paths.append(p.resolve().as_posix())
+            else:
+                raise TypeError(f"Invalid input type for bringrepo path: {type(p)}")
 
-        tings_wrapper: TingCallbackInput = requirements[TINGS_INPUT_KEY]
-        tings = tings_wrapper(f"id")
+        matchers = [{"type": "extension", "regex": ".bring$"}]
+        self._bring_pkgs = self.create_ting(
+            name="bring.bring_pkgs", type_name="bring_pkgs"
+        )
+        self._pkg_source = FileWatchSource(
+            name="pkg_source",
+            tings=self._bring_pkgs,
+            base_paths=self._paths,
+            matchers=matchers,
+        )
 
-        tokens = id.split(os.path.sep)
+    async def get_pkg_versions(self, pkg_details):
 
-        current = []
-        chain = []
-        for token in tokens:
-            meta_alias = os.path.join(*current, "_bring")
+        if not isinstance(pkg_details, Mapping):
+            raise TypeError(
+                f"Invalid type '{type(pkg_details)}' for pkg_details (needs to be Mapping): {pkg_details}"
+            )
 
-            if meta_alias in tings.keys():
-                meta_data = tings_wrapper(f"id.{meta_alias}")
-                chain.append(meta_data.data)
-            current.append(token)
+        pkg_type = pkg_details.get("type", None)
+        if pkg_type is None:
+            raise KeyError(f"No 'type' key in package details: {dict(pkg_details)}")
 
-        return chain
+        resolver: PkgResolver = self._resolvers.get(pkg_type, None)
 
+        if resolver is None:
+            raise FrklException(
+                msg="Can't resolve pkg.'.",
+                reason=f"No resolver registered for type: {pkg_type}",
+                solution=f"Register a resolver, or select one of the existing ones: {', '.join(self._resolvers.keys())}",
+            )
 
-class LookupData(TingProperty):
-    def __init__(
-        self, source_property, lookup_key="lookup", target_property="lookup_data"
-    ):
+        versions = await resolver.get_versions(source_details=pkg_details)
+        return versions
 
-        self._source_property = source_property
-        self._lookup_key = lookup_key
-        self._target_property = target_property
+    def sync(self):
 
-    def provides(self) -> List[str]:
+        self._pkg_source.sync()
 
-        return [self._target_property]
+    @property
+    def pkg_tings(self) -> Tings:
+        return self._bring_pkgs
 
-    def requires(self) -> List[str]:
+    async def watch(self):
 
-        return [self._source_property]
-
-    def get_value(self, requirements: Dict[str, Any], property_name):
-
-        source_dict = requirements[self._source_property]
-
-        lookup_data = source_dict.get(self._lookup_key, [])
-
-        url = "https://api.github.com/repos/sharkdp/bat/releases"
-
-        download_cached_text_file(cache_base=BRING_DOWNLOAD_CACHE)
+        await self._pkg_source.watch()

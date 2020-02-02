@@ -52,4 +52,7 @@ pip-wheel-metadata/
 src/bring/version.txt
 .direnv
 .envrc
-site
+public
+.dephell_report
+.direnv
+repos/

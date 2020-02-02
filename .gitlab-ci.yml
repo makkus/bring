@@ -1,21 +1,27 @@
 ---
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
+  LM_PYTHON_VERSION: "2"
+  DS_PYTHON_VERSION: "3"
+  PIP_EXTRA_INDEX_URL: "https://pkgs.frkl.io/frkl/dev"
 
-image: python
+# include:
+#  - template: Dependency-Scanning.gitlab-ci.yml
+#  - template: License-Management.gitlab-ci.yml
+
+image: python:3.7
 
 stages:
   - test
   - release
 
-before_script:
- - curl -O https://bootstrap.pypa.io/get-pip.py
- - python get-pip.py
- - pip install -U setuptools
-
 python36:
   image: python:3.6
   stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
   script:
     - pip install tox
     - tox -e py36
@@ -23,6 +29,10 @@ python36:
 python37:
   image: python:3.7
   stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
   script:
     - pip install tox
     - tox -e py37
@@ -30,19 +40,31 @@ python37:
 python38:
   image: python:3.8
   stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
   script:
     - pip install tox
     - tox -e py38
 
-docs:
+pages:
   before_script:
-    - pip install portray
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -r requirements-docs.txt"
+    - "pip install ."
   script:
-    - portray as_html
+    - portray as_html -o public
+  artifacts:
+    paths:
+    - public
 
 flake8:
-  image: python
+  image: python:3.7
   stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
   script:
     - pip install tox
     - tox -e flake8

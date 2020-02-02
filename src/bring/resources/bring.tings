@@ -30,7 +30,6 @@ find_data:
                   source_property: _file_content
                   target_property: _dict_content
                   content_string_format: "auto"
-
 spec:
   ting_class_name: BringTing
   properties:
@@ -40,16 +39,25 @@ spec:
     - mirror:
         source_property: _alias
         target_property: alias
-    - mirror:
-        source_property: _dict_content
-        target_property: data
-    - lookup-data:
-        source_property: data
-        lookup_key: lookup
     - bring-parents:
         id_property: id
         alias_property: alias
-        target_property: parents
+        target_property: _parents
     - dict-merge:
-        source_properties: [parents, data]
+        source_properties: [_parents, _dict_content]
         target_property: bring_data
+    - dict-value:
+        source_property: bring_data
+        key: url
+        default: null
+    - dict-value:
+        source_property: bring_data
+        key: vars
+        target_property: vars_data
+    - dict-value:
+        source_property: bring_data
+        key: metadata
+    - vars:
+        vars_property: vars_data
+        payload_property: url
+        target_property: vars

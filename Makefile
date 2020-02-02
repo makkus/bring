@@ -27,7 +27,7 @@ export PRINT_HELP_PYSCRIPT
 define GEN_DOC_PYSCRIPT
 import portray
 
-portray.as_html(overwrite=True)
+portray.as_html(output_dir="public", overwrite=True)
 endef
 export GEN_DOC_PYSCRIPT
 
@@ -38,7 +38,7 @@ import portray
 
 
 def render_as_html():
-    portray.as_html(overwrite=True)
+    portray.as_html(output_dir="public", overwrite=True)
 
 
 _server = livereload.Server()
@@ -90,17 +90,19 @@ pre-commit:
 flake: ## check style with flake8
 	flake8 src/bring tests
 
-requirements: ## create requirements/requirements.txt
-	pip-compile --extra-index-url=https://pkgs.frkl.io/frkl/dev -o requirements/requirements.txt requirements/base.in
+requirements: ## create requirements.txt
+	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all --to requirements.txt
 
-docs-requirements: ## create requirements/docs.txt
-	pip-compile --extra-index-url=https://pkgs.frkl.io/frkl/dev -o requirements/docs.txt requirements/docs.in
+dev-requirements: ## create requirements-dev.txt
+	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all-dev --to-path requirements-dev.txt --to-format pip
 
-test-requirements: ## create requirements/testing.txt
-	pip-compile --extra-index-url=https://pkgs.frkl.io/frkl/dev -o requirements/testing.txt requirements/testing.in
+docs-requirements: ## create requirements-dev.txt
+	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all docs --to-path requirements-docs.txt --to-format pip
 
-dev-requirements: ## create requirements/develop.txt
-	pip-compile --extra-index-url=https://pkgs.frkl.io/frkl/dev -o requirements/develop.txt requirements/testing.in
+test-requirements: ## create requirements-testing.txt
+	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all testing --to-path requirements-testing.txt --to-format pip
+
+requirement-files: requirements dev-requirements test-requirements docs-requirements
 
 black: ## run black
 	black --config pyproject.toml setup.py src/bring tests
