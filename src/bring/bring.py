@@ -8,10 +8,7 @@ from typing import List, Union, Dict, Any
 
 from bring.pkg_resolvers import PkgResolver
 from frtls.exceptions import FrklException
-from frtls.formats import auto_parse_string
 from frtls.types.typistry import Typistry
-from tings.exceptions import TingException
-from tings.sources import FileWatchSource
 from tings.ting import SimpleTing
 from tings.ting.tings import Tings
 from tings.tingistry import Tingistry
@@ -22,24 +19,17 @@ class BringPkgDetails(SimpleTing):
 
         super().__init__(name=name, meta=meta)
 
-        self._bringistry: Bringistry = self._tingistry
-        if not isinstance(self._bringistry, Bringistry):
-            raise TingException(f"Invalid registry type: {type(self._tingistry)}")
-
     def provides(self) -> Dict[str, str]:
 
         return {"source": "dict", "versions": "list"}
 
     def requires(self) -> Dict[str, str]:
 
-        return {"string_content": "string"}
+        return {"dict": "dict"}
 
     async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
 
-        parsed_dict = requirements.get("_parsed_dict", None)
-        if parsed_dict is None:
-            parsed_dict = auto_parse_string(requirements["string_content"])
-
+        parsed_dict = requirements["dict"]
         source = parsed_dict["source"]
         result = {}
         if "source" in value_names:
@@ -47,7 +37,7 @@ class BringPkgDetails(SimpleTing):
 
         if "versions" in value_names:
 
-            versions = await self._bringistry.get_pkg_versions(source)
+            versions = await self._tingistry.get_pkg_versions(source)
             result["versions"] = versions
 
         return result
@@ -63,6 +53,8 @@ class Bringistry(Tingistry):
             "bring.pkg_resolvers.github_release",
         ]
         base_classes = [PkgResolver]
+
+        super().__init__(name=name)
 
         self._typistry = Typistry(
             base_classes=base_classes, preload_modules=preload_modules
@@ -82,14 +74,24 @@ class Bringistry(Tingistry):
             for r_type in resolver.get_supported_source_types():
                 self._resolver_sources[r_type] = resolver
 
-        super().__init__(name=name, meta={"namespace": "bring"})
-
-        self.register_ting_type("bring_pkg_metadata", "bring_pkg_details")
+        self.register_ting_type("bring.bring_pkg_metadata", "bring_pkg_details")
         self.register_ting_type(
-            "bring_pkg", "ting_ting", ting_types=["file_details", "bring_pkg_metadata"]
+            "bring.bring_pkgs", "tings", ting_type="bring.bring_pkg_metadata"
         )
-        self.register_ting_type("bring_pkgs", "tings", ting_type="bring_pkg")
-        self.register_ting_type("bring_resolver", "ting_ting", ting_types=[""])
+
+        self.register_ting_type(
+            "bring.bring_input", "ting_ting", ting_types=["text_file", "dict"]
+        )
+        matchers = [{"type": "extension", "regex": ".bring$"}]
+        self.register_ting_type(
+            "bring.bring_file_watcher", "file_watch_source", matchers=matchers
+        )
+        self.register_ting_type(
+            "bring.bring_source_watcher",
+            "ting_watch_source",
+            source_ting_type="bring.bring_file_watcher",
+            seed_ting_type="bring.bring_input",
+        )
 
         if not paths:
             paths = [Path.cwd()]
@@ -105,16 +107,15 @@ class Bringistry(Tingistry):
             else:
                 raise TypeError(f"Invalid input type for bringrepo path: {type(p)}")
 
-        matchers = [{"type": "extension", "regex": ".bring$"}]
         self._bring_pkgs = self.create_ting(
-            name="bring.bring_pkgs", type_name="bring_pkgs"
+            name="bring.bring_pkgs", type_name="bring.bring_pkgs"
         )
-        self._pkg_source = FileWatchSource(
-            name="pkg_source",
-            tings=self._bring_pkgs,
-            base_paths=self._paths,
-            matchers=matchers,
+        self._pkg_source = self.create_ting(
+            name="bring.pkg_source", type_name="bring.bring_source_watcher"
         )
+        self._pkg_source.set_tings(self._bring_pkgs)
+        # for base_path in self._paths:
+        #     self._pkg_source.add_base_path(base_path)
 
     async def get_pkg_versions(self, pkg_details):
 
@@ -139,9 +140,9 @@ class Bringistry(Tingistry):
         versions = await resolver.get_versions(source_details=pkg_details)
         return versions
 
-    def sync(self):
+    async def sync(self):
 
-        self._pkg_source.sync()
+        await self._pkg_source.sync()
 
     @property
     def pkg_tings(self) -> Tings:

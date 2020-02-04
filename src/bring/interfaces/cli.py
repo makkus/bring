@@ -9,7 +9,7 @@ from asyncclick import Path
 from bring.bring import Bringistry
 from frtls.cli.exceptions import handle_exc
 from frtls.cli.logging import logzero_option_async
-from tings.tingistry import TingistryTingistry
+from tings.tingistry import Tingistries
 
 click.anyio_backend = "asyncio"
 
@@ -32,7 +32,7 @@ async def cli(ctx, base_path):
     ctx.obj = {}
     ctx.obj["base_paths"] = base_path
 
-    bringistry = TingistryTingistry().add_tingistry(
+    bringistry = Tingistries().add_tingistry(
         "bring", tingistry_class="bringistry", paths=base_path
     )
     ctx.obj["bringistry"] = bringistry
@@ -44,12 +44,40 @@ async def cli(ctx, base_path):
 async def list_packages(ctx):
 
     bringistry: Bringistry = ctx.obj["bringistry"]
-    bringistry.sync()
-    # print(bt)
-    for v in bringistry.pkg_tings.tings.values():
 
-        vals = await v.get_values("versions")
-        print(vals)
+    path = "/home/markus/projects/tings/bring/repos/simple/"
+    # bringistry._pkg_source.seeds._add_seed(seed_id=path, seed={"path": path})
+    # await bringistry._pkg_source.sync()
+    # pp(await bringistry._pkg_source.get_values())
+
+    bringistry._pkg_source.source.add_base_path(path)
+
+    # await bringistry.sync()
+    # import pp
+    # for v in bringistry.pkg_tings.tings.values():
+    #     vals = await v.get_values()
+    #     print('---')
+    #     pp(vals)
+
+    # def listener(source, event_type, event_details, topic=pub.AUTO_TOPIC):
+    #     print("----")
+    #     print(topic.getName())
+    #     print(event_type)
+    #     print(source)
+    #
+    #     loop = asyncio.get_event_loop()
+    #     async def vals():
+    #         for v in bringistry.pkg_tings.tings.values():
+    #             va = await v.get_values()
+    #             pp(va)
+    #     loop.create_task(vals())
+    #
+    #
+    # pub.subscribe(listener, "bring")
+    #
+    # ctx.obj["listener"] = listener
+
+    await bringistry._pkg_source.watch()
 
 
 # @cli.command(name="watch")
