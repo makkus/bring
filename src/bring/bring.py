@@ -101,6 +101,7 @@ class Bringistry(Tingistry):
         self._resolvers = {}
         self._resolver_sources = {}
         for k, v in self._typistry.get_subclass_map(PkgResolver).items():
+
             resolver = v()
             r_name = resolver.get_resolver_name()
             if r_name in self._resolvers.keys():
@@ -112,7 +113,7 @@ class Bringistry(Tingistry):
             for r_type in resolver.get_supported_source_types():
                 self._resolver_sources[r_type] = resolver
 
-        self._bring_pkgs = self.create_ting(
+        self._bring_pkgs: Tings = self.create_ting(
             name="bring.bring_pkgs", type_name="bring.bring_pkgs"
         )
         self._pkg_source = None
@@ -156,9 +157,14 @@ class Bringistry(Tingistry):
 
         await self._pkg_source.sync()
 
-    @property
-    def pkg_tings(self) -> Tings:
-        return self._bring_pkgs
+    async def get_pkgs(self) -> Tings:
+
+        result = {}
+        for pkg in self._bring_pkgs._childs.values():
+            vals = await pkg.get_values()
+            result[pkg.name] = vals
+
+        return result
 
     async def watch(self):
 

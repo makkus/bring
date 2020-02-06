@@ -32,9 +32,7 @@ async def cli(ctx, base_path):
     ctx.obj = {}
     ctx.obj["base_paths"] = base_path
 
-    bringistry = Tingistries().add_tingistry(
-        "bring", tingistry_class="bringistry", paths=base_path
-    )
+    bringistry = Tingistries().add_tingistry("bring", tingistry_class="bringistry")
     ctx.obj["bringistry"] = bringistry
 
 
@@ -50,7 +48,12 @@ async def list_packages(ctx):
     # await bringistry._pkg_source.sync()
     # pp(await bringistry._pkg_source.get_values())
 
-    bringistry._pkg_source.source.add_base_path(path)
+    bringistry.set_source("bring.bring_file_source")
+
+    bringistry.source.add_source_items(path)
+    await bringistry.source.sync()
+
+    print(await bringistry.get_pkgs())
 
     # await bringistry.sync()
     # import pp
@@ -77,7 +80,7 @@ async def list_packages(ctx):
     #
     # ctx.obj["listener"] = listener
 
-    await bringistry._pkg_source.watch()
+    # await bringistry._pkg_source.watch()
 
 
 # @cli.command(name="watch")

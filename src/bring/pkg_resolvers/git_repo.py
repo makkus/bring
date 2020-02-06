@@ -1,29 +1,20 @@
 # -*- coding: utf-8 -*-
 import os
 from collections import OrderedDict
-from pathlib import Path
-from typing import Union, List, Dict, Any
+from typing import List, Dict, Any
 
 from pydriller import GitRepository
 
-from bring.defaults import BRING_PKG_CACHE
-from bring.pkg_resolvers import PkgResolver
+from bring.pkg_resolvers import SimplePkgResolver
 from frtls.downloads import calculate_cache_path
 from frtls.files import ensure_folder
 from frtls.subprocesses.git import GitProcess
 
 
-class GitRepo(PkgResolver):
-    def __init__(self, cache_dir: Union[str, Path] = None):
+class GitRepo(SimplePkgResolver):
+    def __init__(self):
 
-        if cache_dir is None:
-            cache_dir = BRING_PKG_CACHE
-
-        if isinstance(cache_dir, str):
-            cache_dir = Path(cache_dir)
-
-        self._cache_dir = cache_dir.resolve()
-        ensure_folder(self._cache_dir, mode=0o700)
+        super().__init__()
 
     def get_resolver_name(self):
 
@@ -31,6 +22,10 @@ class GitRepo(PkgResolver):
 
     def get_supported_source_types(self) -> List[str]:
         return ["git"]
+
+    def _get_unique_id(self, source_details: Dict) -> str:
+
+        return source_details["url"]
 
     async def _ensure_repo_cloned(self, path, url, update=False):
 
@@ -54,14 +49,9 @@ class GitRepo(PkgResolver):
 
         await git.run(wait=True)
 
-    async def _get_versions(
-        self, source_details: Union[str, Dict], update=True
+    async def _retrieve_versions(
+        self, source_details: Dict, update=True
     ) -> Dict[str, Any]:
-
-        if isinstance(source_details, str):
-            tmp = {}
-            tmp["url"] = source_details
-            source_details = tmp
 
         cache_path = calculate_cache_path(
             base_path=self._cache_dir, url=source_details["url"]
