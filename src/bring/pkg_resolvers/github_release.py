@@ -9,6 +9,6 @@ class GithubRelease(PkgResolver):
 
         return ["github-release"]
 
-    async def get_versions(self, source_details: Union[str, Dict]) -> Dict[str, Any]:
+    async def _get_versions(self, source_details: Union[str, Dict]) -> Dict[str, Any]:
 
         return {}

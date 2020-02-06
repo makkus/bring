@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
-import os
 from collections import Mapping
-from pathlib import Path
-from typing import List, Union, Dict, Any
+from typing import Dict, Any
 
 from bring.pkg_resolvers import PkgResolver
 from frtls.exceptions import FrklException
 from frtls.types.typistry import Typistry
+from tings.sources import SeedSource
 from tings.ting import SimpleTing
 from tings.ting.tings import Tings
 from tings.tingistry import Tingistry
@@ -43,22 +42,61 @@ class BringPkgDetails(SimpleTing):
         return result
 
 
+BRINGISTRY_CONFIG = {
+    "name": "bringistry",
+    "tingistry_class": "bringistry",
+    "ting_types": [
+        {"name": "bring.bring_pkg_metadata", "ting_class": "bring_pkg_details"},
+        {
+            "name": "bring.bring_pkgs",
+            "ting_class": "tings",
+            "ting_init": {
+                "ting_type": "bring.bring_pkg_metadata",
+                "child_name_strategy": "basename_no_ext",
+            },
+        },
+        {
+            "name": "bring.bring_input",
+            "ting_class": "ting_ting",
+            "ting_init": {"ting_types": ["text_file", "dict"]},
+        },
+        {
+            "name": "bring.bring_file_watcher",
+            "ting_class": "file_watch_source",
+            "ting_init": {"matchers": [{"type": "extension", "regex": ".bring$"}]},
+        },
+        {
+            "name": "bring.bring_file_source",
+            "ting_class": "ting_watch_source",
+            "ting_init": {
+                "source_ting_type": "bring.bring_file_watcher",
+                "seed_ting_type": "bring.bring_input",
+            },
+        },
+        {"name": "bring.bring_dict_source", "ting_class": "dict_source"},
+    ],
+    "preload_modules": [
+        "bring",
+        "bring.pkg_resolvers",
+        "bring.pkg_resolvers.git_repo",
+        "bring.pkg_resolvers.github_release",
+    ],
+    "tingistry_init": {"paths": []},
+}
+
+
 class Bringistry(Tingistry):
-    def __init__(self, name: str, paths: List[Union[str, Path]] = None):
+    def __init__(self, name: str, meta: Dict[str, Any] = None):
 
-        preload_modules = [
-            "bring",
-            "bring.pkg_resolvers",
-            "bring.pkg_resolvers.git_repo",
-            "bring.pkg_resolvers.github_release",
-        ]
-        base_classes = [PkgResolver]
-
-        super().__init__(name=name)
-
-        self._typistry = Typistry(
-            base_classes=base_classes, preload_modules=preload_modules
+        super().__init__(
+            name,
+            *BRINGISTRY_CONFIG["ting_types"],
+            preload_modules=BRINGISTRY_CONFIG["preload_modules"],
+            meta=meta,
         )
+
+        base_classes = [PkgResolver]
+        self._typistry = Typistry(base_classes=base_classes)
 
         self._resolvers = {}
         self._resolver_sources = {}
@@ -74,48 +112,22 @@ class Bringistry(Tingistry):
             for r_type in resolver.get_supported_source_types():
                 self._resolver_sources[r_type] = resolver
 
-        self.register_ting_type("bring.bring_pkg_metadata", "bring_pkg_details")
-        self.register_ting_type(
-            "bring.bring_pkgs", "tings", ting_type="bring.bring_pkg_metadata"
-        )
-
-        self.register_ting_type(
-            "bring.bring_input", "ting_ting", ting_types=["text_file", "dict"]
-        )
-        matchers = [{"type": "extension", "regex": ".bring$"}]
-        self.register_ting_type(
-            "bring.bring_file_watcher", "file_watch_source", matchers=matchers
-        )
-        self.register_ting_type(
-            "bring.bring_source_watcher",
-            "ting_watch_source",
-            source_ting_type="bring.bring_file_watcher",
-            seed_ting_type="bring.bring_input",
-        )
-
-        if not paths:
-            paths = [Path.cwd()]
-        elif isinstance(paths, str):
-            paths = [paths]
-
-        self._paths = []
-        for p in paths:
-            if isinstance(p, str):
-                self._paths.append(os.path.realpath(p))
-            elif isinstance(p, Path):
-                self._paths.append(p.resolve().as_posix())
-            else:
-                raise TypeError(f"Invalid input type for bringrepo path: {type(p)}")
-
         self._bring_pkgs = self.create_ting(
             name="bring.bring_pkgs", type_name="bring.bring_pkgs"
         )
+        self._pkg_source = None
+
+    def set_source(self, source_type: str, **source_init):
+
         self._pkg_source = self.create_ting(
-            name="bring.pkg_source", type_name="bring.bring_source_watcher"
+            name="bring.pkg_source", type_name=source_type
         )
         self._pkg_source.set_tings(self._bring_pkgs)
-        # for base_path in self._paths:
-        #     self._pkg_source.add_base_path(base_path)
+
+    @property
+    def source(self) -> SeedSource:
+
+        return self._pkg_source
 
     async def get_pkg_versions(self, pkg_details):
 

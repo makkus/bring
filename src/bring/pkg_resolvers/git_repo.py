@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 from collections import OrderedDict
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Union, List, Dict, Any
 
@@ -47,17 +46,17 @@ class GitRepo(PkgResolver):
         ensure_folder(parent_folder)
 
         if not exists:
-            git = GitProcess("clone", url, path, working_dir=parent_folder)
+            git = GitProcess(
+                "clone", url, path, working_dir=parent_folder, GIT_TERMINAL_PROMPT="0"
+            )
         else:
             git = GitProcess("fetch", working_dir=path)
 
         await git.run(wait=True)
 
-    async def get_versions(
+    async def _get_versions(
         self, source_details: Union[str, Dict], update=True
     ) -> Dict[str, Any]:
-
-        now = datetime.now(timezone.utc)
 
         if isinstance(source_details, str):
             tmp = {}
@@ -96,5 +95,4 @@ class GitRepo(PkgResolver):
         for b in branches.keys():
             versions.append(b)
 
-        meta = {"timestamp": str(now)}
-        return {"version": versions, "_meta": meta}
+        return {"version": versions}
