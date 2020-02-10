@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import tempfile
 from collections import OrderedDict
 from typing import List, Dict, Any
 
@@ -23,7 +24,7 @@ class GitRepo(SimplePkgResolver):
     def get_supported_source_types(self) -> List[str]:
         return ["git"]
 
-    def _get_unique_id(self, source_details: Dict) -> str:
+    def get_unique_source_id(self, source_details: Dict) -> str:
 
         return source_details["url"]
 
@@ -51,7 +52,7 @@ class GitRepo(SimplePkgResolver):
 
     async def _retrieve_versions(
         self, source_details: Dict, update=True
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, str]]:
 
         cache_path = calculate_cache_path(
             base_path=self._cache_dir, url=source_details["url"]
@@ -77,12 +78,40 @@ class GitRepo(SimplePkgResolver):
             branches[b.name] = b.commit
 
         versions = []
-        for k in tags.keys():
-            # c = commits[v.hexsha]
-            # timestamp = str(c.author_date)
-            # versions[k] = {"commit": c.hash, "timestamp": timestamp}
-            versions.append(k)
+        if "master" in branches.keys():
+            c = commits[branches["master"].hexsha]
+            timestamp = str(c.author_date)
+            versions.append({"version": "master", "_meta": {"release_date": timestamp}})
         for b in branches.keys():
-            versions.append(b)
+            if b == "master":
+                continue
+            c = commits[branches[b].hexsha]
+            timestamp = str(c.author_date)
+            versions.append({"version": b, "_meta": {"release_date": timestamp}})
 
-        return {"version": versions}
+        for k in tags.keys():
+
+            c = commits[tags[k].hexsha]
+            timestamp = str(c.author_date)
+            versions.append({"version": k, "_meta": {"release_date": timestamp}})
+
+        return versions
+
+    async def get_artefact_path(
+        self, version: Dict[str, str], source_details: Dict[str, Any]
+    ):
+
+        cache_path = calculate_cache_path(
+            base_path=self._cache_dir, url=source_details["url"]
+        )
+
+        temp_path = os.path.join(self._cache_dir, "tmp_artefact_folders")
+        ensure_folder(temp_path)
+        tempdir = tempfile.mkdtemp(dir=temp_path)
+
+        clone_cmd = GitProcess("clone", cache_path, tempdir)
+        await clone_cmd.run()
+        checkout_cmd = GitProcess("checkout", version["version"], working_dir=tempdir)
+        await checkout_cmd.run()
+
+        return tempdir

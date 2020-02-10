@@ -2,87 +2,24 @@
 
 """Main module."""
 from collections import Mapping
-from typing import Dict, Any
+from typing import Dict, Any, Sequence, Union
 
+from bring.artefact_handlers import ArtefactHandler
+from bring.defaults import BRINGISTRY_CONFIG
+from bring.file_sets import FileSetFilter
+from bring.file_sets.default import (
+    DefaultFileSetFilter,
+    DEFAULT_FILTER,
+    DEFAULT_ALL_FILTER,
+)
+from bring.pkg import BringPkgDetails
 from bring.pkg_resolvers import PkgResolver
+from bring.system_info import get_current_system_info
 from frtls.exceptions import FrklException
 from frtls.types.typistry import Typistry
 from tings.sources import SeedSource
-from tings.ting import SimpleTing
-from tings.ting.tings import Tings
+from tings.ting.tings import SeedTings
 from tings.tingistry import Tingistry
-
-
-class BringPkgDetails(SimpleTing):
-    def __init__(self, name, meta: Dict[str, Any]):
-
-        super().__init__(name=name, meta=meta)
-
-    def provides(self) -> Dict[str, str]:
-
-        return {"source": "dict", "versions": "list"}
-
-    def requires(self) -> Dict[str, str]:
-
-        return {"dict": "dict"}
-
-    async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
-
-        parsed_dict = requirements["dict"]
-        source = parsed_dict["source"]
-        result = {}
-        if "source" in value_names:
-            result["source"] = source
-
-        if "versions" in value_names:
-
-            versions = await self._tingistry.get_pkg_versions(source)
-            result["versions"] = versions
-
-        return result
-
-
-BRINGISTRY_CONFIG = {
-    "name": "bringistry",
-    "tingistry_class": "bringistry",
-    "ting_types": [
-        {"name": "bring.bring_pkg_metadata", "ting_class": "bring_pkg_details"},
-        {
-            "name": "bring.bring_pkgs",
-            "ting_class": "tings",
-            "ting_init": {
-                "ting_type": "bring.bring_pkg_metadata",
-                "child_name_strategy": "basename_no_ext",
-            },
-        },
-        {
-            "name": "bring.bring_input",
-            "ting_class": "ting_ting",
-            "ting_init": {"ting_types": ["text_file", "dict"]},
-        },
-        {
-            "name": "bring.bring_file_watcher",
-            "ting_class": "file_watch_source",
-            "ting_init": {"matchers": [{"type": "extension", "regex": ".bring$"}]},
-        },
-        {
-            "name": "bring.bring_file_source",
-            "ting_class": "ting_watch_source",
-            "ting_init": {
-                "source_ting_type": "bring.bring_file_watcher",
-                "seed_ting_type": "bring.bring_input",
-            },
-        },
-        {"name": "bring.bring_dict_source", "ting_class": "dict_source"},
-    ],
-    "preload_modules": [
-        "bring",
-        "bring.pkg_resolvers",
-        "bring.pkg_resolvers.git_repo",
-        "bring.pkg_resolvers.github_release",
-    ],
-    "tingistry_init": {"paths": []},
-}
 
 
 class Bringistry(Tingistry):
@@ -95,8 +32,10 @@ class Bringistry(Tingistry):
             meta=meta,
         )
 
-        base_classes = [PkgResolver]
+        base_classes = [PkgResolver, ArtefactHandler, FileSetFilter]
         self._typistry = Typistry(base_classes=base_classes)
+
+        self._default_vars = get_current_system_info()
 
         self._resolvers = {}
         self._resolver_sources = {}
@@ -113,7 +52,35 @@ class Bringistry(Tingistry):
             for r_type in resolver.get_supported_source_types():
                 self._resolver_sources[r_type] = resolver
 
-        self._bring_pkgs: Tings = self.create_ting(
+        self._artefact_handlers = {}
+        self._artefact_types = {}
+
+        for k, v in self._typistry.get_subclass_map(ArtefactHandler).items():
+
+            handler = v()
+            h_name = handler.get_handler_name()
+
+            if h_name.endswith("-handler"):
+                h_name = h_name[0:-8]
+
+            if h_name in self._artefact_handlers.keys():
+                raise FrklException(
+                    msg=f"Can't register artefact handler of class '{v}'",
+                    reason=f"Duplicate handler name: {h_name}",
+                )
+            self._artefact_handlers[h_name] = handler
+            for h_type in handler.get_supported_artefact_types():
+                self._artefact_types[h_type] = handler
+
+        self._file_set_filters = {}
+
+        for k, v in self._typistry.get_subclass_map(FileSetFilter).items():
+
+            if k.endswith("_file_set_filter"):
+                k = k[0:-16]
+            self._file_set_filters[k] = v
+
+        self._bring_pkgs: SeedTings = self.create_ting(
             name="bring.bring_pkgs", type_name="bring.bring_pkgs"
         )
         self._pkg_source = None
@@ -130,7 +97,7 @@ class Bringistry(Tingistry):
 
         return self._pkg_source
 
-    async def get_pkg_versions(self, pkg_details):
+    async def get_pkg_metadata(self, pkg_details):
 
         if not isinstance(pkg_details, Mapping):
             raise TypeError(
@@ -150,14 +117,43 @@ class Bringistry(Tingistry):
                 solution=f"Register a resolver, or select one of the existing ones: {', '.join(self._resolvers.keys())}",
             )
 
-        versions = await resolver.get_versions(source_details=pkg_details)
-        return versions
+        metadata = await resolver.get_pkg_metadata(source_details=pkg_details)
+        return metadata
+
+    async def get_pkg_filters(self, filters_conf: Dict) -> Dict[str, FileSetFilter]:
+
+        if not filters_conf:
+            filters_conf = {}
+
+        result = {}
+        for fileset_name, conf in filters_conf.items():
+
+            if isinstance(conf, str):
+                conf = [conf]
+
+            if not isinstance(conf, Sequence):
+                raise TypeError(
+                    f"Invalid configuration type '{type(conf)}' for filter config (must be str or List): {conf}"
+                )
+
+            # filter_name = "default"
+            filter_set = DefaultFileSetFilter(patterns=conf)
+            result[fileset_name] = filter_set
+
+        result["all"] = DEFAULT_FILTER
+        result["ALL"] = DEFAULT_ALL_FILTER
+
+        return result
 
     async def sync(self):
 
         await self._pkg_source.sync()
 
-    async def get_pkgs(self) -> Tings:
+    def get_pkg_names(self) -> Sequence[str]:
+
+        return self._bring_pkgs.childs.keys()
+
+    async def get_pkgs(self) -> Dict[str, Dict]:
 
         result = {}
         for pkg in self._bring_pkgs._childs.values():
@@ -165,6 +161,77 @@ class Bringistry(Tingistry):
             result[pkg.name] = vals
 
         return result
+
+    def get_pkg(self, pkg_name: str) -> BringPkgDetails:
+
+        pkg = self._bring_pkgs.childs.get(pkg_name, None)
+
+        if pkg is None:
+            raise Exception(f"No package with name '{pkg_name}' available.")
+
+        return pkg
+
+    async def get_pkg_values(self, pkg_name: str):
+
+        pkg = self.get_pkg(pkg_name)
+        pkg_vals = await pkg.get_values()
+        return pkg_vals
+
+    def get_resolver(self, resolver: Union[str, Dict]):
+
+        if isinstance(resolver, Mapping):
+            resolver = resolver.get("type", None)
+            if resolver is None:
+                raise ValueError(
+                    f"Can't get resolver, no 'type' key in source details mapping: {resolver}"
+                )
+
+        res_obj = self._resolver_sources.get(resolver, None)
+        if res_obj is None:
+            raise FrklException(
+                msg=f"Can't get resolver '{resolver}'",
+                reason="No such resolver name registered.",
+                solution=f"Register resolver, or choose one of the available ones: {' ,'.join(self._resolver_sources.keys())}",
+            )
+
+        return res_obj
+
+    def get_artefact_handler(self, handler: Union[str, Dict]):
+
+        if isinstance(handler, Mapping):
+            handler = handler.get("type", None)
+            if handler is None:
+                raise ValueError(
+                    f"Can't get artefact handler, no 'type' key in metadata: {handler}"
+                )
+
+        res_obj = self._artefact_handlers.get(handler, None)
+        if res_obj is None:
+            raise FrklException(
+                msg=f"Can't get artefact handler '{handler}'",
+                reason="No such handler registered.",
+                solution=f"Register handler, or choose one of the available ones: {' ,'.join(self._artefact_handlers.keys())}",
+            )
+
+        return res_obj
+
+    @property
+    def default_vars(self):
+
+        return self._default_vars
+
+    async def prepare_artefact(self, pkg_name: str, artefact_path: str):
+
+        pkg_vals = await self.get_pkg_values(pkg_name=pkg_name)
+        artefact_details = pkg_vals["artefact"]
+
+        handler: ArtefactHandler = self._artefact_types.get(artefact_details["type"])
+
+        folder = await handler.provide_artefact_folder(
+            artefact_path=artefact_path, artefact_details=artefact_details
+        )
+
+        return folder
 
     async def watch(self):
 
