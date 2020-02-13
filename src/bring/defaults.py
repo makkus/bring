@@ -17,6 +17,8 @@ BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
 
 BRING_DOWNLOAD_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "downloads")
 
+BRING_WORKSPACE_FOLDER = os.path.join(bring_app_dirs.user_cache_dir, "workspace")
+
 BRING_PKG_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "pkgs")
 DEFAULT_ARTEFACT_METADATA = {"type": "auto"}
 BRINGISTRY_CONFIG = {
@@ -38,6 +40,11 @@ BRINGISTRY_CONFIG = {
             "ting_init": {"ting_types": ["text_file", "dict"]},
         },
         {
+            "name": "bring.pkgs",
+            "ting_class": "subscrip_tings",
+            "ting_init": {"ting_type": "bring.bring_pkg_metadata"},
+        },
+        {
             "name": "bring.bring_file_watcher",
             "ting_class": "file_watch_source",
             "ting_init": {"matchers": [{"type": "extension", "regex": ".bring$"}]},
@@ -51,16 +58,33 @@ BRINGISTRY_CONFIG = {
             },
         },
         {"name": "bring.bring_dict_source", "ting_class": "dict_source"},
+        {
+            "name": "bring.transform.profiles.executables",
+            "ting_class": "transform_profile",
+            "ting_init": {
+                "transformers_config": [
+                    {"type": "rename"},
+                    {"type": "file_filter", "include": []},
+                    {
+                        "type": "set_mode",
+                        "set_executable": True,
+                        # "set_readable": True
+                    },
+                ]
+            },
+        },
     ],
     "preload_modules": [
         "bring",
         "bring.pkg_resolvers",
         "bring.pkg_resolvers.git_repo",
+        "bring.pkg_resolvers.template_url",
         "bring.pkg_resolvers.github_release",
         "bring.artefact_handlers.archive",
         "bring.artefact_handlers.file",
         "bring.artefact_handlers.folder",
         "bring.file_sets.default",
+        "bring.transform",
     ],
     "tingistry_init": {"paths": []},
 }

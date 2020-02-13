@@ -42,9 +42,11 @@ class GitRepo(SimplePkgResolver):
         ensure_folder(parent_folder)
 
         if not exists:
+
             git = GitProcess(
                 "clone", url, path, working_dir=parent_folder, GIT_TERMINAL_PROMPT="0"
             )
+
         else:
             git = GitProcess("fetch", working_dir=path)
 
@@ -72,10 +74,10 @@ class GitRepo(SimplePkgResolver):
             commits[c.hash] = c
 
         for t in gr.repo.tags:
-            tags[t.name] = t.commit
+            tags[t.id] = t.commit
 
         for b in gr.repo.branches:
-            branches[b.name] = b.commit
+            branches[b.id] = b.commit
 
         versions = []
         if "master" in branches.keys():

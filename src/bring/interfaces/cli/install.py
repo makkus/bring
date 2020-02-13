@@ -4,7 +4,7 @@ from typing import Dict, Union
 import asyncclick as click
 
 from bring.bring import Bringistry
-from frtls.args.arg import Args
+from frtls.args.arg import Arg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 
@@ -36,7 +36,7 @@ class BringInstallGroup(FrklBaseCommand):
     def init_command(self, ctx):
         self._bringistry = ctx.obj["bringistry"]
 
-    def get_common_options(self) -> Union[Args, Dict]:
+    def get_common_options(self) -> Union[Arg, Dict]:
 
         return {
             "target": {
@@ -54,6 +54,11 @@ class BringInstallGroup(FrklBaseCommand):
                 "doc": "Strategy on how to deal with existing files, options: default, force",
                 "type": "string",
                 "default": "default",
+            },
+            "write_metadata": {
+                "doc": "Write metadata for this install process.",
+                "type": "boolean",
+                "default": False,
             },
         }
 
@@ -74,8 +79,14 @@ class BringInstallGroup(FrklBaseCommand):
             profiles = self._group_params.get("filter")
             strategy = self._group_params.get("strategy")
 
+            write_metadata = self._group_params.get("write_metadata")
+
             copied = await pkg.install(
-                vars=vars, filters=profiles, target=target, strategy=strategy
+                vars=vars,
+                filters=profiles,
+                target=target,
+                strategy=strategy,
+                write_metadata=write_metadata,
             )
 
             if copied:

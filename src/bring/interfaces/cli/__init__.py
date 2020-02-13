@@ -2,21 +2,21 @@
 
 import asyncclick as click
 
-# from click import Path
-# from click_aliases import ClickAliasedGroup
 from asyncclick import Path
 
 from bring.bring import Bringistry
-from bring.interfaces.cli.info import BringInfoGroup
-from bring.interfaces.cli.install import BringInstallGroup
+
+# from bring.interfaces.cli.info import BringInfoGroup
+# from bring.interfaces.cli.install import BringInstallGroup
+# from bring.interfaces.cli.profile import BringProfileGroup
 from frtls.cli.exceptions import handle_exc
 from frtls.cli.logging import logzero_option_async
+from tings.makers.file import TextFileTingMaker
 from tings.tingistry import Tingistries
 
 click.anyio_backend = "asyncio"
 
 
-# @click.group(cls=ClickAliasedGroup)
 @click.group()
 @click.option(
     "--base-path",
@@ -37,17 +37,21 @@ async def cli(ctx, base_path):
     bringistry = Tingistries().add_tingistry("bring", tingistry_class="bringistry")
     ctx.obj["bringistry"] = bringistry
 
-    path = "/home/markus/projects/tings/bring/repos/simple/"
-    bringistry.set_source("bring.bring_file_source")
-    bringistry.source.add_source_items(path)
-    await bringistry.source.sync()
+    path = "/home/markus/projects/tings/repos/executables/"
+    ctx.obj["path"] = path
+    # bringistry.set_source("bring.bring_file_source")
+    # bringistry.source.add_source_items(path)
+    # await bringistry.source.sync()
 
 
-install = BringInstallGroup(name="install")
-cli.add_command(install)
-
-info = BringInfoGroup(name="info")
-cli.add_command(info)
+# install = BringInstallGroup(name="install")
+# cli.add_command(install)
+#
+# info = BringInfoGroup(name="info")
+# cli.add_command(info)
+#
+# profile = BringProfileGroup(name="profile")
+# cli.add_command(info)
 
 
 @cli.command(name="test")
@@ -55,47 +59,53 @@ cli.add_command(info)
 @handle_exc
 async def test(ctx):
 
+    # path = ctx.obj["path"]
     bringistry: Bringistry = ctx.obj["bringistry"]
 
-    path = "/home/markus/projects/tings/bring/repos/simple/"
-    # bringistry._pkg_source.seeds._add_seed(seed_id=path, seed={"path": path})
-    # await bringistry._pkg_source.sync()
-    # pp(await bringistry._pkg_source.get_values())
+    # tings = bringistry.create_ting("test_tings", type_name="bring.pkgs")
 
-    bringistry.set_source("bring.bring_file_source")
+    # def handle(event_name, source, subject, event_details):
+    # def handle(**subject):
+    #     print(subject)
 
-    bringistry.source.add_source_items(path)
-    await bringistry.source.sync()
+    # bringistry.subscribe_to_tingistry_event(handle, TingistryEvent.TING_CREATED, ting_type="bring.bring_pkg_metadata")
 
-    # vars = {"version": "0.12.0"}
-    vars = {}
-    pkg = bringistry.get_pkg("bat")
+    # hive = bringistry._arg_hive
 
-    # folder = await pkg.provide_artefact_folder(vars)
+    # arg_dict = {"type": "boolean", "properties": {"doc": "whatever", "required": False}}
+
+    # arg = hive.create_derived_arg(id="docker", **arg_dict)
+
+    ting_maker = TextFileTingMaker(
+        ting_type="bring.bring_pkg_metadata", tingistry=bringistry
+    )
+
+    await ting_maker.add_file(
+        "/home/markus/projects/tings/repos/executables/terminal/system/info/ytop.bring",
+        "testxxx",
+    )
+    # await ting_maker.add_file('https://gitlab.com/tingistries/executables/-/raw/master/system/install/languages/eclectica-proxy.bring')
+    print(ting_maker._ids)
+    print(ting_maker._tings)
+    bringistry._tings_tree.show()
+
+    await ting_maker.remove_ting(
+        "/home/markus/projects/tings/repos/executables/terminal/system/info/ytop.bring"
+    )
+    print(ting_maker._ids)
+    print(ting_maker._tings)
+    bringistry._tings_tree.show()
+    print("Xxxxx")
+    # vars = {}
+    # pkg = bringistry.get_pkg("kubectl")
+    # print(pkg)
     #
-    # print(folder)
-
-    files = await pkg.get_file_paths(vars=vars, profile="executables")
-
-    print(files)
-
-    # root = await bringistry.prepare_artefact("bat", artefact_path=dl_path)
-    # print(root)
-
-    # pkgs = await bringistry.get_pkgs()
+    # profile = bringistry.get_transform_profile("executables")
+    # print(profile)
     #
-    # pkg = pkgs["bat"]
+    # result = await pkg.install(vars={}, profiles=["executables"], target="/tmp/markus")
     #
-    # source_details = pkg["source"]
-    #
-    # resolver: PkgResolver = bringistry._resolvers["github-release"]
-    #
-    # metadata = pkg["metadata"]
-    # version = resolver.find_version(vars={}, defaults=metadata["defaults"], versions=metadata["versions"])
-    #
-    # download_path = await resolver.get_artefact_path("/tmp/", version=version, source_details=source_details)
-    #
-    # print("DOWNLOAD: {}".format(download_path))
+    # print(result)
 
 
 @cli.command(name="list")
@@ -115,7 +125,7 @@ async def list_packages(ctx):
     bringistry.source.add_source_items(path)
     await bringistry.source.sync()
 
-    pkgs = await bringistry.get_pkgs()
+    pkgs = await bringistry.get_pkg_values_list()
 
     for k, v in pkgs.items():
         print(k)

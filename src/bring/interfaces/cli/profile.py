@@ -16,7 +16,7 @@ from frtls.formats.output import serialize
 click.anyio_backend = "asyncio"
 
 
-class BringInfoGroup(FrklBaseCommand):
+class BringProfileGroup(FrklBaseCommand):
     def __init__(
         self,
         name=None,
@@ -32,19 +32,19 @@ class BringInfoGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
 
-        super(BringInfoGroup, self).__init__(
+        super(BringProfileGroup, self).__init__(
             name=name,
             invoke_without_command=True,
             no_args_is_help=False,
             chain=False,
             result_callback=None,
-            callback=self.all_info,
+            callback=self.all_profiles,
             **kwargs,
         )
         self._bringistry: Bringistry = None
 
     @click.pass_context
-    async def all_info(ctx, self, *args, **kwargs):
+    async def all_profiles(ctx, self, *args, **kwargs):
 
         if ctx.invoked_subcommand:
             return

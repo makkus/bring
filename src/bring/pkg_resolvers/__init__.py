@@ -5,7 +5,7 @@ import logging
 import os
 from abc import ABCMeta, abstractmethod
 from collections import Sequence
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Tuple
 
 import arrow
 import httpx
@@ -55,14 +55,30 @@ class PkgResolver(metaclass=ABCMeta):
         self,
         vars: Dict[str, str],
         defaults: Dict[str, str],
+        aliases: Dict[str, Dict[str, str]],
         versions: List[Dict[str, str]],
         source_details: Dict[str, Any],
     ):
 
+        if not aliases:
+            vars_alias = vars
+        else:
+            vars_alias = {}
+
+            for k, v in vars.items():
+                alias_dict = aliases.get(k, None)
+                if alias_dict is None:
+                    vars_alias[k] = v
+                    continue
+                if v in alias_dict.keys():
+                    vars_alias[k] = alias_dict[v]
+                else:
+                    vars_alias[k] = v
+
         vars_final = copy.copy(defaults)
         if "var_map" in source_details.keys():
             var_map = source_details["var_map"]
-            for k, v in vars.items():
+            for k, v in vars_alias.items():
                 v_list = []
                 if v in var_map.values():
                     for k1, v1 in var_map.items():
@@ -73,8 +89,9 @@ class PkgResolver(metaclass=ABCMeta):
                 else:
                     vars_final[k] = v
         else:
-            vars_final.update(vars)
+            vars_final.update(vars_alias)
 
+        matches = []
         for version in versions:
             match = True
             for k, v in version.items():
@@ -98,9 +115,21 @@ class PkgResolver(metaclass=ABCMeta):
                         break
 
             if match:
-                return version
+                matches.append(version)
 
-        return None
+        if not matches:
+            return None
+
+        if len(matches) == 1:
+            return matches[0]
+
+        # find the first 'exactest" match
+        max_match = matches[0]
+        for m in matches[1:]:
+            if len(m) > len(max_match):
+                max_match = m
+
+        return max_match
 
 
 class SimplePkgResolver(PkgResolver):
@@ -116,11 +145,11 @@ class SimplePkgResolver(PkgResolver):
     @abstractmethod
     async def _retrieve_versions(
         self, source_details: Dict, update=True
-    ) -> List[Dict[str, str]]:
+    ) -> Union[Tuple, List]:
         pass
 
     @abstractmethod
-    async def get_unique_source_id(self, source_details: Dict) -> str:
+    def get_unique_source_id(self, source_details: Dict) -> str:
         pass
 
     async def get_pkg_metadata(
@@ -156,6 +185,11 @@ class SimplePkgResolver(PkgResolver):
 
         try:
             versions = await self._retrieve_versions(source_details=source_details)
+            if isinstance(versions, tuple):
+                aliases = versions[1]
+                versions = versions[0]
+            else:
+                aliases = {}
         except (Exception) as e:
             log.error(f"Can't retrieve versions for pkg: {e}")
             log.debug(
@@ -163,7 +197,9 @@ class SimplePkgResolver(PkgResolver):
                 exc_info=1,
             )
             raise e
+
         metadata["versions"] = versions
+        metadata["aliases"] = aliases
 
         defaults = copy.copy(source_details.get("defaults", {}))
         if versions:
@@ -224,15 +260,23 @@ class HttpDownloadPkgResolver(SimplePkgResolver):
 
         return download_path
 
+    @abstractmethod
+    def get_download_url(self, version: Dict[str, str], source_details: Dict[str, Any]):
+
+        pass
+
     async def download_artefact(
         self, version: Dict[str, str], source_details: Dict[str, Any]
     ):
 
-        download_url = self.get_download_url(version)
+        download_url = self.get_download_url(version, source_details)
         log.debug(f"downloading: {download_url}")
 
         # filename = self.calculate_unique_version_id(version=version, source_details=source_details)
-        filename = version["_meta"]["asset_name"]
+        filename = version.get("_meta", {}).get("asset_name", None)
+        if filename is None:
+            filename = os.path.basename(download_url)
+
         target_path = os.path.join(self._download_dir, filename)
 
         if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
@@ -243,10 +287,10 @@ class HttpDownloadPkgResolver(SimplePkgResolver):
 
         try:
             client = httpx.AsyncClient()
-            with open(target_path, "wb") as f:
+            async with await aopen(target_path, "wb") as f:
                 async with client.stream("GET", download_url) as response:
                     async for chunk in response.aiter_bytes():
-                        f.write(chunk)
+                        await f.write(chunk)
         finally:
             await client.aclose()
 

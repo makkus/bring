@@ -5,12 +5,14 @@ import os
 import shutil
 from typing import Dict, Any, Union, List
 
+from anyio import create_task_group
+
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import DEFAULT_ARTEFACT_METADATA
 from bring.file_sets import FileSetFilter
 from bring.file_sets.default import DEFAULT_FILTER
-from frtls.args.arg import Arg, Args
-from frtls.dicts import get_seed_dict, dict_merge
+from bring.transform import MergeTransformer
+from frtls.dicts import get_seeded_dict, dict_merge
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from tings.ting import SimpleTing
@@ -18,9 +20,12 @@ from tings.ting import SimpleTing
 log = logging.getLogger("bring")
 
 DEFAULT_ARG_DICT = {
-    "os": {"doc": {"short_help": "The target os for this package."}},
-    "arch": {"doc": {"short_help": "The target architecture for this package."}},
-    "version": {"doc": {"short_help": "The version of the package."}},
+    "os": {"doc": {"short_help": "The target os for this package."}, "type": "string"},
+    "arch": {
+        "doc": {"short_help": "The target architecture for this package."},
+        "type": "string",
+    },
+    "version": {"doc": {"short_help": "The version of the package."}, "type": "string"},
 }
 
 
@@ -35,71 +40,103 @@ class BringPkgDetails(SimpleTing):
             "source": "dict",
             "metadata": "dict",
             "artefact": "dict",
-            "filters": "dict",
+            "profiles_config": "dict",
+            "aliases": "dict",
             "args": "args",
-            "doc": "dict",
+            "info": "dict",
+            "labels": "dict",
         }
 
     def requires(self) -> Dict[str, str]:
 
-        return {"dict": "dict"}
+        return {
+            "source": "dict",
+            "artefact": "dict?",
+            "profiles": "dict?",
+            "aliases": "dict?",
+            "info": "dict",
+            "labels": "dict",
+        }
 
     async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
 
-        parsed_dict = requirements["dict"]
         result = {}
-        source = parsed_dict.get("source", {})
+        source = requirements["source"]
 
         if "source" in value_names:
             result["source"] = source
 
-        if "metadata" in value_names:
-
+        metadata = None
+        if (
+            "metadata" in value_names
+            or "args" in value_names
+            or "aliases" in value_names
+        ):
             metadata = await self._get_metadata(source)
             result["metadata"] = metadata
 
+        if "args" in value_names:
+            result["args"] = await self._calculate_args(source, metadata=metadata)
+
+        if "aliases" in value_names:
+            result["aliases"] = await self._get_aliases(metadata)
+
         if "artefact" in value_names:
-            artefact = get_seed_dict(
-                dict_obj=parsed_dict.get("artefact", None),
-                seed_dict=DEFAULT_ARTEFACT_METADATA,
+            artefact = get_seeded_dict(
+                dict_obj=requirements["artefact"], seed_dict=DEFAULT_ARTEFACT_METADATA
             )
             result["artefact"] = artefact
 
-        if "filters" in value_names:
-            filters_conf = parsed_dict.get("filters", None)
-            filters = await self._tingistry.get_pkg_filters(filters_conf)
+        if "profiles_config" in value_names:
+            profile_config = requirements["profiles"]
+            result["profiles_config"] = profile_config
 
-            result["filters"] = filters
+        if "info" in value_names:
+            result["info"] = requirements["info"]
 
-        if "doc" in value_names:
-            result["doc"] = parsed_dict.get("doc", {})
-
-        if "args" in value_names:
-            result["args"] = await self._calculate_args(source)
+        if "labels" in value_names:
+            result["labels"] = requirements["labels"]
 
         return result
 
-    async def _calculate_args(self, source_dict):
+    async def _get_aliases(self, metadata):
 
-        metadata = await self._get_metadata(source_dict)
+        return metadata.get("aliases", {})
+
+    async def get_aliases(self):
+
+        metadata = await self.get_metadata()
+        return self._get_aliases(metadata)
+
+    async def _calculate_args(self, source_dict, metadata):
+
         defaults = metadata["defaults"]
 
         args = copy.copy(DEFAULT_ARG_DICT)
         if source_dict.get("args", None):
             args = dict_merge(args, source_dict["args"], copy_dct=False)
 
-        result = []
+        result = {}
 
         for arg, default in defaults.items():
             args_dict = args.get(arg, {})
-            arg_obj = Arg.from_dict(name=arg, default=default, **args_dict)
-            result.append(arg_obj)
+            args_dict["default"] = default
+            # arg_obj = Arg.from_dict(name=arg, hive=None, default=default, **args_dict)
+            result[arg] = args_dict
 
-        args = Args(*result)
+        arg = self._tingistry._arg_hive.create_record_arg(childs=result)
 
-        return args
+        return arg
+
+    async def get_metadata(self):
+        """Return metadata associated with this package."""
+
+        vals = await self.get_values("source")
+        return self._get_metadata(vals["source"])
 
     async def _get_metadata(self, source_dict):
+        """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
+
         return await self._tingistry.get_pkg_metadata(source_dict)
 
     def _get_translated_value(self, var_map, value):
@@ -109,12 +146,19 @@ class BringPkgDetails(SimpleTing):
 
         return var_map[value]
 
-    async def _get_valid_var_combinations(self):
+    async def get_valid_var_combinations(self):
 
         vals = await self.get_values("metadata", "source")
         metadata = vals["metadata"]
-        versions = metadata["versions"]
         source_details = vals["source"]
+
+        return self._get_valid_var_combinations(
+            source_details=source_details, metadata=metadata
+        )
+
+    async def _get_valid_var_combinations(self, source_details, metadata):
+
+        versions = metadata["versions"]
         var_map = source_details.get("var_map", {})
 
         valid = []
@@ -131,31 +175,67 @@ class BringPkgDetails(SimpleTing):
 
         return valid
 
-    async def get_info(self):
+    async def get_profiles_config(self):
 
-        vals = await self.get_values("metadata", "source")
+        vals = await self.get_values("profiles_config")
+        return vals["profiles_config"]
+
+    async def get_profile_config(self, profile_name):
+
+        return self.get_profiles_config().get(profile_name, {})
+
+    async def get_info(self, include_metadata=False):
+
+        val_keys = ["info", "source", "labels"]
+        if include_metadata:
+            val_keys.append("metadata")
+
+        vals = await self.get_values(*val_keys)
+
+        info = vals["info"]
         source_details = vals["source"]
         var_map = source_details.get("var_map", {})
-        metadata = vals["metadata"]
 
-        timestamp = metadata["metadata_check"]
+        result = {}
 
-        defaults = metadata["defaults"]
-        values = {}
+        result["info"] = info
+        result["labels"] = vals["labels"]
 
-        for version in metadata["versions"]:
+        if include_metadata:
 
-            for k, v in version.items():
-                if k == "_meta":
-                    continue
+            metadata = vals["metadata"]
+            timestamp = metadata["metadata_check"]
 
-                v = self._get_translated_value(var_map, v)
+            defaults = metadata["defaults"]
+            aliases = metadata["aliases"]
+            values = {}
 
-                val = values.setdefault(k, [])
-                if v not in val:
-                    val.append(v)
+            for version in metadata["versions"]:
 
-        return {"defaults": defaults, "values": values, "timestamp": timestamp}
+                for k, v in version.items():
+                    if k == "_meta":
+                        continue
+
+                    v = self._get_translated_value(var_map, v)
+
+                    val = values.setdefault(k, [])
+                    if v not in val:
+                        val.append(v)
+
+            var_combinations = await self._get_valid_var_combinations(
+                source_details=source_details, metadata=metadata
+            )
+
+            metadata_result = {
+                "defaults": defaults,
+                "aliases": aliases,
+                "allowed_values": values,
+                "timestamp": timestamp,
+                "version_list": var_combinations,
+            }
+            result["metadata"] = metadata_result
+
+        return result
 
     async def get_artefact(self, vars: Dict[str, str]) -> Dict:
 
@@ -166,18 +246,21 @@ class BringPkgDetails(SimpleTing):
         resolver = self._tingistry.get_resolver(source_details)
 
         default_vars = self._tingistry.default_vars
-        vars_final = get_seed_dict(dict_obj=vars, seed_dict=default_vars)
+        vars_final = get_seeded_dict(dict_obj=vars, seed_dict=default_vars)
 
         version = resolver.find_version(
             vars=vars_final,
             defaults=metadata["defaults"],
+            aliases=metadata["aliases"],
             versions=metadata["versions"],
             source_details=source_details,
         )
 
         if version is None:
 
-            var_combinations = await self._get_valid_var_combinations()
+            var_combinations = await self._get_valid_var_combinations(
+                source_details=source_details, metadata=metadata
+            )
             comb_string = ""
             for vc in var_combinations:
                 comb_string = comb_string + "  - " + str(vc) + "\n"
@@ -199,11 +282,12 @@ class BringPkgDetails(SimpleTing):
         vals = await self.get_values("artefact")
         artefact_details = vals["artefact"]
 
+        art_path = await self.get_artefact(vars=vars)
+
         handler: ArtefactHandler = self._tingistry.get_artefact_handler(
-            artefact_details
+            artefact_details, artefact=art_path
         )
 
-        art_path = await self.get_artefact(vars=vars)
         folder = await handler.provide_artefact_folder(
             artefact_path=art_path, artefact_details=artefact_details
         )
@@ -225,42 +309,94 @@ class BringPkgDetails(SimpleTing):
     async def install(
         self,
         vars: Dict[str, str],
-        filters: Union[List[str], str] = None,
+        profiles: Union[List[str], str] = None,
         target=None,
         strategy="default",
+        write_metadata=False,
     ) -> Dict[str, str]:
 
         if strategy not in ["force", "default"]:
             raise NotImplementedError()
 
-        file_paths = await self.get_file_paths(vars=vars, filters=filters)
+        artefact_folder = await self.provide_artefact_folder(vars=vars)
+
+        profiles_config = await self.get_profiles_config()
+
+        results = {}
+
+        async def transform_one_profile(
+            profile_name, transform_profile, source_folder, p_config
+        ):
+
+            p_config["vars"] = vars
+            result_path = transform_profile.transform(
+                input_path=source_folder, config=p_config
+            )
+
+            results[profile_name] = result_path
+
+        async with create_task_group() as tg:
+
+            for profile_name in profiles:
+
+                transform_profile = self._tingistry.get_transform_profile(profile_name)
+                p_config = profiles_config.get(profile_name, {})
+
+                await tg.spawn(
+                    transform_one_profile,
+                    profile_name,
+                    transform_profile,
+                    artefact_folder,
+                    p_config,
+                )
 
         if target is None:
-            target = os.getcwd()
+            return results
 
-        ensure_folder(target)
+        if len(results) == 1 and not os.path.exists(target):
+            target_base = os.path.dirname(target)
+            ensure_folder(target_base)
+            source = list(results.values())[0]
+            shutil.move(source, target)
+            return {"target": target}
+        else:
+            merge = MergeTransformer()
+            config = {
+                "sources": [results["executables"]],
+                "vars": vars,
+                "delete_sources": True,
+            }
+            merge.transform(target, transform_config=config)
+            return {"target": target}
 
-        copied = {}
-
-        for rel_file, source in file_paths.items():
-            target_file = os.path.join(target, rel_file)
-            exists = os.path.exists(target_file)
-
-            if not exists:
-                log.info(f"Copying file: {rel_file}")
-                self.copy_file(source, target_file, force=False)
-                copied[rel_file] = target_file
-                continue
-
-            if strategy == "default":
-                log.info(f"Not copying file '{rel_file}': target file already exists")
-                continue
-            elif strategy == "force":
-                log.info(f"Copying (force) file: {rel_file}")
-                self.copy_file(source, target_file, force=True)
-                copied[rel_file] = target_file
-
-        return copied
+        # file_paths = await self.get_file_paths(vars=vars, filters=filters)
+        #
+        # if target is None:
+        #     target = os.getcwd()
+        #
+        # ensure_folder(target)
+        #
+        # copied = {}
+        #
+        # for rel_file, source in file_paths.items():
+        #     target_file = os.path.join(target, rel_file)
+        #     exists = os.path.exists(target_file)
+        #
+        #     if not exists:
+        #         log.info(f"Copying file: {rel_file}")
+        #         self.copy_file(source, target_file, force=False)
+        #         copied[rel_file] = target_file
+        #         continue
+        #
+        #     if strategy == "default":
+        #         log.info(f"Not copying file '{rel_file}': target file already exists")
+        #         continue
+        #     elif strategy == "force":
+        #         log.info(f"Copying (force) file: {rel_file}")
+        #         self.copy_file(source, target_file, force=True)
+        #         copied[rel_file] = target_file
+        #
+        # return copied
 
     async def get_file_paths(
         self, vars: Dict[str, str], filters: Union[List[str], str] = None
@@ -287,6 +423,7 @@ class BringPkgDetails(SimpleTing):
             filter_obj = pkg_filters[filter]
 
             filter_files = filter_obj.get_file_set(folder_path=path)
+
             if filter_and:
                 for target, source in filter_files.items():
                     if target in files.keys() and source != files[target]:

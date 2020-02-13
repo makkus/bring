@@ -6,7 +6,7 @@ from pathspec import PathSpec, patterns
 
 from bring.file_sets import FileSetFilter
 
-DEFAULT_PATTERNS = ["!.git", "*"]
+DEFAULT_PATTERNS = ["*", "!.git", "!README.md", "!LICENSE*", "!license", "!~*", "!*~"]
 DEFAULT_ALL_PATTERNS = ["*", ".*"]
 
 

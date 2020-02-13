@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-import tempfile
 from typing import List, Any, Dict
 
 from bring.artefact_handlers import SimpleArtefactHandler
@@ -17,10 +16,6 @@ class ArchiveHandler(SimpleArtefactHandler):
 
         return ["archive"]
 
-    def create_temp_dir(self):
-        tempdir = tempfile.mkdtemp(dir=self._base_dir)
-        return tempdir
-
     async def _provide_artefact_folder(
         self, artefact_path: str, artefact_details: Dict[str, Any]
     ):
@@ -29,7 +24,16 @@ class ArchiveHandler(SimpleArtefactHandler):
 
         shutil.unpack_archive(artefact_path, tempdir)
 
-        if artefact_details.get("remove_root", False):
+        if "remove_root" in artefact_details.keys():
+            remove_root = artefact_details["remove_root"]
+        else:
+            childs = os.listdir(tempdir)
+            if len(childs) == 1 and os.path.isdir(os.path.join(tempdir, childs[0])):
+                remove_root = True
+            else:
+                remove_root = False
+
+        if remove_root:
             childs = os.listdir(tempdir)
             if len(childs) == 0:
                 raise FrklException(

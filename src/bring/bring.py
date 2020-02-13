@@ -2,28 +2,34 @@
 
 """Main module."""
 from collections import Mapping
+from pathlib import Path
 from typing import Dict, Any, Sequence, Union
 
 from bring.artefact_handlers import ArtefactHandler
-from bring.defaults import BRINGISTRY_CONFIG
+from bring.defaults import BRINGISTRY_CONFIG, BRING_WORKSPACE_FOLDER
 from bring.file_sets import FileSetFilter
-from bring.file_sets.default import (
-    DefaultFileSetFilter,
-    DEFAULT_FILTER,
-    DEFAULT_ALL_FILTER,
-)
 from bring.pkg import BringPkgDetails
 from bring.pkg_resolvers import PkgResolver
 from bring.system_info import get_current_system_info
+from bring.transform import TransformProfile
 from frtls.exceptions import FrklException
+from frtls.files import ensure_folder
 from frtls.types.typistry import Typistry
 from tings.sources import SeedSource
-from tings.ting.tings import SeedTings
 from tings.tingistry import Tingistry
+
+DEFAULT_TRANSFORM_PROFILES = {
+    "executable": [
+        {"type": "file_filter", "exclude": ["*~", "~*"]},
+        {"type": "set_mode", "config": {"set_executable": True, "set_readable": True}},
+    ]
+}
 
 
 class Bringistry(Tingistry):
     def __init__(self, name: str, meta: Dict[str, Any] = None):
+
+        ensure_folder(BRING_WORKSPACE_FOLDER)
 
         super().__init__(
             name,
@@ -80,10 +86,10 @@ class Bringistry(Tingistry):
                 k = k[0:-16]
             self._file_set_filters[k] = v
 
-        self._bring_pkgs: SeedTings = self.create_ting(
-            name="bring.bring_pkgs", type_name="bring.bring_pkgs"
-        )
-        self._pkg_source = None
+        # self._bring_pkgs: SeedTings = self.create_ting(
+        #     name="bring.bring_pkgs", type_name="bring.bring_pkgs"
+        # )
+        # self._pkg_source = None
 
     def set_source(self, source_type: str, **source_init):
 
@@ -96,6 +102,18 @@ class Bringistry(Tingistry):
     def source(self) -> SeedSource:
 
         return self._pkg_source
+
+    def get_transform_profile(self, name) -> TransformProfile:
+
+        profile = self.get_ting(f"bring.transform.profiles.{name}")
+
+        if profile is None:
+            profile = self.create_ting(
+                f"bring.transform.profiles.{name}",
+                type_name=f"bring.transform.profiles.{name}",
+            )
+
+        return profile
 
     async def get_pkg_metadata(self, pkg_details):
 
@@ -120,30 +138,30 @@ class Bringistry(Tingistry):
         metadata = await resolver.get_pkg_metadata(source_details=pkg_details)
         return metadata
 
-    async def get_pkg_filters(self, filters_conf: Dict) -> Dict[str, FileSetFilter]:
-
-        if not filters_conf:
-            filters_conf = {}
-
-        result = {}
-        for fileset_name, conf in filters_conf.items():
-
-            if isinstance(conf, str):
-                conf = [conf]
-
-            if not isinstance(conf, Sequence):
-                raise TypeError(
-                    f"Invalid configuration type '{type(conf)}' for filter config (must be str or List): {conf}"
-                )
-
-            # filter_name = "default"
-            filter_set = DefaultFileSetFilter(patterns=conf)
-            result[fileset_name] = filter_set
-
-        result["all"] = DEFAULT_FILTER
-        result["ALL"] = DEFAULT_ALL_FILTER
-
-        return result
+    # async def get_pkg_filters(self, filters_conf: Dict) -> Dict[str, FileSetFilter]:
+    #
+    #     if not filters_conf:
+    #         filters_conf = {}
+    #
+    #     result = {}
+    #     for fileset_name, conf in filters_conf.items():
+    #
+    #         if isinstance(conf, str):
+    #             conf = [conf]
+    #
+    #         if not isinstance(conf, Sequence):
+    #             raise TypeError(
+    #                 f"Invalid configuration type '{type(conf)}' for filter config (must be str or List): {conf}"
+    #             )
+    #
+    #         # filter_name = "default"
+    #         filter_set = DefaultFileSetFilter(patterns=conf)
+    #         result[fileset_name] = filter_set
+    #
+    #     result["all"] = DEFAULT_FILTER
+    #     result["ALL"] = DEFAULT_ALL_FILTER
+    #
+    #     return result
 
     async def sync(self):
 
@@ -153,7 +171,11 @@ class Bringistry(Tingistry):
 
         return self._bring_pkgs.childs.keys()
 
-    async def get_pkgs(self) -> Dict[str, Dict]:
+    def get_pkgs(self):
+
+        return self._bring_pkgs.childs
+
+    async def get_pkg_values_list(self) -> Dict[str, Dict]:
 
         result = {}
         for pkg in self._bring_pkgs._childs.values():
@@ -180,23 +202,28 @@ class Bringistry(Tingistry):
     def get_resolver(self, resolver: Union[str, Dict]):
 
         if isinstance(resolver, Mapping):
-            resolver = resolver.get("type", None)
-            if resolver is None:
+            resolver_type = resolver.get("type", None)
+            if resolver_type is None:
                 raise ValueError(
                     f"Can't get resolver, no 'type' key in source details mapping: {resolver}"
                 )
+
+            resolver = resolver_type
+
+        if resolver == "auto":
+            raise ValueError("Can't auto determine resolver.")
 
         res_obj = self._resolver_sources.get(resolver, None)
         if res_obj is None:
             raise FrklException(
                 msg=f"Can't get resolver '{resolver}'",
                 reason="No such resolver name registered.",
-                solution=f"Register resolver, or choose one of the available ones: {' ,'.join(self._resolver_sources.keys())}",
+                solution=f"Register resolver, or choose one of the available ones: {', '.join(self._resolver_sources.keys())}",
             )
 
         return res_obj
 
-    def get_artefact_handler(self, handler: Union[str, Dict]):
+    def get_artefact_handler(self, handler: Union[str, Dict], artefact=None):
 
         if isinstance(handler, Mapping):
             handler = handler.get("type", None)
@@ -205,12 +232,37 @@ class Bringistry(Tingistry):
                     f"Can't get artefact handler, no 'type' key in metadata: {handler}"
                 )
 
+        if handler == "auto":
+
+            if not artefact:
+                raise ValueError(
+                    f"Can't get artefact handler. Type is 'auto', but not artefact object provided."
+                )
+
+            if isinstance(artefact, Path):
+                artefact = artefact.as_posix()
+
+            if isinstance(artefact, str):
+
+                # formats = shutil.get_archive_formats().keys()
+                match = False
+                for ext in [".zip", "tar.bz2", "tar.gz", "tar.xz", "tar"]:
+                    if artefact.endswith(ext):
+                        match = ext
+                        break
+
+                if match:
+                    handler = "archive"
+
+            if handler is None or handler == "auto":
+                handler = "file"
+
         res_obj = self._artefact_handlers.get(handler, None)
         if res_obj is None:
             raise FrklException(
                 msg=f"Can't get artefact handler '{handler}'",
                 reason="No such handler registered.",
-                solution=f"Register handler, or choose one of the available ones: {' ,'.join(self._artefact_handlers.keys())}",
+                solution=f"Register handler, or choose one of the available ones: {', '.join(self._artefact_handlers.keys())}",
             )
 
         return res_obj

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import tempfile
 from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Any
 
@@ -43,3 +44,10 @@ class SimpleArtefactHandler(ArtefactHandler):
             BRING_PKG_CACHE, "handlers", from_camel_case(self.__class__.__name__)
         )
         ensure_folder(self._base_dir)
+
+    def create_temp_dir(self):
+
+        base = os.path.join(self._base_dir, "temp")
+        ensure_folder(base)
+        tempdir = tempfile.mkdtemp(dir=base)
+        return tempdir
