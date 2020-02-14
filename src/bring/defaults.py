@@ -27,37 +27,18 @@ BRINGISTRY_CONFIG = {
     "ting_types": [
         {"name": "bring.bring_pkg_metadata", "ting_class": "bring_pkg_details"},
         {
-            "name": "bring.bring_pkgs",
-            "ting_class": "seed_tings",
-            "ting_init": {
-                "ting_type": "bring.bring_pkg_metadata",
-                "child_name_strategy": "basename_no_ext",
-            },
-        },
-        {
             "name": "bring.bring_input",
             "ting_class": "ting_ting",
             "ting_init": {"ting_types": ["text_file", "dict"]},
         },
         {
-            "name": "bring.pkgs",
+            "name": "bring.pkg_list",
             "ting_class": "subscrip_tings",
-            "ting_init": {"ting_type": "bring.bring_pkg_metadata"},
-        },
-        {
-            "name": "bring.bring_file_watcher",
-            "ting_class": "file_watch_source",
-            "ting_init": {"matchers": [{"type": "extension", "regex": ".bring$"}]},
-        },
-        {
-            "name": "bring.bring_file_source",
-            "ting_class": "ting_watch_source",
             "ting_init": {
-                "source_ting_type": "bring.bring_file_watcher",
-                "seed_ting_type": "bring.bring_input",
+                "ting_type": "bring.bring_pkg_metadata",
+                "subscription_namespace": "bring.pkgs",
             },
         },
-        {"name": "bring.bring_dict_source", "ting_class": "dict_source"},
         {
             "name": "bring.transform.profiles.executables",
             "ting_class": "transform_profile",

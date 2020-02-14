@@ -3,7 +3,6 @@ from typing import Dict, Union
 
 import asyncclick as click
 
-from bring.bring import Bringistry
 from frtls.args.arg import Arg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
@@ -17,12 +16,14 @@ click.anyio_backend = "asyncio"
 class BringInstallGroup(FrklBaseCommand):
     def __init__(
         self,
+        bringistry,
         name=None,
         # print_version_callback=None,
         # invoke_without_command=False,
     ):
 
         # self.print_version_callback = print_version_callback
+        self._bringistry = bringistry
 
         super(BringInstallGroup, self).__init__(
             name=name,
@@ -30,11 +31,8 @@ class BringInstallGroup(FrklBaseCommand):
             no_args_is_help=False,
             chain=False,
             result_callback=None,
+            arg_hive=bringistry._arg_hive,
         )
-        self._bringistry: Bringistry = None
-
-    def init_command(self, ctx):
-        self._bringistry = ctx.obj["bringistry"]
 
     def get_common_options(self) -> Union[Arg, Dict]:
 
@@ -44,8 +42,8 @@ class BringInstallGroup(FrklBaseCommand):
                 "type": "string",
                 "default": ".",
             },
-            "filter": {
-                "doc": "One or several filters to use.",
+            "profile": {
+                "doc": "One or several profiles to use.",
                 "type": "[string]",
                 "default": ["all"],
                 "multiple": True,
@@ -76,27 +74,30 @@ class BringInstallGroup(FrklBaseCommand):
         async def command(**vars):
 
             target = self._group_params.get("target")
-            profiles = self._group_params.get("filter")
+            profiles = self._group_params.get("profile")
             strategy = self._group_params.get("strategy")
 
             write_metadata = self._group_params.get("write_metadata")
 
-            copied = await pkg.install(
+            result = await pkg.install(
                 vars=vars,
-                filters=profiles,
+                profiles=profiles,
                 target=target,
                 strategy=strategy,
                 write_metadata=write_metadata,
             )
 
-            if copied:
-                click.echo()
-                click.echo("Copied files:\n")
-                for c in copied.keys():
-                    click.echo(f"  - {c}")
-            else:
-                click.echo()
-                click.echo("No files copied.")
+            print(result)
+
+            # if copied:
+            #     click.echo()
+            #     click.echo("Copied files:\n")
+            #     print(copied)
+            #     for c in copied["target"].keys():
+            #         click.echo(f"  - {c}")
+            # else:
+            #     click.echo()
+            #     click.echo("No files copied.")
 
         vals = await pkg.get_values("args")
         params = vals["args"].to_cli_options()

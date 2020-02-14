@@ -6,6 +6,7 @@ import asyncclick as click
 from colored import style
 
 from bring.bring import Bringistry
+from frtls.args.arg import RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 
@@ -19,6 +20,7 @@ click.anyio_backend = "asyncio"
 class BringInfoGroup(FrklBaseCommand):
     def __init__(
         self,
+        bringistry: Bringistry,
         name=None,
         print_version_callback=None,
         no_args_is_help=None,
@@ -31,6 +33,7 @@ class BringInfoGroup(FrklBaseCommand):
         # self.params[:0] = self.get_common_options(
         #     print_version_callback=self.print_version_callback
         # )
+        self._bringistry: Bringistry = bringistry
 
         super(BringInfoGroup, self).__init__(
             name=name,
@@ -39,9 +42,9 @@ class BringInfoGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             callback=self.all_info,
+            arg_hive=bringistry._arg_hive,
             **kwargs,
         )
-        self._bringistry: Bringistry = None
 
     @click.pass_context
     async def all_info(ctx, self, *args, **kwargs):
@@ -58,9 +61,6 @@ class BringInfoGroup(FrklBaseCommand):
             info = await pkg.get_info()
             slug = info["info"].get("slug", "no description available")
             click.echo(f"  - {style.BOLD}{pkg_name}{style.RESET}: {slug}")
-
-    def init_command(self, ctx):
-        self._bringistry = ctx.obj["bringistry"]
 
     def get_common_options(self) -> Dict[str, Dict]:
         return {
@@ -108,7 +108,8 @@ class BringInfoGroup(FrklBaseCommand):
 
         try:
             vals = await pkg.get_values("args", raise_exception=True)
-            params = vals["args"].to_cli_options()
+            args: RecordArg = vals["args"]
+            params = args.to_cli_options()
             command.params = params
         except (Exception) as e:
             return e

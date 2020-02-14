@@ -3,7 +3,7 @@
 """Main module."""
 from collections import Mapping
 from pathlib import Path
-from typing import Dict, Any, Sequence, Union
+from typing import Dict, Any, Union, Iterator
 
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import BRINGISTRY_CONFIG, BRING_WORKSPACE_FOLDER
@@ -15,7 +15,8 @@ from bring.transform import TransformProfile
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.types.typistry import Typistry
-from tings.sources import SeedSource
+from tings.makers.file import TextFileTingMaker
+from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
 DEFAULT_TRANSFORM_PROFILES = {
@@ -86,22 +87,16 @@ class Bringistry(Tingistry):
                 k = k[0:-16]
             self._file_set_filters[k] = v
 
-        # self._bring_pkgs: SeedTings = self.create_ting(
-        #     name="bring.bring_pkgs", type_name="bring.bring_pkgs"
-        # )
-        # self._pkg_source = None
-
-    def set_source(self, source_type: str, **source_init):
-
-        self._pkg_source = self.create_ting(
-            name="bring.pkg_source", type_name=source_type
+        self._bring_pkgs: SubscripTings = self.create_ting(
+            "bring.bring_pkgs", type_name="bring.pkg_list"
         )
-        self._pkg_source.set_tings(self._bring_pkgs)
 
-    @property
-    def source(self) -> SeedSource:
-
-        return self._pkg_source
+        self._bring_maker: TextFileTingMaker = TextFileTingMaker(
+            ting_type="bring.bring_pkg_metadata",
+            tingistry=self,
+            ting_name_strategy="basename_no_ext",
+            ting_target_namespace="bring.pkgs",
+        )
 
     def get_transform_profile(self, name) -> TransformProfile:
 
@@ -167,13 +162,16 @@ class Bringistry(Tingistry):
 
         await self._pkg_source.sync()
 
-    def get_pkg_names(self) -> Sequence[str]:
+    def get_pkg_names(self) -> Iterator[str]:
 
-        return self._bring_pkgs.childs.keys()
+        return (x.split(".")[-1] for x in self._bring_pkgs.childs.keys())
 
-    def get_pkgs(self):
+    def get_pkgs(self) -> Dict[str, BringPkgDetails]:
 
-        return self._bring_pkgs.childs
+        return {
+            key.split(".")[-1]: value
+            for (key, value) in self._bring_pkgs.childs.items()
+        }
 
     async def get_pkg_values_list(self) -> Dict[str, Dict]:
 
@@ -186,7 +184,7 @@ class Bringistry(Tingistry):
 
     def get_pkg(self, pkg_name: str) -> BringPkgDetails:
 
-        pkg = self._bring_pkgs.childs.get(pkg_name, None)
+        pkg = self._bring_pkgs.childs.get(f"bring.pkgs.{pkg_name}", None)
 
         if pkg is None:
             raise Exception(f"No package with name '{pkg_name}' available.")
