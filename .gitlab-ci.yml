@@ -51,7 +51,7 @@ python38:
 pages:
   before_script:
     - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -r requirements-docs.txt"
-    - "pip install ."
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev ."
   script:
     - portray as_html -o public
   artifacts:
