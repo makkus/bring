@@ -9,6 +9,7 @@ from anyio import create_task_group
 
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import DEFAULT_ARTEFACT_METADATA
+from bring.pkg_resolvers import PkgResolver
 from bring.transform import MergeTransformer
 from frtls.dicts import get_seeded_dict, dict_merge
 from frtls.exceptions import FrklException
@@ -27,9 +28,10 @@ DEFAULT_ARG_DICT = {
 }
 
 
-class Pkg(SimpleTing):
+class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
+        self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
 
     def provides(self) -> Dict[str, str]:
@@ -135,8 +137,14 @@ class Pkg(SimpleTing):
     async def _get_metadata(self, source_dict):
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
-        print(self.tingistry)
-        return await self.tingistry.get_pkg_metadata(source_dict)
+        pkg_type = source_dict.get("type", None)
+        if pkg_type is None:
+            raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
+
+        plugin: PkgResolver = self.tingistry.typistry.get_plugin_for_source_type(
+            PkgResolver, pkg_type
+        )
+        return await plugin.get_pkg_metadata(source_dict)
 
     def _get_translated_value(self, var_map, value):
 

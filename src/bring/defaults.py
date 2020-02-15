@@ -23,19 +23,14 @@ BRING_WORKSPACE_FOLDER = os.path.join(bring_app_dirs.user_cache_dir, "workspace"
 
 BRING_PKG_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "pkgs")
 DEFAULT_ARTEFACT_METADATA = {"type": "auto"}
+
+
 BRINGISTRY_CONFIG = {
-    "name": "bringistry",
-    "tingistry_class": "bringistry",
+    # "name": "bringistry",
+    # "tingistry_class": "bringistry",
     "ting_types": [
-        {"name": "bring.types.pkg", "ting_class": "pkg"},
-        {
-            "name": "bring.types.pkg_list",
-            "ting_class": "subscrip_tings",
-            "ting_init": {
-                "ting_type": "bring.types.pkg",
-                "subscription_namespace": "bring.pkgs",
-            },
-        },
+        {"name": "bring.types.pkg", "ting_class": "pkg_ting"},
+        {"name": "bring.types.pkg_list", "ting_class": "pkg_tings"},
         {
             "name": "bring.transform.profiles.executables",
             "ting_class": "transform_profile",
@@ -52,8 +47,10 @@ BRINGISTRY_CONFIG = {
             },
         },
     ],
+    "tings": [{"ting_type": "bring.types.pkg_list", "ting_name": "bring.pkgs"}],
     "preload_modules": [
         "bring",
+        "bring.bring",
         "bring.pkg_resolvers",
         "bring.pkg_resolvers.git_repo",
         "bring.pkg_resolvers.template_url",

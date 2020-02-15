@@ -9,12 +9,7 @@ from bring.bring import Bringistry
 from frtls.args.arg import RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
-
-# from click import Path
-# from click_aliases import ClickAliasedGroup
 from frtls.formats.output import serialize
-
-click.anyio_backend = "asyncio"
 
 
 class BringInfoGroup(FrklBaseCommand):
@@ -34,6 +29,9 @@ class BringInfoGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
         self._bringistry: Bringistry = bringistry
+        self._pkgs = self._bringistry.tingistry.get_ting(
+            "bring.pkgs", raise_exception=True
+        )
 
         super(BringInfoGroup, self).__init__(
             name=name,
@@ -42,7 +40,7 @@ class BringInfoGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             callback=self.all_info,
-            arg_hive=bringistry._arg_hive,
+            arg_hive=bringistry.tingistry._arg_hive,
             **kwargs,
         )
 
@@ -57,7 +55,7 @@ class BringInfoGroup(FrklBaseCommand):
         click.echo()
         click.echo("Available packages:")
         click.echo()
-        for pkg_name, pkg in self._bringistry.get_pkgs().items():
+        for pkg_name, pkg in self._pkgs.get_pkgs().items():
             info = await pkg.get_info()
             slug = info["info"].get("slug", "no description available")
             click.echo(f"  - {style.BOLD}{pkg_name}{style.RESET}: {slug}")
@@ -74,12 +72,12 @@ class BringInfoGroup(FrklBaseCommand):
 
     async def _list_commands(self):
 
-        pkg_names = self._bringistry.get_pkg_names()
+        pkg_names = self._bringistry.pkgs.get_pkg_names()
         return pkg_names
 
     async def _get_command(self, name):
 
-        pkg = self._bringistry.get_pkg(name)
+        pkg = self._pkgs.get_pkg(name)
 
         @click.command(name=name)
         @handle_exc_async

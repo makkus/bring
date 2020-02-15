@@ -7,11 +7,6 @@ from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 
-# from click import Path
-# from click_aliases import ClickAliasedGroup
-
-click.anyio_backend = "asyncio"
-
 
 class BringInstallGroup(FrklBaseCommand):
     def __init__(
@@ -25,13 +20,17 @@ class BringInstallGroup(FrklBaseCommand):
         # self.print_version_callback = print_version_callback
         self._bringistry = bringistry
 
+        self._pkgs = self._bringistry.tingistry.get_ting(
+            "bring.pkgs", raise_exception=True
+        )
+
         super(BringInstallGroup, self).__init__(
             name=name,
             # invoke_without_command=invoke_without_command,
             no_args_is_help=False,
             chain=False,
             result_callback=None,
-            arg_hive=bringistry._arg_hive,
+            arg_hive=bringistry.tingistry.arg_hive,
         )
 
     def get_common_options(self) -> Union[Arg, Dict]:
@@ -62,7 +61,7 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _list_commands(self):
 
-        pkg_names = self._bringistry.get_pkg_names()
+        pkg_names = self._pkgs.get_pkg_names()
         return pkg_names
 
     async def _get_command(self, name):
