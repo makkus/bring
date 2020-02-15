@@ -3,7 +3,7 @@ import copy
 import json
 import logging
 import os
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from collections import Sequence
 from typing import List, Union, Dict, Any, Tuple
 
@@ -14,13 +14,14 @@ from anyio import aopen
 from bring.defaults import BRING_PKG_CACHE
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
+from frtls.types.typistry import TypistryPlugin
 
 log = logging.getLogger("bring")
 
 
-class PkgResolver(metaclass=ABCMeta):
+class PkgResolver(TypistryPlugin):
     @abstractmethod
-    def get_supported_source_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
         pass
 
     @abstractmethod
@@ -28,9 +29,6 @@ class PkgResolver(metaclass=ABCMeta):
         self, source_details: Union[str, Dict]
     ) -> List[Dict[str, str]]:
         pass
-
-    def get_resolver_name(self):
-        return from_camel_case(self.__class__.__name__, sep="-")
 
     @abstractmethod
     async def get_artefact_path(

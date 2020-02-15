@@ -4,6 +4,8 @@ import sys
 
 from appdirs import AppDirs
 
+from bring.system_info import get_current_system_info
+
 bring_app_dirs = AppDirs("bring", "frkl")
 
 if not hasattr(sys, "frozen"):
@@ -25,17 +27,12 @@ BRINGISTRY_CONFIG = {
     "name": "bringistry",
     "tingistry_class": "bringistry",
     "ting_types": [
-        {"name": "bring.bring_pkg_metadata", "ting_class": "bring_pkg_details"},
+        {"name": "bring.types.pkg", "ting_class": "pkg"},
         {
-            "name": "bring.bring_input",
-            "ting_class": "ting_ting",
-            "ting_init": {"ting_types": ["text_file", "dict"]},
-        },
-        {
-            "name": "bring.pkg_list",
+            "name": "bring.types.pkg_list",
             "ting_class": "subscrip_tings",
             "ting_init": {
-                "ting_type": "bring.bring_pkg_metadata",
+                "ting_type": "bring.types.pkg",
                 "subscription_namespace": "bring.pkgs",
             },
         },
@@ -64,8 +61,15 @@ BRINGISTRY_CONFIG = {
         "bring.artefact_handlers.archive",
         "bring.artefact_handlers.file",
         "bring.artefact_handlers.folder",
-        "bring.file_sets.default",
         "bring.transform",
     ],
-    "tingistry_init": {"paths": []},
+}
+
+DEFAULT_CONTEXTS = {
+    "executables": {
+        "index": ["/home/markus/projects/tings/bring/repos/executables"],
+        "default_transform_profile": "executables",
+        "max_metadata_age": "24h",
+        "defaults": get_current_system_info(),
+    }
 }

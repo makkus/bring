@@ -12,7 +12,7 @@ class ArchiveHandler(SimpleArtefactHandler):
 
         super().__init__()
 
-    def get_supported_artefact_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
 
         return ["archive"]
 

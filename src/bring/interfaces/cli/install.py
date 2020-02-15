@@ -3,7 +3,7 @@ from typing import Dict, Union
 
 import asyncclick as click
 
-from frtls.args.arg import Arg
+from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 
@@ -99,8 +99,12 @@ class BringInstallGroup(FrklBaseCommand):
             #     click.echo()
             #     click.echo("No files copied.")
 
-        vals = await pkg.get_values("args")
-        params = vals["args"].to_cli_options()
-        command.params = params
+        try:
+            vals = await pkg.get_values("args", raise_exception=True)
+            args: RecordArg = vals["args"]
+            params = args.to_cli_options()
+            command.params = params
+        except (Exception) as e:
+            return e
 
         return command

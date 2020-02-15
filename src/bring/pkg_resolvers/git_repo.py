@@ -17,11 +17,11 @@ class GitRepo(SimplePkgResolver):
 
         super().__init__()
 
-    def get_resolver_name(self):
+    def _name(self):
 
         return "git"
 
-    def get_supported_source_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
         return ["git"]
 
     def get_unique_source_id(self, source_details: Dict) -> str:

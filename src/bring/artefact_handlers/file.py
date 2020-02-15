@@ -23,5 +23,5 @@ class FileHandler(SimpleArtefactHandler):
 
         return temp_dir
 
-    def get_supported_artefact_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
         return "file"

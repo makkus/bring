@@ -14,5 +14,5 @@ class FolderHandler(SimpleArtefactHandler):
 
         return artefact_path
 
-    def get_supported_artefact_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
         return "folder"

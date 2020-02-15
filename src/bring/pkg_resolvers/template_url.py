@@ -10,11 +10,11 @@ class TemplateUrlResolver(HttpDownloadPkgResolver):
     def __init__(self):
         super().__init__()
 
-    def get_resolver_name(self):
+    def _name(self):
 
         return "template-url"
 
-    def get_supported_source_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
 
         return ["template-url"]
 

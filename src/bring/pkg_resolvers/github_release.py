@@ -22,7 +22,7 @@ class GithubRelease(HttpDownloadPkgResolver):
 
         super().__init__()
 
-    def get_supported_source_types(self) -> List[str]:
+    def _supports(self) -> List[str]:
 
         return ["github-release"]
 

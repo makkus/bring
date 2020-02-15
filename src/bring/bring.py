@@ -7,17 +7,15 @@ from typing import Dict, Any, Union, Iterator
 
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import BRINGISTRY_CONFIG, BRING_WORKSPACE_FOLDER
-from bring.file_sets import FileSetFilter
-from bring.pkg import BringPkgDetails
+from bring.pkg import Pkg
 from bring.pkg_resolvers import PkgResolver
-from bring.system_info import get_current_system_info
 from bring.transform import TransformProfile
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.types.typistry import Typistry
 from tings.makers.file import TextFileTingMaker
 from tings.ting.tings import SubscripTings
-from tings.tingistry import Tingistry
+from tings.tingistry import Tingistries
 
 DEFAULT_TRANSFORM_PROFILES = {
     "executable": [
@@ -27,85 +25,53 @@ DEFAULT_TRANSFORM_PROFILES = {
 }
 
 
-class Bringistry(Tingistry):
-    def __init__(self, name: str, meta: Dict[str, Any] = None):
+class Pkgs(SubscripTings):
+    def __init__(self, meta: Dict[str, Any] = None):
+
+        super().__init__(name="bring.pkgs", ting_type="bring.types.pkg_list", meta=meta)
+
+
+class Bringistry(object):
+    def __init__(self):
 
         ensure_folder(BRING_WORKSPACE_FOLDER)
 
-        super().__init__(
-            name,
+        self._tingistry = Tingistries().add_tingistry(
+            "bring",
             *BRINGISTRY_CONFIG["ting_types"],
             preload_modules=BRINGISTRY_CONFIG["preload_modules"],
-            meta=meta,
+        )
+        self._arg_hive = self._tingistry._arg_hive
+
+        base_classes = [PkgResolver, ArtefactHandler]
+        self._typistry = Typistry(base_classes=base_classes)
+        self._resolvers, self._resolver_sources = self._typistry.create_plugin_map(
+            PkgResolver
+        )
+        self._resolver_sources = {}
+        self._artefact_handlers, self._artefact_types = self._typistry.create_plugin_map(
+            ArtefactHandler
         )
 
-        base_classes = [PkgResolver, ArtefactHandler, FileSetFilter]
-        self._typistry = Typistry(base_classes=base_classes)
-
-        self._default_vars = get_current_system_info()
-
-        self._resolvers = {}
-        self._resolver_sources = {}
-        for k, v in self._typistry.get_subclass_map(PkgResolver).items():
-
-            resolver = v()
-            r_name = resolver.get_resolver_name()
-            if r_name in self._resolvers.keys():
-                raise FrklException(
-                    msg=f"Can't register resolver of class '{v}'",
-                    reason=f"Duplicate resolver name: {r_name}",
-                )
-            self._resolvers[r_name] = resolver
-            for r_type in resolver.get_supported_source_types():
-                self._resolver_sources[r_type] = resolver
-
-        self._artefact_handlers = {}
-        self._artefact_types = {}
-
-        for k, v in self._typistry.get_subclass_map(ArtefactHandler).items():
-
-            handler = v()
-            h_name = handler.get_handler_name()
-
-            if h_name.endswith("-handler"):
-                h_name = h_name[0:-8]
-
-            if h_name in self._artefact_handlers.keys():
-                raise FrklException(
-                    msg=f"Can't register artefact handler of class '{v}'",
-                    reason=f"Duplicate handler name: {h_name}",
-                )
-            self._artefact_handlers[h_name] = handler
-            for h_type in handler.get_supported_artefact_types():
-                self._artefact_types[h_type] = handler
-
-        self._file_set_filters = {}
-
-        for k, v in self._typistry.get_subclass_map(FileSetFilter).items():
-
-            if k.endswith("_file_set_filter"):
-                k = k[0:-16]
-            self._file_set_filters[k] = v
-
-        self._bring_pkgs: SubscripTings = self.create_ting(
-            "bring.bring_pkgs", type_name="bring.pkg_list"
+        self._bring_pkgs: SubscripTings = self._tingistry.create_ting(
+            type_name="bring.types.pkg_list", ting_name="bring.bring_pkgs"
         )
 
         self._bring_maker: TextFileTingMaker = TextFileTingMaker(
-            ting_type="bring.bring_pkg_metadata",
-            tingistry=self,
+            ting_type="bring.types.pkg",
+            tingistry=self._tingistry,
             ting_name_strategy="basename_no_ext",
             ting_target_namespace="bring.pkgs",
         )
 
     def get_transform_profile(self, name) -> TransformProfile:
 
-        profile = self.get_ting(f"bring.transform.profiles.{name}")
+        profile = self._tingistry.get_ting(f"bring.transform.profiles.{name}")
 
         if profile is None:
-            profile = self.create_ting(
-                f"bring.transform.profiles.{name}",
+            profile = self._tingistry.create_ting(
                 type_name=f"bring.transform.profiles.{name}",
+                ting_name=f"bring.transform.profiles.{name}",
             )
 
         return profile
@@ -133,40 +99,15 @@ class Bringistry(Tingistry):
         metadata = await resolver.get_pkg_metadata(source_details=pkg_details)
         return metadata
 
-    # async def get_pkg_filters(self, filters_conf: Dict) -> Dict[str, FileSetFilter]:
-    #
-    #     if not filters_conf:
-    #         filters_conf = {}
-    #
-    #     result = {}
-    #     for fileset_name, conf in filters_conf.items():
-    #
-    #         if isinstance(conf, str):
-    #             conf = [conf]
-    #
-    #         if not isinstance(conf, Sequence):
-    #             raise TypeError(
-    #                 f"Invalid configuration type '{type(conf)}' for filter config (must be str or List): {conf}"
-    #             )
-    #
-    #         # filter_name = "default"
-    #         filter_set = DefaultFileSetFilter(patterns=conf)
-    #         result[fileset_name] = filter_set
-    #
-    #     result["all"] = DEFAULT_FILTER
-    #     result["ALL"] = DEFAULT_ALL_FILTER
-    #
-    #     return result
-
     async def sync(self):
 
-        await self._pkg_source.sync()
+        await self._bring_maker.sync()
 
     def get_pkg_names(self) -> Iterator[str]:
 
         return (x.split(".")[-1] for x in self._bring_pkgs.childs.keys())
 
-    def get_pkgs(self) -> Dict[str, BringPkgDetails]:
+    def get_pkgs(self) -> Dict[str, Pkg]:
 
         return {
             key.split(".")[-1]: value
@@ -182,7 +123,7 @@ class Bringistry(Tingistry):
 
         return result
 
-    def get_pkg(self, pkg_name: str) -> BringPkgDetails:
+    def get_pkg(self, pkg_name: str) -> Pkg:
 
         pkg = self._bring_pkgs.childs.get(f"bring.pkgs.{pkg_name}", None)
 
@@ -265,11 +206,6 @@ class Bringistry(Tingistry):
 
         return res_obj
 
-    @property
-    def default_vars(self):
-
-        return self._default_vars
-
     async def prepare_artefact(self, pkg_name: str, artefact_path: str):
 
         pkg_vals = await self.get_pkg_values(pkg_name=pkg_name)
@@ -282,7 +218,3 @@ class Bringistry(Tingistry):
         )
 
         return folder
-
-    async def watch(self):
-
-        await self._pkg_source.watch()

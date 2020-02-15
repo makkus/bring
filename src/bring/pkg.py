@@ -9,8 +9,6 @@ from anyio import create_task_group
 
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import DEFAULT_ARTEFACT_METADATA
-from bring.file_sets import FileSetFilter
-from bring.file_sets.default import DEFAULT_FILTER
 from bring.transform import MergeTransformer
 from frtls.dicts import get_seeded_dict, dict_merge
 from frtls.exceptions import FrklException
@@ -29,7 +27,7 @@ DEFAULT_ARG_DICT = {
 }
 
 
-class BringPkgDetails(SimpleTing):
+class Pkg(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
         super().__init__(name=name, meta=meta)
@@ -124,7 +122,7 @@ class BringPkgDetails(SimpleTing):
             # arg_obj = Arg.from_dict(name=arg, hive=None, default=default, **args_dict)
             result[arg] = args_dict
 
-        arg = self._tingistry._arg_hive.create_record_arg(childs=result)
+        arg = self.tingistry._arg_hive.create_record_arg(childs=result)
 
         return arg
 
@@ -137,7 +135,8 @@ class BringPkgDetails(SimpleTing):
     async def _get_metadata(self, source_dict):
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
-        return await self._tingistry.get_pkg_metadata(source_dict)
+        print(self.tingistry)
+        return await self.tingistry.get_pkg_metadata(source_dict)
 
     def _get_translated_value(self, var_map, value):
 
@@ -243,13 +242,10 @@ class BringPkgDetails(SimpleTing):
         source_details = vals["source"]
         metadata = vals["metadata"]
 
-        resolver = self._tingistry.get_resolver(source_details)
-
-        default_vars = self._tingistry.default_vars
-        vars_final = get_seeded_dict(dict_obj=vars, seed_dict=default_vars)
+        resolver = self.tingistry.get_resolver(source_details)
 
         version = resolver.find_version(
-            vars=vars_final,
+            vars=vars,
             defaults=metadata["defaults"],
             aliases=metadata["aliases"],
             versions=metadata["versions"],
@@ -284,7 +280,7 @@ class BringPkgDetails(SimpleTing):
 
         art_path = await self.get_artefact(vars=vars)
 
-        handler: ArtefactHandler = self._tingistry.get_artefact_handler(
+        handler: ArtefactHandler = self.tingistry.get_artefact_handler(
             artefact_details, artefact=art_path
         )
 
@@ -318,7 +314,10 @@ class BringPkgDetails(SimpleTing):
         if strategy not in ["force", "default"]:
             raise NotImplementedError()
 
-        artefact_folder = await self.provide_artefact_folder(vars=vars)
+        # TODO: read from profile
+        profile_defaults = {}
+        vars_final = get_seeded_dict(dict_obj=vars, seed_dict=profile_defaults)
+        artefact_folder = await self.provide_artefact_folder(vars=vars_final)
 
         profiles_config = await self.get_profiles_config()
 
@@ -339,7 +338,7 @@ class BringPkgDetails(SimpleTing):
 
             for profile_name in profiles:
 
-                transform_profile = self._tingistry.get_transform_profile(profile_name)
+                transform_profile = self.tingistry.get_transform_profile(profile_name)
                 p_config = profiles_config.get(profile_name, {})
 
                 await tg.spawn(
@@ -368,71 +367,3 @@ class BringPkgDetails(SimpleTing):
             }
             merge.transform(target, transform_config=config)
             return {"target": target}
-
-        # file_paths = await self.get_file_paths(vars=vars, filters=filters)
-        #
-        # if target is None:
-        #     target = os.getcwd()
-        #
-        # ensure_folder(target)
-        #
-        # copied = {}
-        #
-        # for rel_file, source in file_paths.items():
-        #     target_file = os.path.join(target, rel_file)
-        #     exists = os.path.exists(target_file)
-        #
-        #     if not exists:
-        #         log.info(f"Copying file: {rel_file}")
-        #         self.copy_file(source, target_file, force=False)
-        #         copied[rel_file] = target_file
-        #         continue
-        #
-        #     if strategy == "default":
-        #         log.info(f"Not copying file '{rel_file}': target file already exists")
-        #         continue
-        #     elif strategy == "force":
-        #         log.info(f"Copying (force) file: {rel_file}")
-        #         self.copy_file(source, target_file, force=True)
-        #         copied[rel_file] = target_file
-        #
-        # return copied
-
-    async def get_file_paths(
-        self, vars: Dict[str, str], filters: Union[List[str], str] = None
-    ) -> Dict[str, str]:
-
-        vals = await self.get_values("filters")
-        pkg_filters: Dict[str, FileSetFilter] = vals["filters"]
-
-        if isinstance(filters, str):
-            filters = [filters]
-
-        if not filters:
-            filters = [DEFAULT_FILTER]
-
-        path = await self.provide_artefact_folder(vars=vars)
-
-        filter_and = True
-
-        files = {}
-        for filter in filters:
-            if filter not in pkg_filters.keys():
-                continue
-
-            filter_obj = pkg_filters[filter]
-
-            filter_files = filter_obj.get_file_set(folder_path=path)
-
-            if filter_and:
-                for target, source in filter_files.items():
-                    if target in files.keys() and source != files[target]:
-                        log.error(
-                            f"Duplicate target file '{target}', ignoring second one: {source}"
-                        )
-                        continue
-                    files[target] = source
-            else:
-                raise NotImplementedError()
-
-        return files

@@ -3,15 +3,18 @@
 import asyncclick as click
 from asyncclick import Path
 
+from bring.bring import Bringistry
 from bring.interfaces.cli.info import BringInfoGroup
 from bring.interfaces.cli.install import BringInstallGroup
 from bring.interfaces.cli.profile import BringProfileGroup
 from frtls.cli.logging import logzero_option_async
-from tings.tingistry import Tingistries
 
 click.anyio_backend = "asyncio"
 
-bringistry = Tingistries().add_tingistry("bring", tingistry_class="bringistry")
+bringistry = Bringistry()
+
+# import uvloop
+# uvloop.install()
 
 
 @click.group()
