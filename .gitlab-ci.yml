@@ -9,22 +9,22 @@ variables:
 #  - template: Dependency-Scanning.gitlab-ci.yml
 #  - template: License-Management.gitlab-ci.yml
 
-image: python:3.7
+image: python:3.8
 
 stages:
   - test
   - release
 
-python36:
-  image: python:3.6
-  stage: test
-  before_script:
-    - curl -O https://bootstrap.pypa.io/get-pip.py
-    - python get-pip.py
-    - pip install -U setuptools
-  script:
-    - pip install tox
-    - tox -e py36
+#python36:
+#  image: python:3.6
+#  stage: test
+#  before_script:
+#    - curl -O https://bootstrap.pypa.io/get-pip.py
+#    - python get-pip.py
+#    - pip install -U setuptools
+#  script:
+#    - pip install tox
+#    - tox -e py36
 
 python37:
   image: python:3.7
@@ -59,7 +59,7 @@ pages:
     - public
 
 flake8:
-  image: python:3.7
+  image: python:3.8
   stage: test
   before_script:
     - curl -O https://bootstrap.pypa.io/get-pip.py
