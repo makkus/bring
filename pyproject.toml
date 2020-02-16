@@ -38,3 +38,8 @@ repo_name = "bring"
 
 [tool.dephell.main]
 from = {format = "setuppy", path = "setup.py"}
+
+[mypy]
+python_version = 3.8
+warn_return_any = true
+warn_unused_configs = true
