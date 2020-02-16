@@ -3,22 +3,18 @@ import copy
 import logging
 import os
 import shutil
-import stat
 import tempfile
 from abc import ABCMeta, abstractmethod
-from collections import Mapping
-from typing import List, Union, Dict, Any, Iterable
+from typing import Any, Dict, Iterable, List, Type
 
+from frtls.exceptions import FrklException
+from frtls.strings import from_camel_case
+from frtls.types.typistry import TypistryPluginManager
 from pathspec import PathSpec, patterns
+from tings.ting import SimpleTing
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
-from frtls.defaults import DEFAULT_EXCLUDE_DIRS
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.strings import from_camel_case
-from frtls.types import Singleton, load_modules
-from frtls.types.typistry import Typistry
-from tings.ting import SimpleTing
+
 
 log = logging.getLogger("bring")
 
@@ -105,92 +101,6 @@ class Transformer(metaclass=ABCMeta):
         pass
 
 
-class FileFilterTransformer(Transformer):
-    def __init__(self, **config):
-
-        super().__init__(**config)
-
-    def get_config_keys(self) -> Dict:
-
-        return {}
-
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
-
-        matches = self.find_matches(path, transform_config=transform_config)
-
-        if not matches:
-            return None
-
-        result = self.create_temp_dir()
-        for m in matches:
-            source = os.path.join(path, m)
-            target = os.path.join(result, m)
-            parent = os.path.dirname(target)
-            ensure_folder(parent)
-            shutil.copyfile(source, target)
-
-        return result
-
-
-class RenameTransformer(Transformer):
-    def __init__(self, **config):
-
-        super().__init__(**config)
-
-    def get_config_keys(self) -> Dict:
-
-        return {"rename": {}}
-
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
-
-        rename = transform_config["rename"]
-        if not rename:
-            return path
-
-        for source, target in rename.items():
-            full_source = os.path.join(path, source)
-            full_target = os.path.join(path, target)
-            shutil.move(full_source, full_target)
-
-        return path
-
-
-class SetModeTransformer(Transformer):
-    def __init__(self, **config):
-
-        super().__init__(**config)
-
-    def get_config_keys(self) -> Dict:
-
-        return {
-            "set_executable": self._config,
-            "set_readable": None,
-            "set_writeable": None,
-        }
-
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
-
-        matches = self.find_matches(path, transform_config, output_absolute_paths=True)
-
-        set_executable = transform_config["set_executable"]
-        set_readable = transform_config["set_readable"]
-        set_writeable = transform_config["set_writeable"]
-
-        for m in matches:
-            st = os.stat(m)
-            if set_executable is True:
-                os.chmod(m, st.st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-            elif set_executable is False:
-                raise NotImplementedError()
-
-            if set_readable in [True, False]:
-                raise NotImplementedError()
-            if set_writeable in [True, False]:
-                raise NotImplementedError()
-
-        return path
-
-
 class TransformException(FrklException):
     def __init__(
         self,
@@ -206,116 +116,6 @@ class TransformException(FrklException):
         super().__init__(*args, **kwargs)
 
 
-class MergeTransformer(Transformer):
-    def __init__(self, **config):
-
-        super().__init__(**config)
-
-    def get_config_keys(self) -> Dict:
-
-        return {"merge_strategy": "default", "sources": None, "delete_sources": False}
-
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
-
-        strategy = transform_config["merge_strategy"]
-        if isinstance(strategy, str):
-            strategy = {"type": strategy}
-
-        sources = transform_config["sources"]
-        if sources is None:
-            raise Exception("Can't merge directories, no sources provided.")
-
-        if isinstance(sources, str):
-            sources = [sources]
-
-        delete_sources = transform_config["delete_sources"]
-
-        for source in sources:
-
-            self.process_folder(source=source, target=path, strategy=strategy)
-            if delete_sources:
-                shutil.rmtree(source)
-
-        return path
-
-    def process_folder(self, source: str, target: str, strategy: Dict):
-
-        exclude_dirs = strategy.get("exclude_dirs", DEFAULT_EXCLUDE_DIRS)
-
-        strategy_type = strategy["type"]
-        if not hasattr(self, f"merge_{strategy_type}"):
-            raise Exception(f"No '{strategy_type}' merge strategy implemented.")
-
-        func = getattr(self, f"merge_{strategy_type}")
-
-        for root, dirnames, filenames in os.walk(source, topdown=True):
-
-            if exclude_dirs:
-                dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
-
-            for filename in filenames:
-
-                full_path = os.path.join(root, filename)
-                rel_path = os.path.relpath(full_path, source)
-
-                func(source, target, rel_path, strategy)
-
-    def merge_default(
-        self, source_base: str, target_base: str, rel_path: str, strategy_config: Dict
-    ):
-
-        target = os.path.join(target_base, rel_path)
-        if os.path.exists(target):
-            raise TransformException(
-                msg=f"Can't merge file '{rel_path}'.",
-                reason=f"File already exists in target: {target_base}",
-            )
-
-        source = os.path.join(source_base, rel_path)
-
-        ensure_folder(os.path.dirname(target))
-        shutil.move(source, target)
-
-
-class Transformistry(Typistry):
-
-    __metaclass__ = Singleton
-    initialized = False
-
-    def __init__(self, preload_modules: Union[str, List[str]] = None):
-
-        if preload_modules:
-            load_modules(preload_modules)
-
-        if not Transformistry.initialized:
-            super().__init__(
-                base_classes=[Transformer],
-                key_formats=["underscore"],
-                remove_postfixes="transformer",
-            )
-            Transformistry.initialized = True
-
-    def create_transformer(self, transformer_config: Dict[str, Any]) -> Transformer:
-
-        if isinstance(transformer_config, str):
-            transformer_type = transformer_config
-            transformer_config = {}
-        elif isinstance(transformer_config, Mapping):
-            transformer_type = transformer_config.pop("type", None)
-            if transformer_type is None:
-                raise KeyError(
-                    "Can't create transformer object: Missing required key 'type'."
-                )
-        else:
-            raise TypeError(
-                f"Can't create transformer object, invalid type '{type(transformer_config)}': {transformer_config}"
-            )
-
-        t_cls = self.get_subclass(Transformer, transformer_type)
-        t_obj = t_cls(**transformer_config)
-        return t_obj
-
-
 class TransformProfile(SimpleTing):
     def __init__(
         self, name: str, transformers_config: List, meta: Dict[str, Any] = None
@@ -325,10 +125,17 @@ class TransformProfile(SimpleTing):
 
         self._transformers_config = transformers_config
         self._transformers: List[Transformer] = []
-        t = Transformistry()
+
+        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
+            "transformer", plugin_type="instance"
+        )
+
         for conf in self._transformers_config:
-            transformer = t.create_transformer(conf)
-            self._transformers.append(transformer)
+
+            t_type = conf["type"]
+            plugin_cls: Type[Transformer] = pm.get_plugin(t_type)
+            plugin_obj: Transformer = plugin_cls(**conf)
+            self._transformers.append(plugin_obj)
 
     def transform(self, input_path: str, config: Dict[str, Any]) -> str:
 

@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from bring.artefact_handlers import SimpleArtefactHandler
 
 
 class FolderHandler(SimpleArtefactHandler):
+
+    _plugin_name: str = "folder"
+
     def __init__(self):
         super().__init__()
 

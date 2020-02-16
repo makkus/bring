@@ -3,23 +3,23 @@ import copy
 import json
 import logging
 import os
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from collections import Sequence
-from typing import List, Union, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import arrow
 import httpx
 from anyio import aopen
-
-from bring.defaults import BRING_PKG_CACHE
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
-from frtls.types.typistry import TypistryPlugin
+
+from bring.defaults import BRING_PKG_CACHE
+
 
 log = logging.getLogger("bring")
 
 
-class PkgResolver(TypistryPlugin):
+class PkgResolver(metaclass=ABCMeta):
     @abstractmethod
     def _supports(self) -> List[str]:
         pass

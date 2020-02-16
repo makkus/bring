@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import List, Any, Dict
+from typing import Any, Dict, List
 
 from bring.artefact_handlers import SimpleArtefactHandler
 
 
 class FileHandler(SimpleArtefactHandler):
+
+    _plugin_name: str = "file"
+
     def __init__(self):
 
         super().__init__()

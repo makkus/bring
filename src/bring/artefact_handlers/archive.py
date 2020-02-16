@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import List, Any, Dict
+from typing import Any, Dict, List
+
+from frtls.exceptions import FrklException
 
 from bring.artefact_handlers import SimpleArtefactHandler
-from frtls.exceptions import FrklException
 
 
 class ArchiveHandler(SimpleArtefactHandler):
+
+    _plugin_name: str = "archive"
+
     def __init__(self):
 
         super().__init__()

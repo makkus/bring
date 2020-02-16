@@ -2,7 +2,6 @@
 from typing import Dict, Union
 
 import asyncclick as click
-
 from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
@@ -66,7 +65,7 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _get_command(self, name):
 
-        pkg = self._bringistry.get_pkg(name)
+        pkg = self._pkgs.get_pkg(name)
 
         @click.command(name=name)
         @handle_exc_async

@@ -2,21 +2,19 @@
 import logging
 import os
 import tempfile
-from abc import abstractmethod
-from typing import List, Dict, Any
+from abc import ABCMeta, abstractmethod
+from typing import Any, Dict, List
 
-from bring.defaults import BRING_PKG_CACHE
 from frtls.files import ensure_folder
 from frtls.strings import from_camel_case
-from frtls.types.typistry import TypistryPlugin
+
+from bring.defaults import BRING_PKG_CACHE
+
 
 log = logging.getLogger("bring")
 
 
-class ArtefactHandler(TypistryPlugin):
-    def _name(self):
-        return from_camel_case(self.__class__.__name__, sep="-")
-
+class ArtefactHandler(metaclass=ABCMeta):
     @abstractmethod
     async def _provide_artefact_folder(
         self, artefact_path: str, artefact_details: Dict[str, Any]

@@ -6,6 +6,7 @@ from appdirs import AppDirs
 
 from bring.system_info import get_current_system_info
 
+
 bring_app_dirs = AppDirs("bring", "frkl")
 
 if not hasattr(sys, "frozen"):
@@ -26,13 +27,11 @@ DEFAULT_ARTEFACT_METADATA = {"type": "auto"}
 
 
 BRINGISTRY_CONFIG = {
-    # "name": "bringistry",
-    # "tingistry_class": "bringistry",
     "ting_types": [
         {"name": "bring.types.pkg", "ting_class": "pkg_ting"},
         {"name": "bring.types.pkg_list", "ting_class": "pkg_tings"},
         {
-            "name": "bring.transform.profiles.executables",
+            "name": "bring.types.transform.executables",
             "ting_class": "transform_profile",
             "ting_init": {
                 "transformers_config": [
@@ -47,18 +46,30 @@ BRINGISTRY_CONFIG = {
             },
         },
     ],
-    "tings": [{"ting_type": "bring.types.pkg_list", "ting_name": "bring.pkgs"}],
-    "preload_modules": [
-        "bring",
+    "tings": [
+        {"ting_type": "bring.types.pkg_list", "ting_name": "bring.pkgs"},
+        {
+            "ting_type": "bring.types.transform.executables",
+            "ting_name": "bring.transform.executables",
+        },
+    ],
+    "modules": [
         "bring.bring",
-        "bring.pkg_resolvers",
         "bring.pkg_resolvers.git_repo",
         "bring.pkg_resolvers.template_url",
         "bring.pkg_resolvers.github_release",
         "bring.artefact_handlers.archive",
         "bring.artefact_handlers.file",
         "bring.artefact_handlers.folder",
-        "bring.transform",
+        "bring.transform.file_filter",
+        "bring.transform.merge",
+        "bring.transform.rename",
+        "bring.transform.set_mode",
+    ],
+    "classes": [
+        "bring.pkg_resolvers.PkgResolver",
+        "bring.artefact_handlers.ArtefactHandler",
+        "bring.transform.Transformer",
     ],
 }
 

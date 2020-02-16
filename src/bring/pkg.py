@@ -3,18 +3,20 @@ import copy
 import logging
 import os
 import shutil
-from typing import Dict, Any, Union, List
+from typing import Any, Dict, List, Union
 
 from anyio import create_task_group
+from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.exceptions import FrklException
+from frtls.files import ensure_folder
+from frtls.types.typistry import TypistryPluginManager
+from tings.ting import SimpleTing
 
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import DEFAULT_ARTEFACT_METADATA
 from bring.pkg_resolvers import PkgResolver
-from bring.transform import MergeTransformer
-from frtls.dicts import get_seeded_dict, dict_merge
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from tings.ting import SimpleTing
+from bring.transform.merge import MergeTransformer
+
 
 log = logging.getLogger("bring")
 
@@ -124,7 +126,7 @@ class PkgTing(SimpleTing):
             # arg_obj = Arg.from_dict(name=arg, hive=None, default=default, **args_dict)
             result[arg] = args_dict
 
-        arg = self.tingistry._arg_hive.create_record_arg(childs=result)
+        arg = self.tingistry.arg_hive.create_record_arg(childs=result)
 
         return arg
 
@@ -137,14 +139,32 @@ class PkgTing(SimpleTing):
     async def _get_metadata(self, source_dict):
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
+        resolver = self._get_resolver(source_dict)
+        return await resolver.get_pkg_metadata(source_dict)
+
+    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
+
         pkg_type = source_dict.get("type", None)
         if pkg_type is None:
             raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
 
-        plugin: PkgResolver = self.tingistry.typistry.get_plugin_for_source_type(
-            PkgResolver, pkg_type
+        pm: TypistryPluginManager = self.tingistry.get_plugin_manager("pkg_resolver")
+        plugin: PkgResolver = pm.get_plugin_for(pkg_type)
+        return plugin
+
+    def _get_artefact_handler(self, artefact_details: Dict[str, Any]):
+
+        art_type = artefact_details.get("type", None)
+        if art_type is None:
+            raise KeyError(
+                f"No 'type' key in artefact details: {dict(artefact_details)}"
+            )
+
+        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
+            "artefact_handler"
         )
-        return await plugin.get_pkg_metadata(source_dict)
+        plugin: ArtefactHandler = pm.get_plugin_for(art_type)
+        return plugin
 
     def _get_translated_value(self, var_map, value):
 
@@ -250,7 +270,7 @@ class PkgTing(SimpleTing):
         source_details = vals["source"]
         metadata = vals["metadata"]
 
-        resolver = self.tingistry.get_resolver(source_details)
+        resolver = self._get_resolver(source_details)
 
         version = resolver.find_version(
             vars=vars,
@@ -288,9 +308,7 @@ class PkgTing(SimpleTing):
 
         art_path = await self.get_artefact(vars=vars)
 
-        handler: ArtefactHandler = self.tingistry.get_artefact_handler(
-            artefact_details, artefact=art_path
-        )
+        handler: ArtefactHandler = self._get_artefact_handler(artefact_details)
 
         folder = await handler.provide_artefact_folder(
             artefact_path=art_path, artefact_details=artefact_details
@@ -346,7 +364,9 @@ class PkgTing(SimpleTing):
 
             for profile_name in profiles:
 
-                transform_profile = self.tingistry.get_transform_profile(profile_name)
+                transform_profile = self.tingistry.get_ting(
+                    f"bring.transform.{profile_name}"
+                )
                 p_config = profiles_config.get(profile_name, {})
 
                 await tg.spawn(
