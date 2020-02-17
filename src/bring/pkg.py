@@ -3,19 +3,21 @@ import copy
 import logging
 import os
 import shutil
+from collections import Mapping
 from typing import Any, Dict, List, Union
 
 from anyio import create_task_group
-from frtls.dicts import dict_merge, get_seeded_dict
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.types.typistry import TypistryPluginManager
-from tings.ting import SimpleTing
-
 from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import DEFAULT_ARTEFACT_METADATA
 from bring.pkg_resolvers import PkgResolver
 from bring.transform.merge import MergeTransformer
+from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.exceptions import FrklException
+from frtls.files import ensure_folder
+from frtls.formats.output import serialize
+from frtls.types.typistry import TypistryPluginManager
+from tings.exceptions import TingException
+from tings.ting import SimpleTing
 
 
 log = logging.getLogger("bring")
@@ -42,7 +44,7 @@ class PkgTing(SimpleTing):
             "source": "dict",
             "metadata": "dict",
             "artefact": "dict",
-            "profiles_config": "dict",
+            "file_sets": "dict",
             "aliases": "dict",
             "args": "args",
             "info": "dict",
@@ -54,7 +56,7 @@ class PkgTing(SimpleTing):
         return {
             "source": "dict",
             "artefact": "dict?",
-            "profiles": "dict?",
+            "file_sets": "dict?",
             "aliases": "dict?",
             "info": "dict",
             "labels": "dict",
@@ -89,9 +91,9 @@ class PkgTing(SimpleTing):
             )
             result["artefact"] = artefact
 
-        if "profiles_config" in value_names:
-            profile_config = requirements["profiles"]
-            result["profiles_config"] = profile_config
+        if "file_sets" in value_names:
+            file_sets = requirements["file_sets"]
+            result["file_sets"] = file_sets
 
         if "info" in value_names:
             result["info"] = requirements["info"]
@@ -140,6 +142,14 @@ class PkgTing(SimpleTing):
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
         resolver = self._get_resolver(source_dict)
+        if resolver is None:
+            r_type = source_dict.get("type", source_dict)
+            raise TingException(
+                ting=self,
+                msg=f"Can't retrieve metadata for pkg '{self.name}'.",
+                reason=f"No resolver registered for: {r_type}",
+            )
+
         return await resolver.get_pkg_metadata(source_dict)
 
     def _get_resolver(self, source_dict: Dict) -> PkgResolver:
@@ -202,16 +212,16 @@ class PkgTing(SimpleTing):
 
         return valid
 
-    async def get_profiles_config(self):
+    async def get_file_sets(self) -> Dict[str, Dict]:
 
-        vals = await self.get_values("profiles_config")
-        return vals["profiles_config"]
+        vals = await self.get_values("file_sets")
+        return vals["file_sets"]
 
-    async def get_profile_config(self, profile_name):
+    async def get_file_set(self, name: str) -> Dict:
 
-        return self.get_profiles_config().get(profile_name, {})
+        return self.get_file_sets().get(name, {})
 
-    async def get_info(self, include_metadata=False):
+    async def get_info(self, include_metadata: bool = False):
 
         val_keys = ["info", "source", "labels"]
         if include_metadata:
@@ -345,7 +355,7 @@ class PkgTing(SimpleTing):
         vars_final = get_seeded_dict(dict_obj=vars, seed_dict=profile_defaults)
         artefact_folder = await self.provide_artefact_folder(vars=vars_final)
 
-        profiles_config = await self.get_profiles_config()
+        file_sets = await self.get_file_sets()
 
         results = {}
 
@@ -353,7 +363,14 @@ class PkgTing(SimpleTing):
             profile_name, transform_profile, source_folder, p_config
         ):
 
+            if not isinstance(p_config, Mapping):
+                content = serialize(p_config, format("yaml"))
+                raise FrklException(
+                    msg=f"Can't process file_set '{profile_name}' for package '{self.name}'.",
+                    reason=f"Config object is not a dictionary (instead: {type(p_config)}).\n\nContent of invalid config:\n{content}",
+                )
             p_config["vars"] = vars
+
             result_path = transform_profile.transform(
                 input_path=source_folder, config=p_config
             )
@@ -367,7 +384,12 @@ class PkgTing(SimpleTing):
                 transform_profile = self.tingistry.get_ting(
                     f"bring.transform.{profile_name}"
                 )
-                p_config = profiles_config.get(profile_name, {})
+                if transform_profile is None:
+                    raise FrklException(
+                        msg=f"Can't process file set '{profile_name}' for package '{self.name}'.",
+                        reason=f"No profile configured to handle a file set called '{profile_name}'.",
+                    )
+                p_config = file_sets.get(profile_name, {})
 
                 await tg.spawn(
                     transform_one_profile,
@@ -388,10 +410,6 @@ class PkgTing(SimpleTing):
             return {"target": target}
         else:
             merge = MergeTransformer()
-            config = {
-                "sources": [results["executables"]],
-                "vars": vars,
-                "delete_sources": True,
-            }
+            config = {"sources": results.values(), "vars": vars, "delete_sources": True}
             merge.transform(target, transform_config=config)
             return {"target": target}

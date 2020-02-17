@@ -3,10 +3,9 @@ import os
 import shutil
 from typing import Dict
 
+from bring.transform import TransformException, Transformer
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.files import ensure_folder
-
-from bring.transform import TransformException, Transformer
 
 
 class MergeTransformer(Transformer):
@@ -73,7 +72,7 @@ class MergeTransformer(Transformer):
         target = os.path.join(target_base, rel_path)
         if os.path.exists(target):
             raise TransformException(
-                msg=f"Can't merge file '{rel_path}'.",
+                msg=f"Can't merge/copy file '{rel_path}'.",
                 reason=f"File already exists in target: {target_base}",
             )
 

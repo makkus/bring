@@ -56,3 +56,4 @@ public
 .dephell_report
 .direnv
 repos/
+.mypy_cache

@@ -3,9 +3,8 @@ import os
 import shutil
 from typing import Dict
 
-from frtls.files import ensure_folder
-
 from bring.transform import Transformer
+from frtls.files import ensure_folder
 
 
 class FileFilterTransformer(Transformer):

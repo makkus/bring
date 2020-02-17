@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import itertools
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from bring.pkg_resolvers import HttpDownloadPkgResolver
 from frtls.templating import replace_string
 
 
 class TemplateUrlResolver(HttpDownloadPkgResolver):
+
+    _plugin_name: str = "template_url"
+
     def __init__(self):
         super().__init__()
 

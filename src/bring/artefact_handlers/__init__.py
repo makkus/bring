@@ -5,10 +5,9 @@ import tempfile
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List
 
+from bring.defaults import BRING_PKG_CACHE
 from frtls.files import ensure_folder
 from frtls.strings import from_camel_case
-
-from bring.defaults import BRING_PKG_CACHE
 
 
 log = logging.getLogger("bring")

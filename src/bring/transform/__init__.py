@@ -7,13 +7,12 @@ import tempfile
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Iterable, List, Type
 
+from bring.defaults import BRING_WORKSPACE_FOLDER
 from frtls.exceptions import FrklException
 from frtls.strings import from_camel_case
 from frtls.types.typistry import TypistryPluginManager
 from pathspec import PathSpec, patterns
 from tings.ting import SimpleTing
-
-from bring.defaults import BRING_WORKSPACE_FOLDER
 
 
 log = logging.getLogger("bring")

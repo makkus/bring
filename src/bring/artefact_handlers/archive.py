@@ -3,9 +3,8 @@ import os
 import shutil
 from typing import Any, Dict, List
 
-from frtls.exceptions import FrklException
-
 from bring.artefact_handlers import SimpleArtefactHandler
+from frtls.exceptions import FrklException
 
 
 class ArchiveHandler(SimpleArtefactHandler):

@@ -10,18 +10,19 @@ from frtls.cli.group import FrklBaseCommand
 class BringInstallGroup(FrklBaseCommand):
     def __init__(
         self,
-        bringistry,
+        bring,
         name=None,
+        context=None,
         # print_version_callback=None,
         # invoke_without_command=False,
     ):
 
         # self.print_version_callback = print_version_callback
-        self._bringistry = bringistry
+        self._bring = bring
 
-        self._pkgs = self._bringistry.tingistry.get_ting(
-            "bring.pkgs", raise_exception=True
-        )
+        self._context = None
+        if context is not None:
+            context = context
 
         super(BringInstallGroup, self).__init__(
             name=name,
@@ -29,7 +30,7 @@ class BringInstallGroup(FrklBaseCommand):
             no_args_is_help=False,
             chain=False,
             result_callback=None,
-            arg_hive=bringistry.tingistry.arg_hive,
+            arg_hive=bring.arg_hive,
         )
 
     def get_common_options(self) -> Union[Arg, Dict]:
