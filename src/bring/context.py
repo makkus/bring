@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
 
+from bring.interfaces.tui.task_progress import TerminalRunWatch
+from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
 from bring.transform import TransformProfile
 from frtls.dicts import dict_merge
+from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Tasks
 from tings.makers import TingMaker
 from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing
@@ -33,6 +36,7 @@ class BringContextTing(InheriTing, SimpleTing):
 
         return {
             self._parent_key: "string?",
+            "info": "dict",
             "pkgs": "ting",
             "config": "dict",
             "indexes": "list",
@@ -42,13 +46,13 @@ class BringContextTing(InheriTing, SimpleTing):
 
     def requires(self) -> Dict[str, str]:
 
-        return {"dict": "dict"}
+        return {"ting_dict": "dict"}
 
     async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
 
         result = {}
 
-        data = requirements["dict"]
+        data = requirements["ting_dict"]
         parent = data.get(self._parent_key, None)
 
         result[self._parent_key] = parent
@@ -61,6 +65,9 @@ class BringContextTing(InheriTing, SimpleTing):
 
         if "config" in value_names:
             result["config"] = config
+
+        if "info" in value_names:
+            result["info"] = config.get("info", {})
 
         if "indexes" in value_names:
             result["indexes"] = config.get("indexes", [])
@@ -114,7 +121,7 @@ class BringContextTing(InheriTing, SimpleTing):
 
         self.tingistry.register_ting_type(
             f"bring.types.transform.{self.name}",
-            "transform_profile",
+            "transform_profile_ting",
             transformers_config=transformers_conf,
         )
         transform_profile = self.tingistry.create_ting(
@@ -122,17 +129,52 @@ class BringContextTing(InheriTing, SimpleTing):
             ting_name=f"bring.transform.{self.name}",
         )
 
-        return transform_profile
+        return transform_profile.transform_profile
 
     async def _ensure_pkgs(self, config: Dict[str, Any]) -> None:
 
         maker = await self.get_maker(config)
         await maker.sync()
 
-    async def get_pkgs(self) -> Pkgs:
+    @property
+    async def pkgs(self) -> Pkgs:
 
         vals = await self.get_values("pkgs")
         return vals["pkgs"]
+
+    async def get_pkg(self, name: str) -> PkgTing:
+
+        pkgs = await self.pkgs
+        return pkgs.get_pkg(name)
+
+    @property
+    async def pkg_names(self) -> Iterable[str]:
+
+        pkgs = await self.pkgs
+        return pkgs.get_pkg_names()
+
+    async def _create_update_tasks(self) -> Tasks:
+
+        tasks = ParallelTasksAsync(name=self.name)
+        pkgs = await self.pkgs
+        for pkg_name, pkg in pkgs.pkgs.items():
+            t = SingleTaskAsync(pkg.update_metadata, name=pkg_name)
+            tasks.add_task(t)
+
+        return tasks
+
+    async def update(self, in_background: bool = False) -> False:
+        """Updates pkg metadata."""
+
+        if in_background:
+            raise NotImplementedError()
+
+        tasks = await self._create_update_tasks()
+        # run_watch = RunWatch()
+        # tui_run_watch = TuiRunWatch()
+        term_run_watch = TerminalRunWatch()
+
+        await term_run_watch.run_tasks(tasks)
 
     async def get_maker(self, config) -> TingMaker:
 

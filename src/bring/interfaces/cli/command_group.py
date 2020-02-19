@@ -52,27 +52,58 @@ class BringCommandGroup(FrklBaseCommand):
 
         print(await context.get_info())
 
-    async def _list_commands(self):
+    async def init_command_async(self, ctx):
 
-        result = ["info", "install"]
+        await self._bring.init()
+
+    async def _list_commands(self, ctx):
+
+        result = ["info", "install", "update"]
         if self._context is None:
             result.append("context")
+            result.append("dev")
 
         return result
 
-    async def _get_command(self, name):
+    async def _get_command(self, ctx, name):
         if name == "info":
 
             from bring.interfaces.cli.info import BringInfoGroup
 
-            command = BringInfoGroup(bring=self._bring, context=self._context)
+            command = BringInfoGroup(
+                bring=self._bring, context=self._context, name="info"
+            )
+            command.short_help = "display information for packages"
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
 
-            command = BringInstallGroup(bring=self._bring, context=self._context)
+            command = BringInstallGroup(
+                bring=self._bring, context=self._context, name="install"
+            )
+            if self._context:
+                command.short_help = "install a package"
+            else:
+                command.short_help = "install one or a list of packages"
         elif name == "context":
             from bring.interfaces.cli.contexts import BringContextGroup
 
-            command = BringContextGroup(bring=self._bring)
+            command = BringContextGroup(bring=self._bring, name="context")
+            command.short_help = "context-specific sub-command group"
+
+        elif name == "update":
+            from bring.interfaces.cli.update import BringUpdateCommand
+
+            command = BringUpdateCommand(
+                bring=self._bring, context=self._context, name="update"
+            )
+            if self._context:
+                command.short_help = "update package metadata for this context"
+            else:
+                command.short_help = "update package metadata for all contexts"
+
+        elif name == "dev":
+            from bring.interfaces.cli.dev import dev
+
+            command = dev
 
         return command

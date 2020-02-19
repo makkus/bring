@@ -32,6 +32,6 @@ class FileFilterTransformer(Transformer):
             target = os.path.join(result, m)
             parent = os.path.dirname(target)
             ensure_folder(parent)
-            shutil.copyfile(source, target)
+            shutil.move(source, target)
 
         return result

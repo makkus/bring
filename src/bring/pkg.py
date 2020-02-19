@@ -3,14 +3,21 @@ import copy
 import logging
 import os
 import shutil
-from collections import Mapping
-from typing import Any, Dict, List, Union
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from bring.artefact_handlers import ArtefactHandler
-from bring.defaults import DEFAULT_ARTEFACT_METADATA
+from bring.defaults import (
+    BRING_ALLOWED_MARKER_NAME,
+    BRING_METADATA_FOLDER_NAME,
+    BRING_WORKSPACE_FOLDER,
+    DEFAULT_ARTEFACT_METADATA,
+)
 from bring.pkg_resolvers import PkgResolver
 from bring.transform.merge import MergeTransformer
+from bring.utils import is_valid_bring_target, set_folder_bring_allowed
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -58,8 +65,10 @@ class PkgTing(SimpleTing):
             "artefact": "dict?",
             "file_sets": "dict?",
             "aliases": "dict?",
-            "info": "dict",
-            "labels": "dict",
+            "info": "dict?",
+            "labels": "dict?",
+            "ting_make_timestamp": "string",
+            "ting_make_metadata": "dict",
         }
 
     async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
@@ -75,6 +84,7 @@ class PkgTing(SimpleTing):
             "metadata" in value_names
             or "args" in value_names
             or "aliases" in value_names
+            or "metadata_valid" in value_names
         ):
             metadata = await self._get_metadata(source)
             result["metadata"] = metadata
@@ -86,20 +96,21 @@ class PkgTing(SimpleTing):
             result["aliases"] = await self._get_aliases(metadata)
 
         if "artefact" in value_names:
+            resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
             artefact = get_seeded_dict(
-                dict_obj=requirements["artefact"], seed_dict=DEFAULT_ARTEFACT_METADATA
+                DEFAULT_ARTEFACT_METADATA, resolver_defaults, requirements["artefact"]
             )
             result["artefact"] = artefact
 
         if "file_sets" in value_names:
-            file_sets = requirements["file_sets"]
+            file_sets = requirements.get("file_sets", {})
             result["file_sets"] = file_sets
 
         if "info" in value_names:
-            result["info"] = requirements["info"]
+            result["info"] = requirements.get("info", {})
 
         if "labels" in value_names:
-            result["labels"] = requirements["labels"]
+            result["labels"] = requirements.get("labels", {})
 
         return result
 
@@ -132,13 +143,17 @@ class PkgTing(SimpleTing):
 
         return arg
 
-    async def get_metadata(self):
+    async def get_metadata(
+        self, config: Optional[Mapping[str, Any]] = None
+    ) -> Mapping[str, Any]:
         """Return metadata associated with this package."""
 
         vals = await self.get_values("source")
-        return self._get_metadata(vals["source"])
+        return await self._get_metadata(vals["source"], config=config)
 
-    async def _get_metadata(self, source_dict):
+    async def _get_metadata(
+        self, source_dict, config: Optional[Mapping[str, Any]] = None
+    ):
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
         resolver = self._get_resolver(source_dict)
@@ -150,7 +165,7 @@ class PkgTing(SimpleTing):
                 reason=f"No resolver registered for: {r_type}",
             )
 
-        return await resolver.get_pkg_metadata(source_dict)
+        return await resolver.get_pkg_metadata(source_dict, override_config=config)
 
     def _get_resolver(self, source_dict: Dict) -> PkgResolver:
 
@@ -217,30 +232,43 @@ class PkgTing(SimpleTing):
         vals = await self.get_values("file_sets")
         return vals["file_sets"]
 
+    async def update_metadata(self) -> Mapping[str, Any]:
+
+        return await self.get_metadata({"metadata_max_age": 0})
+
     async def get_file_set(self, name: str) -> Dict:
 
         return self.get_file_sets().get(name, {})
 
-    async def get_info(self, include_metadata: bool = False):
+    async def get_info(
+        self,
+        include_metadata: bool = False,
+        retrieve_config: Optional[Mapping[str, Any]] = None,
+    ):
 
-        val_keys = ["info", "source", "labels"]
-        if include_metadata:
-            val_keys.append("metadata")
-
+        val_keys = ["info", "source", "labels", "file_sets", "artefact"]
         vals = await self.get_values(*val_keys)
 
         info = vals["info"]
         source_details = vals["source"]
         var_map = source_details.get("var_map", {})
+        file_sets = vals["file_sets"]
+
+        metadata: Dict[str, Any] = None
+        if include_metadata:
+            metadata = await self._get_metadata(
+                source_dict=source_details, config=retrieve_config
+            )
 
         result = {}
 
         result["info"] = info
         result["labels"] = vals["labels"]
+        result["artefact"] = vals["artefact"]
+        result["file_sets"] = file_sets
 
         if include_metadata:
 
-            metadata = vals["metadata"]
             timestamp = metadata["metadata_check"]
 
             defaults = metadata["defaults"]
@@ -341,8 +369,9 @@ class PkgTing(SimpleTing):
     async def install(
         self,
         vars: Dict[str, str],
-        profiles: Union[List[str], str] = None,
-        target=None,
+        profiles: Optional[Union[List[str], str]] = None,
+        target: Optional[Union[str, Path]] = None,
+        merge: bool = False,
         strategy="default",
         write_metadata=False,
     ) -> Dict[str, str]:
@@ -352,7 +381,7 @@ class PkgTing(SimpleTing):
 
         # TODO: read from profile
         profile_defaults = {}
-        vars_final = get_seeded_dict(dict_obj=vars, seed_dict=profile_defaults)
+        vars_final = get_seeded_dict(profile_defaults, vars)
         artefact_folder = await self.provide_artefact_folder(vars=vars_final)
 
         file_sets = await self.get_file_sets()
@@ -394,22 +423,42 @@ class PkgTing(SimpleTing):
                 await tg.spawn(
                     transform_one_profile,
                     profile_name,
-                    transform_profile,
+                    transform_profile.transform_profile,
                     artefact_folder,
                     p_config,
                 )
 
-        if target is None:
+        if target is None and not merge:
             return results
 
-        if len(results) == 1 and not os.path.exists(target):
-            target_base = os.path.dirname(target)
+        if target is None:
+            target = tempfile.mkdtemp(
+                prefix=f"{self.name}_install_", dir=BRING_WORKSPACE_FOLDER
+            )
+
+        if not is_valid_bring_target(target):
+            raise FrklException(
+                f"Can't install files from temp install folder(s) to target '{target}'",
+                reason="Folder exists, is non-empty and was not created by bring.",
+                solution=f"Either delete the folder or it's content, or create a marker file '.{BRING_ALLOWED_MARKER_NAME}' or '{BRING_METADATA_FOLDER_NAME}{os.path.sep}{BRING_ALLOWED_MARKER_NAME}' to indicate it is ok for bring to add/delete files in there. Back up the contents of that folder in case there is important data!",
+            )
+
+        if isinstance(target, Path):
+            _target = target.resolve().as_posix()
+        else:
+            _target = os.path.expanduser(target)
+
+        if len(results) == 1 and not os.path.exists(_target):
+            target_base = os.path.dirname(_target)
             ensure_folder(target_base)
             source = list(results.values())[0]
-            shutil.move(source, target)
-            return {"target": target}
+            print("move: {}".format(source))
+            shutil.move(source, _target)
+            set_folder_bring_allowed(_target)
+            return {"target": _target}
         else:
             merge = MergeTransformer()
             config = {"sources": results.values(), "vars": vars, "delete_sources": True}
-            merge.transform(target, transform_config=config)
-            return {"target": target}
+            merge.transform(_target, transform_config=config)
+            set_folder_bring_allowed(_target)
+            return {"target": _target}

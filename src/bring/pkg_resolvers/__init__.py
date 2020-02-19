@@ -5,12 +5,13 @@ import logging
 import os
 from abc import ABCMeta, abstractmethod
 from collections import Sequence
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import arrow
 import httpx
 from anyio import aopen
-from bring.defaults import BRING_PKG_CACHE
+from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
+from frtls.dicts import get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
 
@@ -19,13 +20,156 @@ log = logging.getLogger("bring")
 
 
 class PkgResolver(metaclass=ABCMeta):
+
+    metadata_cache = {}
+
     @abstractmethod
     def _supports(self) -> List[str]:
         pass
 
     @abstractmethod
+    def get_resolver_config(self) -> Mapping[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_unique_source_id(self, source_details: Dict) -> str:
+        pass
+
+    @abstractmethod
+    def get_artefact_defaults(self, source_details: Dict) -> Dict[str, Any]:
+        pass
+
+    def check_pkg_metadata_valid(
+        self,
+        metadata: Optional[Mapping[str, Any]],
+        source_details: Mapping[str, Any],
+        config: Optional[Mapping[str, Any]] = None,
+    ) -> bool:
+
+        if not metadata:
+            return False
+
+        if not metadata["metadata"].get("versions", None):
+            return False
+
+        if dict(metadata["source"]) != dict(source_details):
+            return False
+
+        if config is None:
+            config = self.get_resolver_config()
+
+        if config["metadata_max_age"] < 0:
+            return True
+
+        last_access = metadata["metadata"].get("metadata_check", None)
+        if last_access is None:
+            last_access = arrow.Arrow(1970, 1, 1)
+        else:
+            last_access = arrow.get(last_access)
+        now = arrow.now()
+        delta = now - last_access
+        secs = delta.total_seconds()
+
+        if secs < config["metadata_max_age"]:
+            return True
+
+        return False
+
+    async def _get_cached_metadata(
+        self,
+        source_details: Mapping[str, Any],
+        config: Optional[Mapping[str, Any]] = None,
+    ):
+
+        id = self.get_unique_source_id(source_details)
+
+        metadata = PkgResolver.metadata_cache.setdefault(self.__class__, {}).get(
+            id, None
+        )
+
+        # check whether we have the metadata in the global cache
+        if self.check_pkg_metadata_valid(metadata, source_details, config=config):
+            return metadata["metadata"]
+
+        # check whether the metadata is cached within the PkgResolver
+        metadata = await self._get_pkg_metadata(
+            source_details, config, cached_only=True
+        )
+        if metadata is not None:
+            PkgResolver.metadata_cache[self.__class__][id] = {
+                "metadata": metadata,
+                "source": source_details,
+            }
+            return metadata
+
+        return None
+
+    async def get_metadata_timestamp(
+        self, source_details: Union[str, Dict[str, Any]]
+    ) -> Optional[arrow.Arrow]:
+
+        if isinstance(source_details, str):
+            _source_details = {"url": source_details}
+        else:
+            _source_details = source_details
+
+        metadata = await self._get_cached_metadata(
+            source_details=_source_details, config={"metadata_max_age": -1}
+        )
+        if metadata is None:
+            return None
+
+        last_access = metadata.get("metadata_check", None)
+        if last_access is None:
+            return None
+        return arrow.get(last_access)
+
     async def get_pkg_metadata(
-        self, source_details: Union[str, Dict]
+        self,
+        source_details: Union[str, Dict[str, Any]],
+        override_config: Optional[Mapping[str, Any]] = None,
+    ) -> List[Dict[str, str]]:
+
+        if isinstance(source_details, str):
+            _source_details = {"url": source_details}
+        else:
+            _source_details = source_details
+
+        config = get_seeded_dict(self.get_resolver_config(), override_config)
+
+        metadata = await self._get_cached_metadata(
+            source_details=_source_details, config=config
+        )
+        if metadata:
+            return metadata
+
+        # retrieve the metadata
+        metadata = await self._get_pkg_metadata(
+            _source_details, config, cached_only=True
+        )
+        if metadata is not None:
+            PkgResolver.metadata_cache[self.__class__][id] = {
+                "metadata": metadata,
+                "source": source_details,
+            }
+            return metadata
+
+        metadata = await self._get_pkg_metadata(
+            _source_details, config, cached_only=False
+        )
+        PkgResolver.metadata_cache[self.__class__][id] = {
+            "metadata": metadata,
+            "source": source_details,
+        }
+
+        return metadata
+
+    @abstractmethod
+    async def _get_pkg_metadata(
+        self,
+        source_details: Mapping[str, Any],
+        config: Mapping[str, Any],
+        cached_only=False,
     ) -> List[Dict[str, str]]:
         pass
 
@@ -130,50 +274,45 @@ class PkgResolver(metaclass=ABCMeta):
 
 
 class SimplePkgResolver(PkgResolver):
-    def __init__(self):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
 
         self._cache_dir = os.path.join(
             BRING_PKG_CACHE, "resolvers", from_camel_case(self.__class__.__name__)
         )
         ensure_folder(self._cache_dir, mode=0o700)
 
-        self._data_max_age_sec = 3600
+        self._config: Mapping[str, Any] = get_seeded_dict(PKG_RESOLVER_DEFAULTS, config)
+
+    def get_resolver_config(self) -> Mapping[str, Any]:
+
+        return self._config
 
     @abstractmethod
     async def _retrieve_versions(
         self, source_details: Dict, update=True
-    ) -> Union[Tuple, List]:
+    ) -> Union[Tuple[List, Dict], List]:
         pass
 
-    @abstractmethod
-    def get_unique_source_id(self, source_details: Dict) -> str:
-        pass
+    def get_artefact_defaults(self, source_details: Dict) -> Dict[str, Any]:
+        return {}
 
-    async def get_pkg_metadata(
-        self, source_details: Union[str, Dict]
-    ) -> List[Dict[str, str]]:
+    async def _get_pkg_metadata(
+        self,
+        source_details: Mapping[str, Any],
+        config: Mapping[str, Any],
+        cached_only=False,
+    ) -> Optional[List[Dict[str, Any]]]:
 
         id = self.get_unique_source_id(source_details)
         id = generate_valid_filename(id, sep="_")
         metadata_file = os.path.join(self._cache_dir, f"{id}.json")
 
-        if isinstance(source_details, str):
-            source_details = {"url": source_details}
-
         metadata = await self.get_metadata(metadata_file)
-        if "versions" in metadata.keys() and metadata["versions"]:
+        if self.check_pkg_metadata_valid(metadata, source_details, config=config):
+            return metadata["metadata"]
 
-            last_access = metadata.get("metadata_check", None)
-            if last_access is None:
-                last_access = arrow.Arrow(1970, 1, 1)
-            else:
-                last_access = arrow.get(last_access)
-            now = arrow.now()
-            delta = now - last_access
-            secs = delta.total_seconds()
-
-            if secs < self._data_max_age_sec:
-                return metadata
+        if cached_only:
+            return None
 
         if "var_map" in source_details.keys():
             var_map = source_details["var_map"]
@@ -183,12 +322,12 @@ class SimplePkgResolver(PkgResolver):
         try:
             versions = await self._retrieve_versions(source_details=source_details)
             if isinstance(versions, tuple):
-                aliases = versions[1]
-                versions = versions[0]
+                aliases: Dict[str, str] = versions[1]
+                versions: List[Dict[str, Any]] = versions[0]
             else:
                 aliases = {}
         except (Exception) as e:
-            log.error(f"Can't retrieve versions for pkg: {e}")
+            log.debug(f"Can't retrieve versions for pkg: {e}")
             log.debug(
                 f"Error retrieving versions in resolver '{self.__class__.__name__}': {e}",
                 exc_info=1,
@@ -219,7 +358,7 @@ class SimplePkgResolver(PkgResolver):
         metadata["defaults"] = defaults
         metadata["metadata_check"] = str(arrow.Arrow.now())
 
-        await self.write_metadata(metadata_file, metadata)
+        await self.write_metadata(metadata_file, metadata, source_details)
 
         return metadata
 
@@ -234,16 +373,19 @@ class SimplePkgResolver(PkgResolver):
 
         return metadata
 
-    async def write_metadata(self, metadata_file: str, metadata: Dict):
+    async def write_metadata(
+        self, metadata_file: str, metadata: Mapping[str, Any], source: Mapping[str, Any]
+    ):
 
+        data = {"metadata": metadata, "source": source}
         async with await aopen(metadata_file, "w") as f:
-            await f.write(json.dumps(metadata))
+            await f.write(json.dumps(data))
 
 
 class HttpDownloadPkgResolver(SimplePkgResolver):
-    def __init__(self):
+    def __init__(self, config: Optional[Mapping[str, Any]] = None):
 
-        super().__init__()
+        super().__init__(config=config)
         self._download_dir = os.path.join(self._cache_dir, "_downloads")
         ensure_folder(self._download_dir)
 

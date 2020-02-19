@@ -104,7 +104,7 @@ class TransformException(FrklException):
     def __init__(
         self,
         *args,
-        transformer_profile: "TransformProfile" = None,
+        transformer_profile: "TransformProfileTing" = None,
         transformer: Transformer = None,
         **kwargs,
     ):
@@ -115,24 +115,23 @@ class TransformException(FrklException):
         super().__init__(*args, **kwargs)
 
 
-class TransformProfile(SimpleTing):
+class TransformProfile(object):
     def __init__(
-        self, name: str, transformers_config: List, meta: Dict[str, Any] = None
+        self,
+        name: str,
+        transformers_config: List,
+        plugin_manager: TypistryPluginManager,
+        meta: Dict[str, Any] = None,
     ):
 
-        super().__init__(name=name, meta=meta)
-
+        self._name = name
         self._transformers_config = transformers_config
         self._transformers: List[Transformer] = []
-
-        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
-            "transformer", plugin_type="instance"
-        )
 
         for conf in self._transformers_config:
 
             t_type = conf["type"]
-            plugin_cls: Type[Transformer] = pm.get_plugin(t_type)
+            plugin_cls: Type[Transformer] = plugin_manager.get_plugin(t_type)
             plugin_obj: Transformer = plugin_cls(**conf)
             self._transformers.append(plugin_obj)
 
@@ -140,7 +139,7 @@ class TransformProfile(SimpleTing):
 
         input_basename = os.path.basename(input_path)
         temp = tempfile.mkdtemp(
-            prefix=f"transform_{self.full_name}_", dir=BRING_WORKSPACE_FOLDER
+            prefix=f"transform_{self._name}_", dir=BRING_WORKSPACE_FOLDER
         )
 
         temp_input_path = os.path.join(temp, input_basename)
@@ -165,6 +164,28 @@ class TransformProfile(SimpleTing):
             temp_input_path = new_input_path
 
         return new_input_path
+
+
+class TransformProfileTing(SimpleTing):
+    def __init__(
+        self, name: str, transformers_config: List, meta: Dict[str, Any] = None
+    ):
+
+        super().__init__(name=name, meta=meta)
+
+        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
+            "transformer", plugin_type="instance"
+        )
+
+        self._transform_profile = TransformProfile(
+            name=self.full_name,
+            transformers_config=transformers_config,
+            plugin_manager=pm,
+        )
+
+    @property
+    def transform_profile(self) -> TransformProfile:
+        return self._transform_profile
 
     def provides(self) -> Dict[str, str]:
 

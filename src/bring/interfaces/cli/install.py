@@ -2,6 +2,8 @@
 from typing import Dict, Union
 
 import asyncclick as click
+from bring.bring import Bring
+from bring.defaults import DEFAULT_INSTALL_PROFILE_NAME
 from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
@@ -10,9 +12,9 @@ from frtls.cli.group import FrklBaseCommand
 class BringInstallGroup(FrklBaseCommand):
     def __init__(
         self,
-        bring,
-        name=None,
-        context=None,
+        bring: Bring,
+        name: str = None,
+        context: str = None,
         # print_version_callback=None,
         # invoke_without_command=False,
     ):
@@ -22,7 +24,7 @@ class BringInstallGroup(FrklBaseCommand):
 
         self._context = None
         if context is not None:
-            context = context
+            self._context = self._bring.get_context(context)
 
         super(BringInstallGroup, self).__init__(
             name=name,
@@ -39,71 +41,98 @@ class BringInstallGroup(FrklBaseCommand):
             "target": {
                 "doc": "The target directory to install the files into.",
                 "type": "string",
-                "default": ".",
+                "required": False,
             },
             "profile": {
                 "doc": "One or several profiles to use.",
                 "type": "[string]",
-                "default": ["all"],
+                "default": [DEFAULT_INSTALL_PROFILE_NAME],
                 "multiple": True,
+                "required": False,
+            },
+            "merge": {
+                "doc": "Whether to merge the resulting files (if applicable).",
+                "type": "boolean",
+                "required": False,
+                "default": True,
+                "cli": {"param_decls": ["--merge/--no-merge"]},
             },
             "strategy": {
                 "doc": "Strategy on how to deal with existing files, options: default, force",
                 "type": "string",
                 "default": "default",
+                "required": False,
             },
             "write_metadata": {
                 "doc": "Write metadata for this install process.",
                 "type": "boolean",
                 "default": False,
+                "required": False,
             },
         }
 
-    async def _list_commands(self):
+    async def init_command_async(self, ctx):
 
-        pkg_names = self._pkgs.get_pkg_names()
-        return pkg_names
+        await self._bring.init()
 
-    async def _get_command(self, name):
+    async def _list_commands(self, ctx):
 
-        pkg = self._pkgs.get_pkg(name)
+        if self._context is not None:
+            pkg_names = await self._context.pkg_names
+            return pkg_names
 
-        @click.command(name=name)
-        @handle_exc_async
-        async def command(**vars):
+        return []
 
-            target = self._group_params.get("target")
-            profiles = self._group_params.get("profile")
-            strategy = self._group_params.get("strategy")
+    async def _get_command(self, ctx, name):
 
-            write_metadata = self._group_params.get("write_metadata")
+        if self._context is not None:
+            pkg = await self._context.get_pkg(name)
 
-            result = await pkg.install(
-                vars=vars,
-                profiles=profiles,
-                target=target,
-                strategy=strategy,
-                write_metadata=write_metadata,
-            )
+            @click.command(name=name)
+            @handle_exc_async
+            async def command(**vars):
 
-            print(result)
+                target = self._group_params.get("target")
+                profiles = self._group_params.get("profile")
+                strategy = self._group_params.get("strategy")
+                merge = self._group_params.get("merge")
 
-            # if copied:
-            #     click.echo()
-            #     click.echo("Copied files:\n")
-            #     print(copied)
-            #     for c in copied["target"].keys():
-            #         click.echo(f"  - {c}")
-            # else:
-            #     click.echo()
-            #     click.echo("No files copied.")
+                write_metadata = self._group_params.get("write_metadata")
 
-        try:
-            vals = await pkg.get_values("args", raise_exception=True)
-            args: RecordArg = vals["args"]
-            params = args.to_cli_options()
-            command.params = params
-        except (Exception) as e:
-            return e
+                result = await pkg.install(
+                    vars=vars,
+                    profiles=profiles,
+                    target=target,
+                    merge=merge,
+                    strategy=strategy,
+                    write_metadata=write_metadata,
+                )
+
+                print(result)
+
+            try:
+                vals = await pkg.get_values("args", "info", raise_exception=True)
+                args: RecordArg = vals["args"]
+                info: Dict = vals["info"]
+                params = args.to_cli_options()
+                command.params = params
+                command.short_help = info.get("slug", "n/a")
+            except (Exception) as e:
+                return e
+
+        else:
+
+            @click.command(name)
+            @handle_exc_async
+            async def command(**vars):
+
+                # target = self._group_params.get("target")
+                # profiles = self._group_params.get("profile")
+                # strategy = self._group_params.get("strategy")
+                # merge = self._group_params.get("merge")
+                #
+                # write_metadata = self._group_params.get("write_metadata")
+
+                print("HELLO")
 
         return command

@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+from typing import Any, Dict
 
 from appdirs import AppDirs
 from bring.system_info import get_current_system_info
 
 
-bring_app_dirs = AppDirs("bring", "frkl")
+BRING_APP_DIRS = AppDirs("bring", "frkl")
 
 if not hasattr(sys, "frozen"):
     BRING_MODULE_BASE_FOLDER = os.path.dirname(__file__)
@@ -15,17 +16,18 @@ else:
     BRING_MODULE_BASE_FOLDER = os.path.join(sys._MEIPASS, "bring")  # type: ignore
     """Marker to indicate the base folder for the `bring` module."""
 
-BRING_CONTEXTS_FOLDER = os.path.join(bring_app_dirs.user_config_dir, "contexts")
+BRING_CONTEXTS_FOLDER = os.path.join(BRING_APP_DIRS.user_config_dir, "contexts")
 
 BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
 
-BRING_DOWNLOAD_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "downloads")
+BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
 
-BRING_WORKSPACE_FOLDER = os.path.join(bring_app_dirs.user_cache_dir, "workspace")
+BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
 
-BRING_PKG_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "pkgs")
+BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
 DEFAULT_ARTEFACT_METADATA = {"type": "auto"}
 
+DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 
 BRINGISTRY_CONFIG = {
     "ting_types": [
@@ -40,8 +42,8 @@ BRINGISTRY_CONFIG = {
             },
         },
         {
-            "name": "bring.types.transform.all",
-            "ting_class": "transform_profile",
+            "name": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+            "ting_class": "transform_profile_ting",
             "ting_init": {
                 "transformers_config": [{"type": "file_filter", "include": ["*"]}]
             },
@@ -60,7 +62,10 @@ BRINGISTRY_CONFIG = {
     "tings": [
         # {"ting_type": "bring.types.pkg_list", "ting_name": "bring.pkgs"},
         {"ting_type": "bring.context_list", "ting_name": "bring.contexts"},
-        {"ting_type": "bring.types.transform.all", "ting_name": "bring.transform.all"},
+        {
+            "ting_type": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+            "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+        },
         # {
         #     "ting_type": "bring.types.transform.executables",
         #     "ting_name": "bring.transform.executables",
@@ -93,7 +98,13 @@ DEFAULT_CONTEXTS = {
     "executables": {
         "index": ["/home/markus/projects/tings/bring/repos/executables"],
         "default_transform_profile": "executables",
-        "max_metadata_age": "24h",
+        "metadata_max_age": 3600 * 24,
         "defaults": get_current_system_info(),
     }
 }
+
+
+PKG_RESOLVER_DEFAULTS: Dict[str, Any] = {"metadata_max_age": 3600 * 24}
+
+BRING_METADATA_FOLDER_NAME = ".bring"
+BRING_ALLOWED_MARKER_NAME = "bring_allowed"

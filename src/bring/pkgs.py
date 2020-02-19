@@ -35,10 +35,39 @@ class Pkgs(SubscripTings):
         pass
         # print("TING UPDATED: {}".format(ting.name))
 
+    def __iter__(self):
+
+        return self._pkgs.values().__iter__()
+
+    def __next__(self):
+
+        return self._pkgs.values().__next__()
+
     @property
     def pkgs(self) -> Dict[str, PkgTing]:
 
         return self._pkgs
+
+    async def get_info(
+        self, include_metadata: bool = False, update: bool = False
+    ) -> Dict[str, Dict[str, Any]]:
+
+        result = {}
+
+        async def get_info(pkg_name, pkg, inc_md, upd):
+            config = None
+            if update:
+                config = {"max_metadata_age": 0}
+            info = await pkg.get_info(
+                include_metadata=inc_md, retrieve_config=config, update=upd
+            )
+            result[pkg_name] = info
+
+        async with create_task_group() as tg:
+            for pkg_name, pkg in self.pkgs.items():
+                await tg.spawn(get_info, pkg_name, pkg, include_metadata, update)
+
+        return result
 
     async def get_all_pkg_values(self) -> Dict[str, Dict]:
 
@@ -56,7 +85,7 @@ class Pkgs(SubscripTings):
 
     def get_pkg(self, pkg_name: str) -> PkgTing:
 
-        pkg = self.childs.get(f"{self._subscription_namespace}.{pkg_name}", None)
+        pkg = self.pkgs.get(pkg_name, None)
         if pkg is None:
             raise Exception(f"No package with name '{pkg_name}' available.")
 
@@ -69,5 +98,4 @@ class Pkgs(SubscripTings):
         return pkg_vals
 
     def get_pkg_names(self) -> Iterator[str]:
-
-        return self.childs.keys()
+        return self.pkgs.keys()

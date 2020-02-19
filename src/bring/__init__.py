@@ -3,12 +3,13 @@
 import io
 import os
 
-from pkg_resources import get_distribution, DistributionNotFound
+from pkg_resources import DistributionNotFound, get_distribution
+
 
 """Top-level package for bring."""
 
 __author__ = """Markus Binsteiner"""
-__email__ = 'markus@frkl.io'
+__email__ = "markus@frkl.io"
 
 try:
     # Change here if project is renamed and does not equal the package name

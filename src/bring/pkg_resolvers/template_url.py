@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import itertools
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 from bring.pkg_resolvers import HttpDownloadPkgResolver
 from frtls.templating import replace_string
@@ -10,8 +10,8 @@ class TemplateUrlResolver(HttpDownloadPkgResolver):
 
     _plugin_name: str = "template_url"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+        super().__init__(config=config)
 
     def _name(self):
 
@@ -23,7 +23,7 @@ class TemplateUrlResolver(HttpDownloadPkgResolver):
 
     async def _retrieve_versions(
         self, source_details: Dict, update=True
-    ) -> List[Dict[str, str]]:
+    ) -> Union[Tuple[List, Dict], List]:
 
         vars = source_details["vars"]
 

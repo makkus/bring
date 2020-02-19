@@ -37,7 +37,7 @@ class ArtefactHandler(metaclass=ABCMeta):
 
 
 class SimpleArtefactHandler(ArtefactHandler):
-    def __init__(self):
+    def __init__(self, config: Dict[str, Any] = None):
         self._base_dir = os.path.join(
             BRING_PKG_CACHE, "handlers", from_camel_case(self.__class__.__name__)
         )

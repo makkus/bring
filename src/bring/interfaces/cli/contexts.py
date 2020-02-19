@@ -6,6 +6,12 @@ from colored import style
 from frtls.cli.group import FrklBaseCommand
 
 
+# def to_log(obj):
+#     with open("/tmp/click", "a") as myfile:
+#         from pprint import pformat
+#         myfile.write(pformat(obj)+"\n")
+
+
 class BringContextGroup(FrklBaseCommand):
     def __init__(
         self,
@@ -37,13 +43,15 @@ class BringContextGroup(FrklBaseCommand):
             **kwargs,
         )
 
+    async def init_command_async(self, ctx):
+
+        await self._bring.init()
+
     @click.pass_context
     async def all_contexts(ctx, self, *args, **kwargs):
 
         if ctx.invoked_subcommand:
             return
-
-        self._init_command(ctx)
 
         click.echo()
         click.echo("Available contexts:")
@@ -53,12 +61,13 @@ class BringContextGroup(FrklBaseCommand):
             slug = info.get("slug", "no description available")
             click.echo(f"  - {style.BOLD}{context_name}{style.RESET}: {slug}")
 
-    async def _list_commands(self):
+    async def _list_commands(self, ctx):
 
         pkg_names = self._bring.contexts.keys()
+        # to_log(pkg_names)
         return pkg_names
 
-    async def _get_command(self, name):
+    async def _get_command(self, ctx, name):
 
         context = self._bring.get_context(name)
         if context is None:
@@ -66,5 +75,10 @@ class BringContextGroup(FrklBaseCommand):
 
         from bring.interfaces.cli.command_group import BringCommandGroup
 
-        context_info_command = BringCommandGroup(bring=self._bring, context=name)
+        context_info_command = BringCommandGroup(
+            bring=self._bring, context=name, name=name
+        )
+
+        vals = await context.get_values("info")
+        context_info_command.short_help = vals["info"].get("slug", "n/a")
         return context_info_command
