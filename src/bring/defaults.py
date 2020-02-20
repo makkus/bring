@@ -25,7 +25,7 @@ BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
-DEFAULT_ARTEFACT_METADATA = {"type": "auto"}
+DEFAULT_ARTEFACT_METADATA = {"type": "folder"}
 
 DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 

@@ -21,7 +21,7 @@ from bring.utils import is_valid_bring_target, set_folder_bring_allowed
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.formats.output import serialize
+from frtls.formats.output_formats import serialize
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
@@ -62,7 +62,6 @@ class PkgTing(SimpleTing):
 
         return {
             "source": "dict",
-            "artefact": "dict?",
             "file_sets": "dict?",
             "aliases": "dict?",
             "info": "dict?",
@@ -98,7 +97,9 @@ class PkgTing(SimpleTing):
         if "artefact" in value_names:
             resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
             artefact = get_seeded_dict(
-                DEFAULT_ARTEFACT_METADATA, resolver_defaults, requirements["artefact"]
+                DEFAULT_ARTEFACT_METADATA,
+                resolver_defaults,
+                source.get("artefact", None),
             )
             result["artefact"] = artefact
 

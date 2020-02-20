@@ -5,7 +5,7 @@ from bring.bring import Bring
 from bring.context import BringContextTing
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
-from frtls.formats.output import serialize
+from frtls.formats.output_formats import serialize
 from prompt_toolkit import HTML, print_formatted_text as print
 
 
