@@ -51,7 +51,6 @@ class PkgTing(SimpleTing):
             "source": "dict",
             "metadata": "dict",
             "artefact": "dict",
-            "file_sets": "dict",
             "aliases": "dict",
             "args": "args",
             "info": "dict",
@@ -62,7 +61,6 @@ class PkgTing(SimpleTing):
 
         return {
             "source": "dict",
-            "file_sets": "dict?",
             "aliases": "dict?",
             "info": "dict?",
             "labels": "dict?",
@@ -102,10 +100,6 @@ class PkgTing(SimpleTing):
                 source.get("artefact", None),
             )
             result["artefact"] = artefact
-
-        if "file_sets" in value_names:
-            file_sets = requirements.get("file_sets", {})
-            result["file_sets"] = file_sets
 
         if "info" in value_names:
             result["info"] = requirements.get("info", {})
@@ -228,18 +222,9 @@ class PkgTing(SimpleTing):
 
         return valid
 
-    async def get_file_sets(self) -> Dict[str, Dict]:
-
-        vals = await self.get_values("file_sets")
-        return vals["file_sets"]
-
     async def update_metadata(self) -> Mapping[str, Any]:
 
         return await self.get_metadata({"metadata_max_age": 0})
-
-    async def get_file_set(self, name: str) -> Dict:
-
-        return self.get_file_sets().get(name, {})
 
     async def get_info(
         self,
@@ -247,13 +232,12 @@ class PkgTing(SimpleTing):
         retrieve_config: Optional[Mapping[str, Any]] = None,
     ):
 
-        val_keys = ["info", "source", "labels", "file_sets", "artefact"]
+        val_keys = ["info", "source", "labels", "artefact"]
         vals = await self.get_values(*val_keys)
 
         info = vals["info"]
         source_details = vals["source"]
         var_map = source_details.get("var_map", {})
-        file_sets = vals["file_sets"]
 
         metadata: Dict[str, Any] = None
         if include_metadata:
@@ -266,7 +250,6 @@ class PkgTing(SimpleTing):
         result["info"] = info
         result["labels"] = vals["labels"]
         result["artefact"] = vals["artefact"]
-        result["file_sets"] = file_sets
 
         if include_metadata:
 
@@ -385,8 +368,6 @@ class PkgTing(SimpleTing):
         vars_final = get_seeded_dict(profile_defaults, vars)
         artefact_folder = await self.provide_artefact_folder(vars=vars_final)
 
-        file_sets = await self.get_file_sets()
-
         results = {}
 
         async def transform_one_profile(
@@ -396,7 +377,7 @@ class PkgTing(SimpleTing):
             if not isinstance(p_config, Mapping):
                 content = serialize(p_config, format("yaml"))
                 raise FrklException(
-                    msg=f"Can't process file_set '{profile_name}' for package '{self.name}'.",
+                    msg=f"Can't process profile '{profile_name}' for package '{self.name}'.",
                     reason=f"Config object is not a dictionary (instead: {type(p_config)}).\n\nContent of invalid config:\n{content}",
                 )
             p_config["vars"] = vars
@@ -419,7 +400,7 @@ class PkgTing(SimpleTing):
                         msg=f"Can't process file set '{profile_name}' for package '{self.name}'.",
                         reason=f"No profile configured to handle a file set called '{profile_name}'.",
                     )
-                p_config = file_sets.get(profile_name, {})
+                p_config = {}
 
                 await tg.spawn(
                     transform_one_profile,
