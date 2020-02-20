@@ -127,7 +127,6 @@ class BringInfoGroup(FrklBaseCommand):
             to_print = {}
             to_print["info"] = info["info"]
             to_print["labels"] = info["labels"]
-            to_print["artefact"] = info["artefact"]
             to_print["metadata snapshot"] = age.humanize()
             to_print["vars"] = {
                 "defaults": metadata["defaults"],

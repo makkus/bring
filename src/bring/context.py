@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Mapping, Optional
 
 from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.pkg import PkgTing
@@ -8,7 +8,6 @@ from bring.transform import TransformProfile
 from frtls.dicts import dict_merge
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Tasks
 from tings.makers import TingMaker
-from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
 
@@ -21,16 +20,14 @@ class BringContextTing(InheriTing, SimpleTing):
         self._parent_key = parent_key
         super().__init__(name=name, meta=meta)
 
-        ting_type_name = f"bring.types.pkgs.{self.name}"
         self._pkg_namespace = f"bring.pkgs.{self.name}"
-        self.tingistry.register_ting_type(
-            ting_type_name=ting_type_name,
+        self._pkg_list = self.tingistry.create_singleting(
+            name=self._pkg_namespace,
             ting_class="pkgs",
             subscription_namespace=self._pkg_namespace,
         )
-        self._pkg_list = self.tingistry.create_ting(
-            ting_type=ting_type_name, ting_name=self._pkg_namespace
-        )
+        self._maker_config: Optional[Mapping[str, Any]] = None
+        self._maker: Optional[TingMaker] = None
 
     def provides(self) -> Dict[str, str]:
 
@@ -178,26 +175,24 @@ class BringContextTing(InheriTing, SimpleTing):
 
     async def get_maker(self, config) -> TingMaker:
 
-        maker = self.tingistry.get_ting(f"bring.pkg_maker.{self.name}")
-        if maker is not None:
-            return maker
+        if self._maker is not None:
+            if config != self._maker_config:
+                raise Exception("Maker config changed, this is not supported yet...")
+            return self._maker
 
-        self.tingistry.register_ting_type(
-            f"bring.types.pkg_maker.{self.name}",
-            "text_file_ting_maker",
+        maker_name = f"bring.pkg_maker.{self.name}"
+        self._maker_config = config
+        self._maker = self.tingistry.create_singleting(
+            name=maker_name,
+            ting_class="text_file_ting_maker",
             ting_type="bring.types.pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
             file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],
         )
 
-        maker: TextFileTingMaker = self.tingistry.create_ting(
-            ting_type=f"bring.types.pkg_maker.{self.name}",
-            ting_name=f"bring.pkg_maker.{self.name}",
-        )
-
         indexes = config.get("indexes", [])
         for index in indexes:
-            maker.add_base_paths(index)
+            self._maker.add_base_paths(index)
 
-        return maker
+        return self._maker

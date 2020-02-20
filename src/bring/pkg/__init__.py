@@ -42,7 +42,7 @@ DEFAULT_ARG_DICT = {
 class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
-        self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
+        # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
 
     def provides(self) -> Dict[str, str]:
@@ -50,7 +50,6 @@ class PkgTing(SimpleTing):
         return {
             "source": "dict",
             "metadata": "dict",
-            "artefact": "dict",
             "aliases": "dict",
             "args": "args",
             "info": "dict",
@@ -91,15 +90,6 @@ class PkgTing(SimpleTing):
 
         if "aliases" in value_names:
             result["aliases"] = await self._get_aliases(metadata)
-
-        if "artefact" in value_names:
-            resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
-            artefact = get_seeded_dict(
-                DEFAULT_ARTEFACT_METADATA,
-                resolver_defaults,
-                source.get("artefact", None),
-            )
-            result["artefact"] = artefact
 
         if "info" in value_names:
             result["info"] = requirements.get("info", {})
@@ -232,7 +222,7 @@ class PkgTing(SimpleTing):
         retrieve_config: Optional[Mapping[str, Any]] = None,
     ):
 
-        val_keys = ["info", "source", "labels", "artefact"]
+        val_keys = ["info", "source", "labels"]
         vals = await self.get_values(*val_keys)
 
         info = vals["info"]
@@ -249,7 +239,6 @@ class PkgTing(SimpleTing):
 
         result["info"] = info
         result["labels"] = vals["labels"]
-        result["artefact"] = vals["artefact"]
 
         if include_metadata:
 
@@ -325,8 +314,14 @@ class PkgTing(SimpleTing):
 
     async def provide_artefact_folder(self, vars: Dict[str, str]):
 
-        vals = await self.get_values("artefact")
-        artefact_details = vals["artefact"]
+        vals = await self.get_values("source")
+        source = vals["source"]
+
+        resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
+
+        artefact_details = get_seeded_dict(
+            DEFAULT_ARTEFACT_METADATA, resolver_defaults, source.get("artefact", None)
+        )
 
         art_path = await self.get_artefact(vars=vars)
 
@@ -434,13 +429,15 @@ class PkgTing(SimpleTing):
             target_base = os.path.dirname(_target)
             ensure_folder(target_base)
             source = list(results.values())[0]
-            print("move: {}".format(source))
+            log.info(f"moving: {source} \u2192 {target}")
             shutil.move(source, _target)
-            set_folder_bring_allowed(_target)
+            if write_metadata:
+                set_folder_bring_allowed(_target)
             return {"target": _target}
         else:
             merge = MergeTransformer()
             config = {"sources": results.values(), "vars": vars, "delete_sources": True}
             merge.transform(_target, transform_config=config)
-            set_folder_bring_allowed(_target)
+            if write_metadata:
+                set_folder_bring_allowed(_target)
             return {"target": _target}
