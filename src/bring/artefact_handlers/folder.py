@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
+import shutil
 from typing import Any, Dict, List
 
-from bring.artefact_handlers import SimpleArtefactHandler
+from bring.artefact_handlers import ArtefactHandler
 
 
-class FolderHandler(SimpleArtefactHandler):
+class FolderHandler(ArtefactHandler):
 
     _plugin_name: str = "folder"
 
-    def __init__(self):
-        super().__init__()
-
     async def _provide_artefact_folder(
-        self, artefact_path: str, artefact_details: Dict[str, Any]
-    ):
+        self, target_path: str, artefact_path: str, artefact_details: Dict[str, Any]
+    ) -> None:
 
-        return artefact_path
+        shutil.copy2(artefact_path, target_path)
 
     def _supports(self) -> List[str]:
         return "folder"

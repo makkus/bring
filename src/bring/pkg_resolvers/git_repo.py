@@ -2,9 +2,10 @@
 import os
 import tempfile
 from collections import OrderedDict
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
 
 import git
+from bring.context import BringContextTing
 from bring.pkg_resolvers import SimplePkgResolver
 from frtls.downloads import calculate_cache_path
 from frtls.files import ensure_folder
@@ -24,14 +25,16 @@ class GitRepo(SimplePkgResolver):
 
         return "git"
 
-    def _supports(self) -> List[str]:
+    def _supports(self) -> Iterable[str]:
         return ["git"]
 
-    def get_unique_source_id(self, source_details: Dict) -> str:
+    def get_unique_source_id(
+        self, source_details: Mapping, bring_context: BringContextTing
+    ) -> str:
 
         return source_details["url"]
 
-    def get_artefact_defaults(self, source_details: Dict) -> Dict[str, Any]:
+    def get_artefact_defaults(self, source_details: Mapping) -> Mapping[str, Any]:
         return {"type": "folder"}
 
     async def _ensure_repo_cloned(self, path, url, update=False):
@@ -58,16 +61,16 @@ class GitRepo(SimplePkgResolver):
 
         await git.run(wait=True)
 
-    async def _retrieve_versions(
-        self, source_details: Dict, update=True
-    ) -> Union[Tuple[List, Dict], List]:
+    async def _process_pkg_versions(
+        self, source_details: Mapping, bring_context: BringContextTing
+    ) -> Mapping[str, Any]:
 
         cache_path = calculate_cache_path(
             base_path=self._cache_dir, url=source_details["url"]
         )
 
         await self._ensure_repo_cloned(
-            path=cache_path, url=source_details["url"], update=update
+            path=cache_path, url=source_details["url"], update=True
         )
 
         gr = GitRepository(cache_path)
@@ -113,7 +116,7 @@ class GitRepo(SimplePkgResolver):
                     {"version": c_hash, "_meta": {"release_date": timestamp}}
                 )
 
-        return versions
+        return {"versions": versions}
 
     async def _update_commits(
         self,

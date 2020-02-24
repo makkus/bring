@@ -78,7 +78,9 @@ class BringContextGroup(FrklBaseCommand):
         context_info_command = BringCommandGroup(
             bring=self._bring, context=name, name=name
         )
-
+        # import pp
+        # pp(context._input_ting.__dict__)
         vals = await context.get_values("info")
+
         context_info_command.short_help = vals["info"].get("slug", "n/a")
         return context_info_command

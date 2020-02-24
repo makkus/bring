@@ -1,29 +1,35 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Iterator
+from typing import TYPE_CHECKING, Any, Dict, Iterator
 
 from anyio import create_task_group
 from bring.pkg import PkgTing
 from tings.ting import Ting
 from tings.ting.tings import SubscripTings
-from tings.tingistry import Tingistry
+
+
+if TYPE_CHECKING:
+    from bring.context import BringContextTing
+    from tings.tingistry import Tingistry
 
 
 class Pkgs(SubscripTings):
     def __init__(
-        self, name: str, subscription_namespace: str, meta: Dict[str, Any] = None
+        self, name: str, bring_context: "BringContextTing", meta: Dict[str, Any] = None
     ):
 
         self._pkgs = {}
-        self._tingistry_obj: Tingistry = meta["tingistry"]["obj"]
+        self._tingistry_obj: "Tingistry" = meta["tingistry"]
+        self._bring_context = bring_context
         super().__init__(
             name=name,
-            ting_type="bring.types.pkg",
-            subscription_namespace=subscription_namespace,
+            prototing="bring.types.pkg",
+            subscription_namespace=None,
             meta=meta,
         )
 
     def _ting_added(self, ting: Ting):
 
+        ting.bring_context = self._bring_context
         self._pkgs[ting.name] = ting
 
     def _ting_removed(self, ting: Ting):

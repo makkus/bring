@@ -170,10 +170,10 @@ class TransformProfileTing(SimpleTing):
     def __init__(
         self, name: str, transformers_config: List, meta: Dict[str, Any] = None
     ):
-
+        self._tingistry_obj = meta["tingistry"]
         super().__init__(name=name, meta=meta)
 
-        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
+        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager(
             "transformer", plugin_type="instance"
         )
 

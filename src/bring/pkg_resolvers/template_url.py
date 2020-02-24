@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import itertools
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional
 
+from bring.context import BringContextTing
 from bring.pkg_resolvers import HttpDownloadPkgResolver
 from frtls.templating import replace_string
 
@@ -21,18 +22,20 @@ class TemplateUrlResolver(HttpDownloadPkgResolver):
 
         return ["template-url"]
 
-    async def _retrieve_versions(
-        self, source_details: Dict, update=True
-    ) -> Union[Tuple[List, Dict], List]:
+    async def _process_pkg_versions(
+        self, source_details: Dict, bring_context: BringContextTing
+    ) -> Mapping[str, Any]:
 
         vars = source_details["vars"]
 
         keys, values = zip(*vars.items())
 
         versions = [dict(zip(keys, v)) for v in itertools.product(*values)]
-        return versions
+        return {"versions": versions}
 
-    def get_unique_source_id(self, source_details: Dict) -> str:
+    def get_unique_source_id(
+        self, source_details: Dict, bring_context: BringContextTing
+    ) -> str:
 
         return source_details["url"]
 

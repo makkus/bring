@@ -4,12 +4,12 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
-from bring.transform import TransformProfile
 from frtls.dicts import dict_merge
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Tasks
 from tings.makers import TingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
+from tings.tingistry import Tingistry
 
 
 class BringContextTing(InheriTing, SimpleTing):
@@ -17,14 +17,16 @@ class BringContextTing(InheriTing, SimpleTing):
         self, name: str, parent_key: str = "parent", meta: Dict[str, Any] = None
     ):
 
+        self._tingistry_obj: Tingistry = meta["tingistry"]
         self._parent_key = parent_key
         super().__init__(name=name, meta=meta)
 
-        self._pkg_namespace = f"bring.pkgs.{self.name}"
-        self._pkg_list = self.tingistry.create_singleting(
+        self._pkg_namespace = f"bring.contexts.{self.name}.pkgs"
+        self._pkg_list = self._tingistry_obj.create_singleting(
             name=self._pkg_namespace,
             ting_class="pkgs",
-            subscription_namespace=self._pkg_namespace,
+            # subscription_namespace=self._pkg_namespace,
+            bring_context=self,
         )
         self._maker_config: Optional[Mapping[str, Any]] = None
         self._maker: Optional[TingMaker] = None
@@ -37,7 +39,6 @@ class BringContextTing(InheriTing, SimpleTing):
             "pkgs": "ting",
             "config": "dict",
             "indexes": "list",
-            "transformer": "ting",
             "maker": "ting",
         }
 
@@ -68,9 +69,6 @@ class BringContextTing(InheriTing, SimpleTing):
 
         if "indexes" in value_names:
             result["indexes"] = config.get("indexes", [])
-
-        if "transformer" in value_names:
-            result["transformer"] = await self.get_transformer(config)
 
         if "maker" in value_names:
             result["maker"] = await self.get_maker(config)
@@ -105,28 +103,6 @@ class BringContextTing(InheriTing, SimpleTing):
         if parent is None:
             parent = "(no parent)"
         return {"name": self.name, "parent": parent, "config": config["config"]}
-
-    async def get_transformer(self, config) -> TransformProfile:
-
-        transform_profile = self.tingistry.get_ting(f"bring.transform.{self.name}")
-        if transform_profile is not None:
-            return transform_profile
-
-        transformers_conf = config.get(
-            "transform", [{"type": "file_filter", "include": ["*", ".*"]}]
-        )
-
-        self.tingistry.register_ting_type(
-            f"bring.types.transform.{self.name}",
-            "transform_profile_ting",
-            transformers_config=transformers_conf,
-        )
-        transform_profile = self.tingistry.create_ting(
-            ting_type=f"bring.types.transform.{self.name}",
-            ting_name=f"bring.transform.{self.name}",
-        )
-
-        return transform_profile.transform_profile
 
     async def _ensure_pkgs(self, config: Dict[str, Any]) -> None:
 
@@ -182,10 +158,10 @@ class BringContextTing(InheriTing, SimpleTing):
 
         maker_name = f"bring.pkg_maker.{self.name}"
         self._maker_config = config
-        self._maker = self.tingistry.create_singleting(
+        self._maker = self._tingistry_obj.create_singleting(
             name=maker_name,
             ting_class="text_file_ting_maker",
-            ting_type="bring.types.pkg",
+            prototing="bring.types.pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
             file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],

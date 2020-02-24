@@ -7,6 +7,7 @@ from bring.defaults import DEFAULT_INSTALL_PROFILE_NAME
 from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
+from frtls.tasks import RunWatch
 
 
 class BringInstallGroup(FrklBaseCommand):
@@ -92,23 +93,34 @@ class BringInstallGroup(FrklBaseCommand):
             @handle_exc_async
             async def command(**vars):
 
-                target = self._group_params.get("target")
-                profiles = self._group_params.get("profile")
-                strategy = self._group_params.get("strategy")
-                merge = self._group_params.get("merge")
+                # target = self._group_params.get("target")
+                # profiles = self._group_params.get("profile")
+                # strategy = self._group_params.get("strategy")
+                # merge = self._group_params.get("merge")
+                #
+                # write_metadata = self._group_params.get("write_metadata")
 
-                write_metadata = self._group_params.get("write_metadata")
+                path, tasks = await pkg.create_version_folder(vars=vars)
 
-                result = await pkg.install(
-                    vars=vars,
-                    profiles=profiles,
-                    target=target,
-                    merge=merge,
-                    strategy=strategy,
-                    write_metadata=write_metadata,
-                )
+                if tasks is None:
+                    print(path)
+                    return
 
-                print(result)
+                run_watch = RunWatch()
+                await tasks.run_async(run_watch)
+
+                print(path)
+
+                # result = await pkg.install(
+                #     vars=vars,
+                #     profiles=profiles,
+                #     target=target,
+                #     merge=merge,
+                #     strategy=strategy,
+                #     write_metadata=write_metadata,
+                # )
+                #
+                # print(result)
 
             try:
                 vals = await pkg.get_values("args", "info", raise_exception=True)

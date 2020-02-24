@@ -32,7 +32,7 @@ class Bring(Tingistry):
 
         super().__init__(
             name,
-            ting_types=BRINGISTRY_CONFIG["ting_types"],
+            prototings=BRINGISTRY_CONFIG["prototings"],
             tings=BRINGISTRY_CONFIG["tings"],
             modules=BRINGISTRY_CONFIG["modules"],
             classes=BRINGISTRY_CONFIG["classes"],
@@ -45,6 +45,8 @@ class Bring(Tingistry):
             if not k.startswith("bring_"):
                 continue
             config[k[6:]] = v
+
+        config["bringistry"] = self
 
         self._typistry.get_plugin_manager("pkg_resolver", plugin_config=config)
 
@@ -63,8 +65,8 @@ class Bring(Tingistry):
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
-        childs = self.get_ting("bring.contexts").childs
-        return {x.split(".")[-1]: ctx for x, ctx in childs.items()}
+        contexts = self.get_ting("bring.contexts")
+        return {x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()}
 
     def get_context(self, context_name: str) -> BringContextTing:
 

@@ -3,28 +3,23 @@ import os
 import shutil
 from typing import Any, Dict, List
 
-from bring.artefact_handlers import SimpleArtefactHandler
+from bring.artefact_handlers import ArtefactHandler
+from frtls.files import ensure_folder
 
 
-class FileHandler(SimpleArtefactHandler):
+class FileHandler(ArtefactHandler):
 
     _plugin_name: str = "file"
 
-    def __init__(self):
-
-        super().__init__()
-
     async def _provide_artefact_folder(
-        self, artefact_path: str, artefact_details: Dict[str, Any]
+        self, target_folder: str, artefact_path: str, artefact_details: Dict[str, Any]
     ):
 
-        temp_dir = self.create_temp_dir()
+        ensure_folder(target_folder)
 
-        target = os.path.join(temp_dir, os.path.basename(artefact_path))
+        target = os.path.join(target_folder, os.path.basename(artefact_path))
 
         shutil.copyfile(artefact_path, target)
-
-        return temp_dir
 
     def _supports(self) -> List[str]:
         return "file"

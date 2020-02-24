@@ -30,42 +30,38 @@ DEFAULT_ARTEFACT_METADATA = {"type": "folder"}
 DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 
 BRINGISTRY_CONFIG = {
-    "ting_types": [
-        {"name": "bring.types.pkg", "ting_class": "pkg_ting"},
+    "prototings": [
+        {"prototing_name": "bring.types.pkg", "ting_class": "pkg_ting"},
         # {"name": "bring.types.pkg_list", "ting_class": "pkg_tings"},
         {
-            "name": "bring.context_list",
+            "prototing_name": "internal.singletings.context_list",
             "ting_class": "subscrip_tings",
-            "ting_init": {
-                "ting_type": "bring_context_ting",
-                "subscription_namespace": "bring.context",
-            },
+            "prototing_factory": "singleting",
+            "prototing": "bring_context_ting",
+            "subscription_namespace": "bring.contexts",
+            "ting_name": "bring.contexts",
         },
         {
-            "name": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+            "prototing_name": f"internal.singletings.transform_profiles.{DEFAULT_INSTALL_PROFILE_NAME}",
             "ting_class": "transform_profile_ting",
-            "ting_init": {
-                "transformers_config": [{"type": "file_filter", "include": ["*"]}]
-            },
+            "prototing_factory": "singleting",
+            "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+            "transformers_config": [{"type": "file_filter", "include": ["*"]}],
         },
         {
-            "name": "bring.types.config_file_context_maker",
+            "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
-            "ting_init": {
-                "ting_type": "bring_context_ting",
-                "ting_name_strategy": "basename_no_ext",
-                "ting_target_namespace": "bring.contexts",
-                "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
-            },
+            "prototing": "bring_context_ting",
+            "ting_name_strategy": "basename_no_ext",
+            "ting_target_namespace": "bring.contexts",
+            "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
         },
     ],
     "tings": [
-        # {"ting_type": "bring.types.pkg_list", "ting_name": "bring.pkgs"},
-        {"ting_type": "bring.context_list", "ting_name": "bring.contexts"},
-        {
-            "ting_type": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-            "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-        },
+        # {
+        #     "ting_type": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+        #     "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+        # },
         # {
         #     "ting_type": "bring.types.transform.executables",
         #     "ting_name": "bring.transform.executables",
@@ -78,6 +74,7 @@ BRINGISTRY_CONFIG = {
         "bring.pkg_resolvers.git_repo",
         "bring.pkg_resolvers.template_url",
         "bring.pkg_resolvers.github_release",
+        "bring.pkg_resolvers.bring_pkg",
         "bring.artefact_handlers.archive",
         "bring.artefact_handlers.file",
         "bring.artefact_handlers.folder",

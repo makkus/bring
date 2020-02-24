@@ -3,10 +3,11 @@ import copy
 import logging
 import re
 import time
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 import arrow
 import httpx
+from bring.context import BringContextTing
 from bring.pkg_resolvers import HttpDownloadPkgResolver
 from frtls.exceptions import FrklException
 from httpx import Headers
@@ -19,6 +20,12 @@ DEFAULT_URL_REGEXES = [
 # "https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\.(?P<type>.*)$"
 
 log = logging.getLogger("bring")
+
+DEFAULT_ARGS_DICT = {
+    "os": {"doc": "The operating system to run on.", "type": "string"},
+    "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
+    "version": {"doc": "The version of the package."},
+}
 
 
 class GithubRelease(HttpDownloadPkgResolver):
@@ -63,11 +70,13 @@ class GithubRelease(HttpDownloadPkgResolver):
 
         super().__init__(config=config)
 
-    def _supports(self) -> List[str]:
+    def _supports(self) -> Iterable[str]:
 
         return ["github-release"]
 
-    def get_unique_source_id(self, source_details: Dict) -> str:
+    def get_unique_source_id(
+        self, source_details: Dict, bring_context: BringContextTing
+    ) -> str:
 
         github_user = source_details.get("user_name")
         repo_name = source_details.get("repo_name")
@@ -79,9 +88,9 @@ class GithubRelease(HttpDownloadPkgResolver):
 
         return f"{github_user}_{repo_name}{artefact_name}"
 
-    async def _retrieve_versions(
-        self, source_details: Union[str, Dict]
-    ) -> Union[Tuple[List, Dict], List]:
+    async def _process_pkg_versions(
+        self, source_details: Union[str, Dict], bring_context: BringContextTing
+    ) -> Mapping[str, Any]:
 
         github_user = source_details.get("user_name")
         repo_name = source_details.get("repo_name")
@@ -145,7 +154,7 @@ class GithubRelease(HttpDownloadPkgResolver):
             if version_data:
                 result.extend(version_data)
 
-        return result, aliases
+        return {"versions": result, "aliases": aliases, "args": DEFAULT_ARGS_DICT}
 
     def parse_release_data(
         self, data: Dict, url_regexes: List, aliases: Dict

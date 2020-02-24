@@ -129,9 +129,8 @@ class BringInfoGroup(FrklBaseCommand):
             to_print["labels"] = info["labels"]
             to_print["metadata snapshot"] = age.humanize()
             to_print["vars"] = {
-                "defaults": metadata["defaults"],
+                "args": metadata["pkg_args"],
                 "aliases": metadata["aliases"],
-                "values": metadata["allowed_values"],
             }
             if full:
                 to_print["version list"] = metadata["version_list"]

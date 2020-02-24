@@ -5,23 +5,22 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
-from bring.artefact_handlers import ArtefactHandler
 from bring.defaults import (
     BRING_ALLOWED_MARKER_NAME,
     BRING_METADATA_FOLDER_NAME,
     BRING_WORKSPACE_FOLDER,
-    DEFAULT_ARTEFACT_METADATA,
 )
 from bring.pkg_resolvers import PkgResolver
 from bring.transform.merge import MergeTransformer
 from bring.utils import is_valid_bring_target, set_folder_bring_allowed
-from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.formats.output_formats import serialize
+from frtls.tasks import Tasks
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
@@ -42,8 +41,21 @@ DEFAULT_ARG_DICT = {
 class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
+        self._tingistry_obj = meta["tingistry"]
         # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
+        # self._context: Optional["BringContextTing"] = None
+
+    # @property
+    # def bring_context(self):
+    #
+    #     return self._context
+    #
+    # @bring_context.setter
+    # def bring_context(self, context):
+    #     if self._context:
+    #         raise Exception(f"Context already set for PkgTing '{self.full_name}'.")
+    #     self._context = context
 
     def provides(self) -> Dict[str, str]:
 
@@ -69,8 +81,22 @@ class PkgTing(SimpleTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
 
+        if not self.bring_context:
+            raise FrklException(
+                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
+                reason="Context not set yet.",
+            )
+
         result = {}
         source = requirements["source"]
+
+        resolver = self._get_resolver(source_dict=source)
+
+        seed_data = await resolver.get_seed_data(
+            source, bring_context=self.bring_context
+        )
+        if seed_data is None:
+            seed_data = {}
 
         if "source" in value_names:
             result["source"] = source
@@ -86,16 +112,22 @@ class PkgTing(SimpleTing):
             result["metadata"] = metadata
 
         if "args" in value_names:
-            result["args"] = await self._calculate_args(source, metadata=metadata)
+            result["args"] = await self._calculate_args(metadata=metadata)
 
         if "aliases" in value_names:
             result["aliases"] = await self._get_aliases(metadata)
 
         if "info" in value_names:
-            result["info"] = requirements.get("info", {})
+            info = requirements.get("info", {})
+            result["info"] = get_seeded_dict(
+                seed_data.get("info", None), info, merge_strategy="merge"
+            )
 
         if "labels" in value_names:
-            result["labels"] = requirements.get("labels", {})
+            labels = requirements.get("labels", {})
+            result["labels"] = get_seeded_dict(
+                seed_data.get("labels", None), labels, merge_strategy="update"
+            )
 
         return result
 
@@ -108,23 +140,13 @@ class PkgTing(SimpleTing):
         metadata = await self.get_metadata()
         return self._get_aliases(metadata)
 
-    async def _calculate_args(self, source_dict, metadata):
+    async def _calculate_args(self, metadata):
 
-        defaults = metadata["defaults"]
+        # print(metadata.keys())
+        # print(metadata["pkg_args"])
 
-        args = copy.copy(DEFAULT_ARG_DICT)
-        if source_dict.get("args", None):
-            args = dict_merge(args, source_dict["args"], copy_dct=False)
-
-        result = {}
-
-        for arg, default in defaults.items():
-            args_dict = args.get(arg, {})
-            args_dict["default"] = default
-            # arg_obj = Arg.from_dict(name=arg, hive=None, default=default, **args_dict)
-            result[arg] = args_dict
-
-        arg = self.tingistry.arg_hive.create_record_arg(childs=result)
+        pkg_args = metadata["pkg_args"]
+        arg = self._tingistry_obj.arg_hive.create_record_arg(childs=pkg_args)
 
         return arg
 
@@ -138,10 +160,26 @@ class PkgTing(SimpleTing):
 
     async def _get_metadata(
         self, source_dict, config: Optional[Mapping[str, Any]] = None
-    ):
+    ) -> Mapping[str, Any]:
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
         resolver = self._get_resolver(source_dict)
+
+        return await resolver.get_pkg_metadata(
+            source_dict, self.bring_context, override_config=config
+        )
+
+    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
+
+        pkg_type = source_dict.get("type", None)
+        if pkg_type is None:
+            raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
+
+        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager(
+            "pkg_resolver"
+        )
+
+        resolver: PkgResolver = pm.get_plugin_for(pkg_type)
         if resolver is None:
             r_type = source_dict.get("type", source_dict)
             raise TingException(
@@ -150,31 +188,7 @@ class PkgTing(SimpleTing):
                 reason=f"No resolver registered for: {r_type}",
             )
 
-        return await resolver.get_pkg_metadata(source_dict, override_config=config)
-
-    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
-
-        pkg_type = source_dict.get("type", None)
-        if pkg_type is None:
-            raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
-
-        pm: TypistryPluginManager = self.tingistry.get_plugin_manager("pkg_resolver")
-        plugin: PkgResolver = pm.get_plugin_for(pkg_type)
-        return plugin
-
-    def _get_artefact_handler(self, artefact_details: Dict[str, Any]):
-
-        art_type = artefact_details.get("type", None)
-        if art_type is None:
-            raise KeyError(
-                f"No 'type' key in artefact details: {dict(artefact_details)}"
-            )
-
-        pm: TypistryPluginManager = self.tingistry.get_plugin_manager(
-            "artefact_handler"
-        )
-        plugin: ArtefactHandler = pm.get_plugin_for(art_type)
-        return plugin
+        return resolver
 
     def _get_translated_value(self, var_map, value):
 
@@ -185,32 +199,30 @@ class PkgTing(SimpleTing):
 
     async def get_valid_var_combinations(self):
 
-        vals = await self.get_values("metadata", "source")
+        vals = await self.get_values("metadata")
         metadata = vals["metadata"]
-        source_details = vals["source"]
 
-        return self._get_valid_var_combinations(
-            source_details=source_details, metadata=metadata
-        )
+        return self._get_valid_var_combinations(metadata=metadata)
 
-    async def _get_valid_var_combinations(self, source_details, metadata):
+    async def _get_valid_var_combinations(
+        self, metadata
+    ) -> Iterable[Mapping[str, Any]]:
+        """Return a list of valid var combinations that uniquely identify a version item.
+
+
+        Aliases are not considered here, those need to be translated before lookup.
+        """
 
         versions = metadata["versions"]
-        var_map = source_details.get("var_map", {})
 
-        valid = []
+        result = []
         for version in versions:
-            temp = {}
-            for k, v in version.items():
-                if k == "_meta":
-                    continue
+            temp = copy.copy(version)
+            temp.pop("_meta", None)
 
-                v = self._get_translated_value(var_map, v)
+            result.append(temp)
 
-                temp[k] = v
-            valid.append(temp)
-
-        return valid
+        return result
 
     async def update_metadata(self) -> Mapping[str, Any]:
 
@@ -227,7 +239,6 @@ class PkgTing(SimpleTing):
 
         info = vals["info"]
         source_details = vals["source"]
-        var_map = source_details.get("var_map", {})
 
         metadata: Dict[str, Any] = None
         if include_metadata:
@@ -244,30 +255,14 @@ class PkgTing(SimpleTing):
 
             timestamp = metadata["metadata_check"]
 
-            defaults = metadata["defaults"]
+            pkg_args = metadata["pkg_args"]
             aliases = metadata["aliases"]
-            values = {}
 
-            for version in metadata["versions"]:
-
-                for k, v in version.items():
-                    if k == "_meta":
-                        continue
-
-                    v = self._get_translated_value(var_map, v)
-
-                    val = values.setdefault(k, [])
-                    if v not in val:
-                        val.append(v)
-
-            var_combinations = await self._get_valid_var_combinations(
-                source_details=source_details, metadata=metadata
-            )
+            var_combinations = await self._get_valid_var_combinations(metadata=metadata)
 
             metadata_result = {
-                "defaults": defaults,
+                "pkg_args": pkg_args,
                 "aliases": aliases,
-                "allowed_values": values,
                 "timestamp": timestamp,
                 "version_list": var_combinations,
             }
@@ -275,63 +270,76 @@ class PkgTing(SimpleTing):
 
         return result
 
-    async def get_artefact(self, vars: Dict[str, str]) -> Dict:
-
-        vals = await self.get_values("metadata", "source")
-        source_details = vals["source"]
-        metadata = vals["metadata"]
-
-        resolver = self._get_resolver(source_details)
-
-        version = resolver.find_version(
-            vars=vars,
-            defaults=metadata["defaults"],
-            aliases=metadata["aliases"],
-            versions=metadata["versions"],
-            source_details=source_details,
-        )
-
-        if version is None:
-
-            var_combinations = await self._get_valid_var_combinations(
-                source_details=source_details, metadata=metadata
-            )
-            comb_string = ""
-            for vc in var_combinations:
-                comb_string = comb_string + "  - " + str(vc) + "\n"
-
-            raise FrklException(
-                msg=f"Can't retrieve artefact for package '{self.name}'.",
-                reason=f"Can't find version that matches provided variables: {vars}",
-                solution=f"Choose a valid variable combinations:\n{comb_string}",
-            )
-
-        download_path = await resolver.get_artefact_path(
-            version=version, source_details=source_details
-        )
-
-        return download_path
-
-    async def provide_artefact_folder(self, vars: Dict[str, str]):
+    async def create_version_folder(self, vars: Dict[str, Any]) -> Tasks:
 
         vals = await self.get_values("source")
         source = vals["source"]
+        resolver = self._get_resolver(source_dict=source)
 
-        resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
-
-        artefact_details = get_seeded_dict(
-            DEFAULT_ARTEFACT_METADATA, resolver_defaults, source.get("artefact", None)
+        path, tasks = await resolver.create_pkg_version_folder(
+            vars=vars, source_details=source, bring_context=self.bring_context
         )
 
-        art_path = await self.get_artefact(vars=vars)
+        return path, tasks
 
-        handler: ArtefactHandler = self._get_artefact_handler(artefact_details)
+    # async def get_artefact(self, vars: Dict[str, str]) -> Dict:
+    #
+    #     vals = await self.get_values("metadata", "source")
+    #     source_details = vals["source"]
+    #     metadata = vals["metadata"]
+    #
+    #     resolver = self._get_resolver(source_details)
+    #
+    #     version = resolver.find_version(
+    #         vars=vars,
+    #         pkg_args=metadata["args"],
+    #         aliases=metadata["aliases"],
+    #         versions=metadata["versions"],
+    #         var_map=source_details.get("var_map", {}),
+    #     )
+    #
+    #     if version is None:
+    #
+    #         # TODO: translate aliases
+    #         var_combinations = await self._get_valid_var_combinations(
+    #             metadata=metadata
+    #         )
+    #         comb_string = ""
+    #         for vc in var_combinations:
+    #             comb_string = comb_string + "  - " + str(vc) + "\n"
+    #
+    #         raise FrklException(
+    #             msg=f"Can't retrieve artefact for package '{self.name}'.",
+    #             reason=f"Can't find version that matches provided variables: {vars}",
+    #             solution=f"Choose a valid variable combinations:\n{comb_string}",
+    #         )
+    #
+    #     download_path = await resolver.create_version_folder(
+    #         vars=vars, source_details=source_details
+    #     )
+    #
+    #     return download_path
 
-        folder = await handler.provide_artefact_folder(
-            artefact_path=art_path, artefact_details=artefact_details
-        )
-
-        return folder
+    # async def provide_artefact_folder(self, vars: Dict[str, str]):
+    #
+    #     vals = await self.get_values("source")
+    #     source = vals["source"]
+    #
+    #     resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
+    #
+    #     artefact_details = get_seeded_dict(
+    #         DEFAULT_ARTEFACT_METADATA, resolver_defaults, source.get("artefact", None)
+    #     )
+    #
+    #     art_path = await self.get_artefact(vars=vars)
+    #
+    #     handler: ArtefactHandler = self._get_artefact_handler(artefact_details)
+    #
+    #     folder = await handler.provide_artefact_folder(
+    #         artefact_path=art_path, artefact_details=artefact_details
+    #     )
+    #
+    #     return folder
 
     def copy_file(self, source, target, force=False, method="move"):
 
@@ -387,7 +395,7 @@ class PkgTing(SimpleTing):
 
             for profile_name in profiles:
 
-                transform_profile = self.tingistry.get_ting(
+                transform_profile = self._tingistry_obj.get_ting(
                     f"bring.transform.{profile_name}"
                 )
                 if transform_profile is None:
