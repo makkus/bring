@@ -100,16 +100,16 @@ class BringInstallGroup(FrklBaseCommand):
                 #
                 # write_metadata = self._group_params.get("write_metadata")
 
-                path, tasks = await pkg.create_version_folder(vars=vars)
-
+                path = await pkg.create_version_folder(vars=vars)
+                tasks = None
                 if tasks is None:
-                    print(path)
+                    print(path["folder_path"])
                     return
 
                 run_watch = RunWatch()
                 await tasks.run_async(run_watch)
 
-                print(path)
+                print(path["folder_path"])
 
                 # result = await pkg.install(
                 #     vars=vars,

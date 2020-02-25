@@ -13,9 +13,11 @@ from bring.defaults import (
     BRING_METADATA_FOLDER_NAME,
     BRING_WORKSPACE_FOLDER,
 )
+from bring.interfaces.tui.task_progress import TerminalRunWatch
+from bring.mogrify import Transmogritory
 from bring.pkg_resolvers import PkgResolver
 from bring.transform.merge import MergeTransformer
-from bring.utils import is_valid_bring_target, set_folder_bring_allowed
+from bring.utils import find_version, is_valid_bring_target, set_folder_bring_allowed
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -24,6 +26,7 @@ from frtls.tasks import Tasks
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
+from tings.tingistry import Tingistry
 
 
 log = logging.getLogger("bring")
@@ -41,21 +44,21 @@ DEFAULT_ARG_DICT = {
 class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
-        self._tingistry_obj = meta["tingistry"]
+        self._tingistry_obj: Tingistry = meta["tingistry"]
         # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
-        # self._context: Optional["BringContextTing"] = None
+        self._context: Optional["BringContextTing"] = None
 
-    # @property
-    # def bring_context(self):
-    #
-    #     return self._context
-    #
-    # @bring_context.setter
-    # def bring_context(self, context):
-    #     if self._context:
-    #         raise Exception(f"Context already set for PkgTing '{self.full_name}'.")
-    #     self._context = context
+    @property
+    def bring_context(self):
+
+        return self._context
+
+    @bring_context.setter
+    def bring_context(self, context):
+        if self._context:
+            raise Exception(f"Context already set for PkgTing '{self.full_name}'.")
+        self._context = context
 
     def provides(self) -> Dict[str, str]:
 
@@ -66,6 +69,7 @@ class PkgTing(SimpleTing):
             "args": "args",
             "info": "dict",
             "labels": "dict",
+            "tags": "list",
         }
 
     def requires(self) -> Dict[str, str]:
@@ -75,6 +79,7 @@ class PkgTing(SimpleTing):
             "aliases": "dict?",
             "info": "dict?",
             "labels": "dict?",
+            "tags": "list?",
             "ting_make_timestamp": "string",
             "ting_make_metadata": "dict",
         }
@@ -128,6 +133,12 @@ class PkgTing(SimpleTing):
             result["labels"] = get_seeded_dict(
                 seed_data.get("labels", None), labels, merge_strategy="update"
             )
+
+        if "tags" in value_names:
+            result["tags"]: Iterable[str] = requirements.get("tags", [])
+            parent_tags: Iterable[str] = seed_data.get("tags", None)
+            if parent_tags:
+                result["tags"].extend(parent_tags)
 
         return result
 
@@ -219,6 +230,7 @@ class PkgTing(SimpleTing):
         for version in versions:
             temp = copy.copy(version)
             temp.pop("_meta", None)
+            temp.pop("_mogrify", None)
 
             result.append(temp)
 
@@ -272,15 +284,36 @@ class PkgTing(SimpleTing):
 
     async def create_version_folder(self, vars: Dict[str, Any]) -> Tasks:
 
-        vals = await self.get_values("source")
-        source = vals["source"]
-        resolver = self._get_resolver(source_dict=source)
+        vals = await self.get_values("source", "metadata")
+        metadata = vals["metadata"]
 
-        path, tasks = await resolver.create_pkg_version_folder(
-            vars=vars, source_details=source, bring_context=self.bring_context
-        )
+        version = find_version(vars=vars, metadata=metadata)
 
-        return path, tasks
+        mogrify_list = version["_mogrify"]
+
+        # import pp
+        # pp(metadata)
+
+        transmogritory: Transmogritory = self._tingistry_obj._transmogritory
+
+        tm = transmogritory.create_transmogrificator(mogrify_list, pkg=self)
+
+        # last_mogrifier = tm._last_item
+
+        run_watcher = TerminalRunWatch(sort_task_names=False)
+        vals = await tm.transmogrify(run_watcher)
+        # print(last_mogrifier)
+        # vals = await last_mogrifier.get_values()
+        # import pp
+        # pp(vals)
+
+        return vals
+
+        # path, tasks = await resolver.create_pkg_version_folder(
+        #     vars=vars, source_details=source, metadata=metadata
+        # )
+        #
+        # return path, tasks
 
     # async def get_artefact(self, vars: Dict[str, str]) -> Dict:
     #

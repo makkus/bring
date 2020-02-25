@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
-import os
-import tempfile
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Iterable, Mapping, MutableMapping, Optional
 
 import git
 from bring.context import BringContextTing
 from bring.pkg_resolvers import SimplePkgResolver
-from frtls.downloads import calculate_cache_path
-from frtls.files import ensure_folder
-from frtls.subprocesses.git import GitProcess
+from bring.utils.git import ensure_repo_cloned
 from pydriller import Commit, GitRepository
 
 
@@ -34,44 +30,11 @@ class GitRepo(SimplePkgResolver):
 
         return source_details["url"]
 
-    def get_artefact_defaults(self, source_details: Mapping) -> Mapping[str, Any]:
-        return {"type": "folder"}
-
-    async def _ensure_repo_cloned(self, path, url, update=False):
-
-        parent_folder = os.path.dirname(path)
-
-        exists = False
-        if os.path.exists(path):
-            exists = True
-
-        if exists and not update:
-            return
-
-        ensure_folder(parent_folder)
-
-        if not exists:
-
-            git = GitProcess(
-                "clone", url, path, working_dir=parent_folder, GIT_TERMINAL_PROMPT="0"
-            )
-
-        else:
-            git = GitProcess("fetch", working_dir=path)
-
-        await git.run(wait=True)
-
     async def _process_pkg_versions(
         self, source_details: Mapping, bring_context: BringContextTing
     ) -> Mapping[str, Any]:
 
-        cache_path = calculate_cache_path(
-            base_path=self._cache_dir, url=source_details["url"]
-        )
-
-        await self._ensure_repo_cloned(
-            path=cache_path, url=source_details["url"], update=True
-        )
+        cache_path = await ensure_repo_cloned(url=source_details["url"], update=True)
 
         gr = GitRepository(cache_path)
         commits: MutableMapping[str, Commit] = OrderedDict()
@@ -94,12 +57,36 @@ class GitRepo(SimplePkgResolver):
                 await self._update_commits(gr, commits, k)
             c = commits[tags[k].hexsha]
             timestamp = str(c.author_date)
-            versions.append({"version": k, "_meta": {"release_date": timestamp}})
+            versions.append(
+                {
+                    "version": k,
+                    "_meta": {"release_date": timestamp},
+                    "_mogrify": [
+                        {
+                            "type": "git_clone",
+                            "url": source_details["url"],
+                            "version": k,
+                        }
+                    ],
+                }
+            )
 
         if "master" in branches.keys():
             c = commits[branches["master"].hexsha]
             timestamp = str(c.author_date)
-            versions.append({"version": "master", "_meta": {"release_date": timestamp}})
+            versions.append(
+                {
+                    "version": "master",
+                    "_meta": {"release_date": timestamp},
+                    "_mogrify": [
+                        {
+                            "type": "git_clone",
+                            "url": source_details["url"],
+                            "version": "master",
+                        }
+                    ],
+                }
+            )
         for b in branches.keys():
             if b == "master":
                 continue
@@ -107,13 +94,35 @@ class GitRepo(SimplePkgResolver):
                 await self._update_commits(gr, commits, b)
             c = commits[branches[b].hexsha]
             timestamp = str(c.author_date)
-            versions.append({"version": b, "_meta": {"release_date": timestamp}})
+            versions.append(
+                {
+                    "version": b,
+                    "_meta": {"release_date": timestamp},
+                    "_mogrify": [
+                        {
+                            "type": "git_clone",
+                            "url": source_details["url"],
+                            "version": b,
+                        }
+                    ],
+                }
+            )
 
         if source_details.get("use_commits_as_versions", False):
             for c_hash, c in commits.items():
                 timestamp = str(c.author_date)
                 versions.append(
-                    {"version": c_hash, "_meta": {"release_date": timestamp}}
+                    {
+                        "version": c_hash,
+                        "_meta": {"release_date": timestamp},
+                        "_mogrify": [
+                            {
+                                "type": "git_clone",
+                                "url": source_details["url"],
+                                "version": c_hash,
+                            }
+                        ],
+                    }
                 )
 
         return {"versions": versions}
@@ -128,22 +137,3 @@ class GitRepo(SimplePkgResolver):
         for c in git_repo.get_list_commits(branch=checkout_point):
             if c.hash not in current_commits.keys():
                 current_commits[c.hash] = c
-
-    async def get_artefact_path(
-        self, version: Dict[str, str], source_details: Dict[str, Any]
-    ):
-
-        cache_path = calculate_cache_path(
-            base_path=self._cache_dir, url=source_details["url"]
-        )
-
-        temp_path = os.path.join(self._cache_dir, "tmp_artefact_folders")
-        ensure_folder(temp_path)
-        tempdir = tempfile.mkdtemp(dir=temp_path)
-
-        clone_cmd = GitProcess("clone", cache_path, tempdir)
-        await clone_cmd.run()
-        checkout_cmd = GitProcess("checkout", version["version"], working_dir=tempdir)
-        await checkout_cmd.run()
-
-        return tempdir

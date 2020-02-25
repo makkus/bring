@@ -11,6 +11,7 @@ from bring.defaults import (
     BRING_WORKSPACE_FOLDER,
 )
 from bring.interfaces.tui.task_progress import TerminalRunWatch
+from bring.mogrify import Transmogritory
 from frtls.files import ensure_folder
 from frtls.tasks import ParallelTasksAsync
 from tings.makers.file import TextFileTingMaker
@@ -49,6 +50,8 @@ class Bring(Tingistry):
         config["bringistry"] = self
 
         self._typistry.get_plugin_manager("pkg_resolver", plugin_config=config)
+
+        self._transmogritory = Transmogritory(self)
 
         self._context_maker: TextFileTingMaker = self.create_ting(
             "bring.types.config_file_context_maker", "bring.context_maker"

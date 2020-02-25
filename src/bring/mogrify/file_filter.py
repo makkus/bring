@@ -1,33 +1,44 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Dict, Iterable, Union
+from typing import Any, Iterable, Mapping, Union
 
-from bring.transform import Transformer
+from bring.mogrify import Mogrifier
 from frtls.files import ensure_folder
 from pathspec import PathSpec, patterns
 
 
-class FileFilterTransformer(Transformer):
+class FileFilterMogrifier(Mogrifier):
 
     _plugin_name: str = "file_filter"
 
-    def __init__(self, **config):
+    def requires(self) -> Mapping[str, str]:
 
-        super().__init__(**config)
+        return {"folder_path": "string", "include": "list"}
 
-    def get_config_keys(self) -> Dict:
+    def get_msg(self) -> str:
 
-        return {}
+        return "filtering files"
 
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
+    def provides(self) -> Mapping[str, str]:
 
-        matches = self.find_matches(path, transform_config=transform_config)
+        return {"folder_path": "string"}
 
+    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
+
+        shutil.rmtree(result["folder_path"], ignore_errors=True)
+
+    async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        path: str = requirements["folder_path"]
+        include_patterns: Union[str, Iterable[str]] = requirements["include"]
+
+        matches = self.find_matches(path, include_patterns=include_patterns)
+
+        result = self.create_temp_dir(prefix="file_filter_")
         if not matches:
-            return None
+            return {"folder_path": result}
 
-        result = self.create_temp_dir()
         for m in matches:
             source = os.path.join(path, m)
             target = os.path.join(result, m)
@@ -35,7 +46,7 @@ class FileFilterTransformer(Transformer):
             ensure_folder(parent)
             shutil.move(source, target)
 
-        return result
+        return {"folder_path": result}
 
     def find_matches(
         self,

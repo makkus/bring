@@ -3,33 +3,14 @@ import json
 import logging
 import os
 from abc import ABCMeta, abstractmethod
-from collections import Sequence
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
 
 import arrow
-import httpx
 from anyio import aopen
-from bring.artefact_handlers import ArtefactHandler
-from bring.defaults import (
-    BRING_PKG_CACHE,
-    DEFAULT_ARTEFACT_METADATA,
-    PKG_RESOLVER_DEFAULTS,
-)
+from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
-from frtls.tasks import SerialTasksAsync, SingleTaskAsync, Task, Tasks
-from frtls.types.typistry import TypistryPluginManager
 
 
 if TYPE_CHECKING:
@@ -68,10 +49,6 @@ class PkgResolver(metaclass=ABCMeta):
 
         This is used mainly for caching purposes.
         """
-        pass
-
-    @abstractmethod
-    def get_artefact_defaults(self, source_details: Mapping) -> Mapping[str, Any]:
         pass
 
     async def get_seed_data(
@@ -253,6 +230,7 @@ class PkgResolver(metaclass=ABCMeta):
             config=config,
             cached_only=False,
         )
+
         PkgResolver.metadata_cache[self.__class__][id] = {
             "metadata": metadata,
             "source": source_details,
@@ -274,151 +252,6 @@ class PkgResolver(metaclass=ABCMeta):
         This is called by 'get_pkg_metadata', if no in-memory cached version of the metadata can be found.
         """
         pass
-
-    async def create_pkg_version_folder(
-        self,
-        vars: Mapping[str, Any],
-        source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
-        override_config: Mapping[str, Any] = None,
-    ) -> Tuple[str, Tasks]:
-
-        metadata = await self.get_pkg_metadata(
-            source_details=source_details,
-            bring_context=bring_context,
-            override_config=override_config,
-        )
-
-        version = self.find_version(vars=vars, metadata=metadata)
-
-        path, retrieval_task = self._get_artefact_retrieval_task(
-            version=version, source_details=source_details, bring_context=bring_context
-        )
-
-        artefact_details = get_seeded_dict(
-            DEFAULT_ARTEFACT_METADATA,
-            self.get_artefact_defaults(source_details),
-            source_details.get("artefact", None),
-        )
-        art_type = artefact_details.get("type", None)
-        if art_type is None:
-            raise KeyError(
-                f"No 'type' key in artefact details: {dict(artefact_details)}"
-            )
-
-        pm: TypistryPluginManager = bring_context._tingistry_obj.get_plugin_manager(
-            "artefact_handler"
-        )
-        artefact_handler: ArtefactHandler = pm.get_plugin_for(art_type)
-        id = self.get_unique_source_id(
-            source_details=source_details, bring_context=bring_context
-        )
-        generate_valid_filename(id, sep="_")
-        target_folder = ArtefactHandler.create_temp_dir_path(
-            artefact_handler.__class__, leaf_folder_name=id
-        )
-        result_path, folder_task = await artefact_handler.provide_artefact_folder_tasks(
-            target_folder=target_folder,
-            artefact_path=path,
-            artefact_details=artefact_details,
-        )
-
-        if retrieval_task is None and folder_task is None:
-            _tasks = None
-        else:
-            _tasks: Tasks = SerialTasksAsync()
-            if retrieval_task is not None:
-                _tasks.add_task(retrieval_task)
-            if folder_task is not None:
-                _tasks.add_task(folder_task)
-
-        return result_path, _tasks
-
-    @abstractmethod
-    def _get_artefact_retrieval_task(
-        self,
-        version: Mapping[str, Any],
-        source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
-    ) -> Union[Task, Iterable[Task]]:
-
-        pass
-
-    # def calculate_unique_version_id(
-    #     self, version: Mapping[str, str], source_details: Mapping[str, Any], bring_context: "BringContextTing"
-    # ) -> str:
-    #
-    #     id = self.get_unique_source_id(source_details=source_details, bring_context=bring_context)
-    #     if not id:
-    #         raise Exception("Unique source id can't be empty")
-    #
-    #     for k in sorted(version):
-    #         if k != "_meta":
-    #             id = id + "_" + version[k]
-    #     id = id + ".download"
-    #
-    #     return id
-
-    def find_version(
-        self, vars: Mapping[str, str], metadata: Mapping[str, Any]
-    ) -> Mapping[str, Any]:
-        """Return details about one version item of a package, using the provided vars to find one (or the first) version that matches most/all of the provided vars.
-
-        Args:
-            - *vars*: User provided vars
-            - *metadata*: the package metadata
-        """
-
-        aliases = metadata.get("aliases", {})
-        # pkg_args = metadata.get("pkg_args", {})
-        versions = metadata["versions"]
-
-        # TODO: parse args
-
-        vars_final = {}
-        for k, v in vars.items():
-            vars_final[k] = aliases.get(k, {}).get(v, v)
-
-        matches = []
-        for version in versions:
-
-            match = True
-            for k, v in version.items():
-                if k == "_meta":
-                    continue
-
-                comp_v = vars_final.get(k, None)
-                if not isinstance(comp_v, str) and isinstance(comp_v, Sequence):
-                    temp_match = False
-                    for c in comp_v:
-                        if c == v:
-                            temp_match = True
-                            break
-                    if not temp_match:
-                        match = False
-                        break
-                else:
-
-                    if comp_v != v:
-                        match = False
-                        break
-
-            if match:
-                matches.append(version)
-
-        if not matches:
-            return None
-
-        if len(matches) == 1:
-            return matches[0]
-
-        # find the first 'exactest" match
-        max_match = matches[0]
-        for m in matches[1:]:
-            if len(m) > len(max_match):
-                max_match = m
-
-        return max_match
 
 
 class SimplePkgResolver(PkgResolver):
@@ -449,8 +282,10 @@ class SimplePkgResolver(PkgResolver):
         """
         pass
 
-    def get_artefact_defaults(self, source_details: Dict) -> Dict[str, Any]:
-        return {}
+    def get_artefact_mogrify(
+        self, source_details: Mapping[str, Any], version: Mapping[str, Any]
+    ) -> Union[Mapping, Iterable]:
+        return None
 
     async def _get_pkg_metadata(
         self,
@@ -515,6 +350,35 @@ class SimplePkgResolver(PkgResolver):
 
         metadata["metadata_check"] = str(arrow.Arrow.now())
 
+        for version in versions:
+
+            sam = source_details.get("artefact", None)
+            if sam:
+                if isinstance(sam, Mapping):
+                    version["_mogrify"].append(sam)
+                else:
+                    version["_mogrify"].extend(sam)
+                continue
+
+            if not hasattr(self, "get_artefact_mogrify"):
+                continue
+
+            vam = self.get_artefact_mogrify(source_details, version)
+
+            if vam:
+                if isinstance(vam, Mapping):
+                    version["_mogrify"].append(vam)
+                else:
+                    version["_mogrify"].extend(vam)
+
+        mogrifiers = source_details.get("mogrify", None)
+        if mogrifiers:
+            for version in versions:
+                if isinstance(mogrifiers, Mapping):
+                    version["_mogrify"].append(mogrifiers)
+                else:
+                    version["_mogrify"].extend(mogrifiers)
+
         await self.write_metadata(
             metadata_file, metadata, source_details, bring_context
         )
@@ -532,7 +396,7 @@ class SimplePkgResolver(PkgResolver):
         computed_args = {}
         for version in versions:
             for k in version.keys():
-                if k == "_meta":
+                if k == "_meta" or k == "_mogrify":
                     continue
                 elif k in computed_args.keys():
                     val = version[k]
@@ -562,12 +426,18 @@ class SimplePkgResolver(PkgResolver):
                     else:
                         computed_args[var_name]["allowed"].append(alias)
 
+        required_keys = computed_args.keys()
         # now try to find keys that are not included in the first/latest version (most of the time there won't be any)
         args = get_seeded_dict(
             pkg_args, computed_args, source_args, merge_strategy="merge"
         )
 
-        return args
+        final_args = {}
+        for k, v in args.items():
+            if k in required_keys:
+                final_args[k] = v
+
+        return final_args
 
     async def get_metadata(self, metadata_file: str):
 
@@ -595,65 +465,3 @@ class SimplePkgResolver(PkgResolver):
         }
         async with await aopen(metadata_file, "w") as f:
             await f.write(json.dumps(data))
-
-
-class HttpDownloadPkgResolver(SimplePkgResolver):
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
-
-        super().__init__(config=config)
-        self._download_dir = os.path.join(self._cache_dir, "_downloads")
-        ensure_folder(self._download_dir)
-
-    def _get_artefact_retrieval_task(
-        self,
-        version: Mapping[str, Any],
-        source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
-    ) -> Tuple[str, Optional[Task]]:
-
-        download_url = self.get_download_url(
-            version=version, source_details=source_details
-        )
-
-        # filename = self.calculate_unique_version_id(version=version, source_details=source_details)
-        filename = version.get("_meta", {}).get("asset_name", None)
-        if filename is None:
-            filename = os.path.basename(download_url)
-
-        target_path = os.path.join(self._download_dir, filename)
-
-        if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
-            log.debug(f"Cached file present, not downloading url: {download_url}")
-            return target_path, None
-
-        download_url = self.get_download_url(version, source_details)
-
-        task = SingleTaskAsync(
-            func=self.download_artefact,
-            func_kwargs={"download_url": download_url, "target_path": target_path},
-            msg=f"downloading '{download_url}'...",
-            name="download task",
-        )
-
-        return target_path, task
-
-    @abstractmethod
-    def get_download_url(self, version: Dict[str, str], source_details: Dict[str, Any]):
-
-        pass
-
-    async def download_artefact(self, download_url: str, target_path: str):
-
-        ensure_folder(os.path.dirname(target_path))
-        log.debug(f"Downloading url: {download_url}")
-
-        try:
-            client = httpx.AsyncClient()
-            async with await aopen(target_path, "wb") as f:
-                async with client.stream("GET", download_url) as response:
-                    async for chunk in response.aiter_bytes():
-                        await f.write(chunk)
-        finally:
-            await client.aclose()
-
-        return target_path

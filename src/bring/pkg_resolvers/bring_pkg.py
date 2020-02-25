@@ -5,6 +5,7 @@ from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
 from bring.pkg_resolvers import SimplePkgResolver
+from bring.utils import find_versions
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
@@ -73,9 +74,6 @@ class BringPkgResolver(SimplePkgResolver):
 
         return pkg.full_name
 
-    def get_artefact_defaults(self, source_details: Mapping) -> Mapping[str, Any]:
-        return {"type": "folder"}
-
     async def _process_pkg_versions(
         self, source_details: Mapping, bring_context: BringContextTing
     ) -> Mapping[str, Any]:
@@ -83,13 +81,8 @@ class BringPkgResolver(SimplePkgResolver):
         pkg = self.get_parent_pkg(source_details, bring_context=bring_context)
         values = await pkg.get_values("metadata")
         metadata = values["metadata"]
-        return {"versions": metadata["versions"]}
 
-    def get_artefact_path(
-        self,
-        version: Mapping[str, str],
-        source_details: Mapping[str, Any],
-        bring_context: BringContextTing,
-    ):
-        # pkg = self.get_parent_pkg(source_details, bring_context=bring_context)
-        pass
+        vars = source_details.get("vars", {})
+        versions = find_versions(vars, metadata)
+
+        return {"versions": versions}

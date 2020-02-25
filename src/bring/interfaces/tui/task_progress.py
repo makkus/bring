@@ -77,10 +77,15 @@ class TuiRunWatch(RunWatch):
 
 
 class TerminalRunWatch(RunWatch):
-    def __init__(self):
-        self._tasks = SortedDict()
+    def __init__(self, sort_task_names=True, use_name_for_msg=False):
         self._old_height = 0
         self._terminal: Terminal = Terminal()
+        self._use_name_for_msg = use_name_for_msg
+        self._sort_task_names = sort_task_names
+        if self._sort_task_names:
+            self._tasks = SortedDict()
+        else:
+            self._tasks = {}
 
     async def run_tasks(self, tasks: Tasks):
 
@@ -104,10 +109,16 @@ class TerminalRunWatch(RunWatch):
         lines = []
         for task, text in self._tasks.items():
 
-            if task.parent:
-                name = f"{task.parent.desc.name}:{task.desc.name}"
+            if self._use_name_for_msg:
+                if task.parent_task:
+                    name = f"{task.parent_task.desc.name}:{task.desc.name}"
+                else:
+                    name = task.desc.name
             else:
-                name = task.desc.name
+                if task.parent_task:
+                    name = f"{task.parent_task.desc.name}:{task.desc.msg}"
+                else:
+                    name = task.desc.msg
 
             length = len(name)
             if length > max_left:

@@ -21,12 +21,11 @@ BRING_CONTEXTS_FOLDER = os.path.join(BRING_APP_DIRS.user_config_dir, "contexts")
 BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
 
 BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
+BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_checkouts")
 
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
-DEFAULT_ARTEFACT_METADATA = {"type": "folder"}
-
 DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 
 BRINGISTRY_CONFIG = {
@@ -41,13 +40,13 @@ BRINGISTRY_CONFIG = {
             "subscription_namespace": "bring.contexts",
             "ting_name": "bring.contexts",
         },
-        {
-            "prototing_name": f"internal.singletings.transform_profiles.{DEFAULT_INSTALL_PROFILE_NAME}",
-            "ting_class": "transform_profile_ting",
-            "prototing_factory": "singleting",
-            "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-            "transformers_config": [{"type": "file_filter", "include": ["*"]}],
-        },
+        # {
+        #     "prototing_name": f"internal.singletings.transform_profiles.{DEFAULT_INSTALL_PROFILE_NAME}",
+        #     "ting_class": "transform_profile_ting",
+        #     "prototing_factory": "singleting",
+        #     "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
+        #     "transformers_config": [{"type": "file_filter", "include": ["*"]}],
+        # },
         {
             "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
@@ -78,16 +77,22 @@ BRINGISTRY_CONFIG = {
         "bring.artefact_handlers.archive",
         "bring.artefact_handlers.file",
         "bring.artefact_handlers.folder",
-        "bring.transform.file_filter",
-        "bring.transform.merge",
-        "bring.transform.rename",
-        "bring.transform.set_mode",
+        "bring.mogrify",
+        "bring.mogrify.archive",
+        "bring.mogrify.download",
+        "bring.mogrify.folder",
+        "bring.mogrify.file",
+        "bring.mogrify.file_filter",
+        "bring.mogrify.git_clone",
+        # "bring.transform.file_filter",
+        # "bring.transform.merge",
+        # "bring.transform.rename",
+        # "bring.transform.set_mode",
         "bring.context",
     ],
     "classes": [
         "bring.pkg_resolvers.PkgResolver",
         "bring.artefact_handlers.ArtefactHandler",
-        "bring.transform.Transformer",
     ],
 }
 

@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 import arrow
 import httpx
 from bring.context import BringContextTing
-from bring.pkg_resolvers import HttpDownloadPkgResolver
+from bring.pkg_resolvers import SimplePkgResolver
 from frtls.exceptions import FrklException
 from httpx import Headers
 
@@ -28,7 +28,7 @@ DEFAULT_ARGS_DICT = {
 }
 
 
-class GithubRelease(HttpDownloadPkgResolver):
+class GithubRelease(SimplePkgResolver):
 
     last_github_limit_details = None
 
@@ -87,6 +87,23 @@ class GithubRelease(HttpDownloadPkgResolver):
             artefact_name = f"_{artefact_name}"
 
         return f"{github_user}_{repo_name}{artefact_name}"
+
+    def get_artefact_mogrify(
+        self, source_details: Mapping[str, Any], version: Mapping[str, Any]
+    ) -> Union[Mapping, Iterable]:
+
+        url: str = version["_meta"].get("url")
+
+        match = False
+        for ext in [".zip", "tar.gz", "tar.bz2"]:
+            if url.endswith(ext):
+                match = True
+                break
+
+        if match:
+            return {"type": "archive"}
+        else:
+            return {"type": "file"}
 
     async def _process_pkg_versions(
         self, source_details: Union[str, Dict], bring_context: BringContextTing
@@ -219,11 +236,14 @@ class GithubRelease(HttpDownloadPkgResolver):
             m["size"] = size
             m["url"] = browser_download_url
             vars["_meta"] = m
+            vars["_mogrify"] = [
+                {"type": "download", "url": m["url"], "target_file_name": asset_name}
+            ]
 
             result.append(vars)
 
         return result
 
-    def get_download_url(self, version: Dict[str, str], source_details: Dict):
-
-        return version["_meta"]["url"]
+    # def get_download_url(self, version: Dict[str, str], source_details: Dict):
+    #
+    #     return version["_meta"]["url"]

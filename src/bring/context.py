@@ -25,7 +25,7 @@ class BringContextTing(InheriTing, SimpleTing):
         self._pkg_list = self._tingistry_obj.create_singleting(
             name=self._pkg_namespace,
             ting_class="pkgs",
-            # subscription_namespace=self._pkg_namespace,
+            subscription_namespace=self._pkg_namespace,
             bring_context=self,
         )
         self._maker_config: Optional[Mapping[str, Any]] = None

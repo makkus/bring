@@ -14,7 +14,11 @@ if TYPE_CHECKING:
 
 class Pkgs(SubscripTings):
     def __init__(
-        self, name: str, bring_context: "BringContextTing", meta: Dict[str, Any] = None
+        self,
+        name: str,
+        subscription_namespace: str,
+        bring_context: "BringContextTing",
+        meta: Dict[str, Any] = None,
     ):
 
         self._pkgs = {}
@@ -23,7 +27,7 @@ class Pkgs(SubscripTings):
         super().__init__(
             name=name,
             prototing="bring.types.pkg",
-            subscription_namespace=None,
+            subscription_namespace=subscription_namespace,
             meta=meta,
         )
 
