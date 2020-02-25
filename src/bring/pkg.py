@@ -3,25 +3,14 @@ import copy
 import logging
 import os
 import shutil
-import tempfile
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
+from typing import Any, Dict, Iterable, Mapping, Optional
 
-from anyio import create_task_group
-from bring.defaults import (
-    BRING_ALLOWED_MARKER_NAME,
-    BRING_METADATA_FOLDER_NAME,
-    BRING_WORKSPACE_FOLDER,
-)
 from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.mogrify import Transmogritory
 from bring.pkg_resolvers import PkgResolver
-from bring.transform.merge import MergeTransformer
-from bring.utils import find_version, is_valid_bring_target, set_folder_bring_allowed
+from bring.utils import find_version
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.formats.output_formats import serialize
 from frtls.tasks import Tasks
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
@@ -386,99 +375,99 @@ class PkgTing(SimpleTing):
         elif method == "move":
             shutil.move(source, target)
 
-    async def install(
-        self,
-        vars: Dict[str, str],
-        profiles: Optional[Union[List[str], str]] = None,
-        target: Optional[Union[str, Path]] = None,
-        merge: bool = False,
-        strategy="default",
-        write_metadata=False,
-    ) -> Dict[str, str]:
-
-        if strategy not in ["force", "default"]:
-            raise NotImplementedError()
-
-        # TODO: read from profile
-        profile_defaults = {}
-        vars_final = get_seeded_dict(profile_defaults, vars)
-        artefact_folder = await self.provide_artefact_folder(vars=vars_final)
-
-        results = {}
-
-        async def transform_one_profile(
-            profile_name, transform_profile, source_folder, p_config
-        ):
-
-            if not isinstance(p_config, Mapping):
-                content = serialize(p_config, format("yaml"))
-                raise FrklException(
-                    msg=f"Can't process profile '{profile_name}' for package '{self.name}'.",
-                    reason=f"Config object is not a dictionary (instead: {type(p_config)}).\n\nContent of invalid config:\n{content}",
-                )
-            p_config["vars"] = vars
-
-            result_path = transform_profile.transform(
-                input_path=source_folder, config=p_config
-            )
-
-            results[profile_name] = result_path
-
-        async with create_task_group() as tg:
-
-            for profile_name in profiles:
-
-                transform_profile = self._tingistry_obj.get_ting(
-                    f"bring.transform.{profile_name}"
-                )
-                if transform_profile is None:
-                    raise FrklException(
-                        msg=f"Can't process file set '{profile_name}' for package '{self.name}'.",
-                        reason=f"No profile configured to handle a file set called '{profile_name}'.",
-                    )
-                p_config = {}
-
-                await tg.spawn(
-                    transform_one_profile,
-                    profile_name,
-                    transform_profile.transform_profile,
-                    artefact_folder,
-                    p_config,
-                )
-
-        if target is None and not merge:
-            return results
-
-        if target is None:
-            target = tempfile.mkdtemp(
-                prefix=f"{self.name}_install_", dir=BRING_WORKSPACE_FOLDER
-            )
-
-        if not is_valid_bring_target(target):
-            raise FrklException(
-                f"Can't install files from temp install folder(s) to target '{target}'",
-                reason="Folder exists, is non-empty and was not created by bring.",
-                solution=f"Either delete the folder or it's content, or create a marker file '.{BRING_ALLOWED_MARKER_NAME}' or '{BRING_METADATA_FOLDER_NAME}{os.path.sep}{BRING_ALLOWED_MARKER_NAME}' to indicate it is ok for bring to add/delete files in there. Back up the contents of that folder in case there is important data!",
-            )
-
-        if isinstance(target, Path):
-            _target = target.resolve().as_posix()
-        else:
-            _target = os.path.expanduser(target)
-
-        if len(results) == 1 and not os.path.exists(_target):
-            target_base = os.path.dirname(_target)
-            ensure_folder(target_base)
-            source = list(results.values())[0]
-            log.info(f"moving: {source} \u2192 {target}")
-            shutil.move(source, _target)
-            if write_metadata:
-                set_folder_bring_allowed(_target)
-            return {"target": _target}
-        else:
-            merge = MergeTransformer()
-            config = {"sources": results.values(), "vars": vars, "delete_sources": True}
-            merge.transform(_target, transform_config=config)
-            if write_metadata:
-                set_folder_bring_allowed(_target)
-            return {"target": _target}
+    # async def install(
+    #     self,
+    #     vars: Dict[str, str],
+    #     profiles: Optional[Union[List[str], str]] = None,
+    #     target: Optional[Union[str, Path]] = None,
+    #     merge: bool = False,
+    #     strategy="default",
+    #     write_metadata=False,
+    # ) -> Dict[str, str]:
+    #
+    #     if strategy not in ["force", "default"]:
+    #         raise NotImplementedError()
+    #
+    #     # TODO: read from profile
+    #     profile_defaults = {}
+    #     vars_final = get_seeded_dict(profile_defaults, vars)
+    #     artefact_folder = await self.provide_artefact_folder(vars=vars_final)
+    #
+    #     results = {}
+    #
+    #     async def transform_one_profile(
+    #         profile_name, transform_profile, source_folder, p_config
+    #     ):
+    #
+    #         if not isinstance(p_config, Mapping):
+    #             content = serialize(p_config, format("yaml"))
+    #             raise FrklException(
+    #                 msg=f"Can't process profile '{profile_name}' for package '{self.name}'.",
+    #                 reason=f"Config object is not a dictionary (instead: {type(p_config)}).\n\nContent of invalid config:\n{content}",
+    #             )
+    #         p_config["vars"] = vars
+    #
+    #         result_path = transform_profile.transform(
+    #             input_path=source_folder, config=p_config
+    #         )
+    #
+    #         results[profile_name] = result_path
+    #
+    #     async with create_task_group() as tg:
+    #
+    #         for profile_name in profiles:
+    #
+    #             transform_profile = self._tingistry_obj.get_ting(
+    #                 f"bring.transform.{profile_name}"
+    #             )
+    #             if transform_profile is None:
+    #                 raise FrklException(
+    #                     msg=f"Can't process file set '{profile_name}' for package '{self.name}'.",
+    #                     reason=f"No profile configured to handle a file set called '{profile_name}'.",
+    #                 )
+    #             p_config = {}
+    #
+    #             await tg.spawn(
+    #                 transform_one_profile,
+    #                 profile_name,
+    #                 transform_profile.transform_profile,
+    #                 artefact_folder,
+    #                 p_config,
+    #             )
+    #
+    #     if target is None and not merge:
+    #         return results
+    #
+    #     if target is None:
+    #         target = tempfile.mkdtemp(
+    #             prefix=f"{self.name}_install_", dir=BRING_WORKSPACE_FOLDER
+    #         )
+    #
+    #     if not is_valid_bring_target(target):
+    #         raise FrklException(
+    #             f"Can't install files from temp install folder(s) to target '{target}'",
+    #             reason="Folder exists, is non-empty and was not created by bring.",
+    #             solution=f"Either delete the folder or it's content, or create a marker file '.{BRING_ALLOWED_MARKER_NAME}' or '{BRING_METADATA_FOLDER_NAME}{os.path.sep}{BRING_ALLOWED_MARKER_NAME}' to indicate it is ok for bring to add/delete files in there. Back up the contents of that folder in case there is important data!",
+    #         )
+    #
+    #     if isinstance(target, Path):
+    #         _target = target.resolve().as_posix()
+    #     else:
+    #         _target = os.path.expanduser(target)
+    #
+    #     if len(results) == 1 and not os.path.exists(_target):
+    #         target_base = os.path.dirname(_target)
+    #         ensure_folder(target_base)
+    #         source = list(results.values())[0]
+    #         log.info(f"moving: {source} \u2192 {target}")
+    #         shutil.move(source, _target)
+    #         if write_metadata:
+    #             set_folder_bring_allowed(_target)
+    #         return {"target": _target}
+    #     else:
+    #         merge = MergeTransformer()
+    #         config = {"sources": results.values(), "vars": vars, "delete_sources": True}
+    #         merge.transform(_target, transform_config=config)
+    #         if write_metadata:
+    #             set_folder_bring_allowed(_target)
+    #         return {"target": _target}

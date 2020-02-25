@@ -21,11 +21,10 @@ class BringItem(object):
         except Exception as e:
             raise ValueError(f"Can't create bring item with input '{item}': {e}")
 
-    def __init__(self, name: str, context: str, transform_profile: str):
+    def __init__(self, name: str, context):
 
         self._name: str = name
         self._context: str = context
-        self._transform_profile: str = transform_profile
 
 
 class BringList(object):

@@ -4,7 +4,6 @@ import sys
 from typing import Any, Dict
 
 from appdirs import AppDirs
-from bring.system_info import get_current_system_info
 
 
 BRING_APP_DIRS = AppDirs("bring", "frkl")
@@ -31,7 +30,6 @@ DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 BRINGISTRY_CONFIG = {
     "prototings": [
         {"prototing_name": "bring.types.pkg", "ting_class": "pkg_ting"},
-        # {"name": "bring.types.pkg_list", "ting_class": "pkg_tings"},
         {
             "prototing_name": "internal.singletings.context_list",
             "ting_class": "subscrip_tings",
@@ -40,13 +38,6 @@ BRINGISTRY_CONFIG = {
             "subscription_namespace": "bring.contexts",
             "ting_name": "bring.contexts",
         },
-        # {
-        #     "prototing_name": f"internal.singletings.transform_profiles.{DEFAULT_INSTALL_PROFILE_NAME}",
-        #     "ting_class": "transform_profile_ting",
-        #     "prototing_factory": "singleting",
-        #     "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-        #     "transformers_config": [{"type": "file_filter", "include": ["*"]}],
-        # },
         {
             "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
@@ -56,16 +47,7 @@ BRINGISTRY_CONFIG = {
             "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
         },
     ],
-    "tings": [
-        # {
-        #     "ting_type": f"bring.types.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-        #     "ting_name": f"bring.transform.{DEFAULT_INSTALL_PROFILE_NAME}",
-        # },
-        # {
-        #     "ting_type": "bring.types.transform.executables",
-        #     "ting_name": "bring.transform.executables",
-        # },
-    ],
+    "tings": [],
     "modules": [
         "bring.bring",
         "bring.pkg",
@@ -74,9 +56,6 @@ BRINGISTRY_CONFIG = {
         "bring.pkg_resolvers.template_url",
         "bring.pkg_resolvers.github_release",
         "bring.pkg_resolvers.bring_pkg",
-        "bring.artefact_handlers.archive",
-        "bring.artefact_handlers.file",
-        "bring.artefact_handlers.folder",
         "bring.mogrify",
         "bring.mogrify.archive",
         "bring.mogrify.download",
@@ -84,26 +63,19 @@ BRINGISTRY_CONFIG = {
         "bring.mogrify.file",
         "bring.mogrify.file_filter",
         "bring.mogrify.git_clone",
-        # "bring.transform.file_filter",
-        # "bring.transform.merge",
-        # "bring.transform.rename",
-        # "bring.transform.set_mode",
         "bring.context",
     ],
-    "classes": [
-        "bring.pkg_resolvers.PkgResolver",
-        "bring.artefact_handlers.ArtefactHandler",
-    ],
+    "classes": ["bring.pkg_resolvers.PkgResolver"],
 }
 
-DEFAULT_CONTEXTS = {
-    "executables": {
-        "index": ["/home/markus/projects/tings/bring/repos/executables"],
-        "default_transform_profile": "executables",
-        "metadata_max_age": 3600 * 24,
-        "defaults": get_current_system_info(),
-    }
-}
+# DEFAULT_CONTEXTS = {
+#     "executables": {
+#         "index": ["/home/markus/projects/tings/bring/repos/executables"],
+#         "default_transform_profile": "executables",
+#         "metadata_max_age": 3600 * 24,
+#         "defaults": get_current_system_info(),
+#     }
+# }
 
 
 PKG_RESOLVER_DEFAULTS: Dict[str, Any] = {"metadata_max_age": 3600 * 24}
