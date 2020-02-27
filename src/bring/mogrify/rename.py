@@ -3,10 +3,10 @@ import os
 import shutil
 from typing import Dict
 
-from bring.transform import Transformer
+from bring.mogrify import Mogrifier
 
 
-class RenameTransformer(Transformer):
+class RenameTransformer(Mogrifier):
 
     _plugin_name: str = "rename"
 

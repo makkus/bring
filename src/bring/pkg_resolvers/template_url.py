@@ -28,7 +28,7 @@ class TemplateUrlResolver(SimplePkgResolver):
         self, source_details: Dict, bring_context: BringContextTing
     ) -> Mapping[str, Any]:
 
-        vars = source_details["vars"]
+        vars = source_details["template_vars"]
 
         keys, values = zip(*vars.items())
 

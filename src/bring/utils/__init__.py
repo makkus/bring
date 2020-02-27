@@ -59,10 +59,18 @@ def find_versions(
     # pkg_args = metadata.get("pkg_args", {})
     versions = metadata["versions"]
 
+    version_vars = metadata["pkg_vars"]["version_vars"]
+
+    relevant_vars = {}
+
+    for k, v in vars.items():
+        if k in version_vars.keys():
+            relevant_vars[k] = v
+
     # TODO: parse args
 
     vars_final = {}
-    for k, v in vars.items():
+    for k, v in relevant_vars.items():
         vars_final[k] = aliases.get(k, {}).get(v, v)
 
     if not vars_final:

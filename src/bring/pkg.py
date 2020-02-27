@@ -5,8 +5,7 @@ import os
 import shutil
 from typing import Any, Dict, Iterable, Mapping, Optional
 
-from bring.interfaces.tui.task_progress import TerminalRunWatch
-from bring.mogrify import Transmogritory
+from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
 from bring.utils import find_version
 from frtls.dicts import get_seeded_dict
@@ -145,7 +144,7 @@ class PkgTing(SimpleTing):
         # print(metadata.keys())
         # print(metadata["pkg_args"])
 
-        pkg_args = metadata["pkg_args"]
+        pkg_args = metadata["pkg_vars"]["args"]
         arg = self._tingistry_obj.arg_hive.create_record_arg(childs=pkg_args)
 
         return arg
@@ -256,13 +255,13 @@ class PkgTing(SimpleTing):
 
             timestamp = metadata["metadata_check"]
 
-            pkg_args = metadata["pkg_args"]
+            pkg_vars = metadata["pkg_vars"]
             aliases = metadata["aliases"]
 
             var_combinations = await self._get_valid_var_combinations(metadata=metadata)
 
             metadata_result = {
-                "pkg_args": pkg_args,
+                "pkg_args": pkg_vars["args"],
                 "aliases": aliases,
                 "timestamp": timestamp,
                 "version_list": var_combinations,
@@ -271,38 +270,44 @@ class PkgTing(SimpleTing):
 
         return result
 
+    def create_transmogrificator(
+        self, vars: Dict[str, Any], metadata: Mapping[str, Any]
+    ) -> Transmogrificator:
+
+        version = find_version(vars=vars, metadata=metadata)
+
+        if not version:
+            raise FrklException(
+                msg=f"Can't process pkg '{self.name}'.",
+                reason=f"Can't find version match for vars: {vars}",
+            )
+        mogrify_list = version["_mogrify"]
+
+        # import pp
+        # pp(metadata['pkg_vars'].keys())
+
+        transmogritory: Transmogritory = self._tingistry_obj._transmogritory
+
+        tm = transmogritory.create_transmogrificator(
+            mogrify_list,
+            vars=vars,
+            args=metadata["pkg_vars"]["mogrify_vars"],
+            name=self.name,
+        )
+
+        return tm
+
     async def create_version_folder(self, vars: Dict[str, Any]) -> Tasks:
 
         vals = await self.get_values("source", "metadata")
         metadata = vals["metadata"]
 
-        version = find_version(vars=vars, metadata=metadata)
+        tm = self.create_transmogrificator(vars=vars, metadata=metadata)
 
-        mogrify_list = version["_mogrify"]
-
-        # import pp
-        # pp(metadata)
-
-        transmogritory: Transmogritory = self._tingistry_obj._transmogritory
-
-        tm = transmogritory.create_transmogrificator(mogrify_list, pkg=self)
-
-        # last_mogrifier = tm._last_item
-
-        run_watcher = TerminalRunWatch(sort_task_names=False)
-        vals = await tm.transmogrify(run_watcher)
-        # print(last_mogrifier)
-        # vals = await last_mogrifier.get_values()
-        # import pp
-        # pp(vals)
+        # run_watcher = TerminalRunWatch(sort_task_names=False)
+        vals = await tm.transmogrify()
 
         return vals
-
-        # path, tasks = await resolver.create_pkg_version_folder(
-        #     vars=vars, source_details=source, metadata=metadata
-        # )
-        #
-        # return path, tasks
 
     # async def get_artefact(self, vars: Dict[str, str]) -> Dict:
     #

@@ -1,47 +1,49 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Dict
+from typing import Any, Dict, Mapping
 
-from bring.transform import TransformException, Transformer
+from bring.mogrify import Mogrifier
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
+from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 
 
-class MergeTransformer(Transformer):
+class MergeMogrifier(Mogrifier):
 
     _plugin_name: str = "merge"
 
-    def __init__(self, **config):
+    def provides(self) -> Mapping[str, str]:
 
-        super().__init__(**config)
+        return {"folder_path": "string"}
 
-    def get_config_keys(self) -> Dict:
+    def requires(self) -> Mapping[str, str]:
 
-        return {"merge_strategy": "default", "sources": None, "delete_sources": False}
+        return {"folder_paths": "list", "merge_strategy": "dict?"}
 
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
+    def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
 
-        strategy = transform_config["merge_strategy"]
+        pass
+
+    async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        strategy: Mapping[str, Any] = requirements.get(
+            "merge_strategy", {"type": "default"}
+        )
         if isinstance(strategy, str):
             strategy = {"type": strategy}
 
-        sources = transform_config["sources"]
-        if sources is None:
-            raise Exception("Can't merge directories, no sources provided.")
+        folder_paths = requirements["folder_paths"]
+        if not folder_paths:
+            raise Exception("Can't merge directories, no folder_paths provided.")
 
-        if isinstance(sources, str):
-            sources = [sources]
+        target_path = self.create_temp_dir("merge_")
 
-        delete_sources = transform_config["delete_sources"]
+        for source in folder_paths:
 
-        for source in sources:
+            self.process_folder(source=source, target=target_path, strategy=strategy)
 
-            self.process_folder(source=source, target=path, strategy=strategy)
-            if delete_sources:
-                shutil.rmtree(source)
-
-        return path
+        return {"folder_path": target_path}
 
     def process_folder(self, source: str, target: str, strategy: Dict):
 
@@ -71,7 +73,7 @@ class MergeTransformer(Transformer):
 
         target = os.path.join(target_base, rel_path)
         if os.path.exists(target):
-            raise TransformException(
+            raise FrklException(
                 msg=f"Can't merge/copy file '{rel_path}'.",
                 reason=f"File already exists in target: {target_base}",
             )

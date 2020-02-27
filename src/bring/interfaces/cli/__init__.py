@@ -8,8 +8,10 @@ from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.logging import logzero_option_async
 
 
-# uvloop.install()
 click.anyio_backend = "asyncio"
+
+
+# uvloop.install()
 
 bring_obj: Bring = Bring("bring")
 

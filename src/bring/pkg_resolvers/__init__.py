@@ -11,6 +11,7 @@ from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
+from frtls.templating import get_template_schema, template_schema_to_args
 
 
 if TYPE_CHECKING:
@@ -340,16 +341,6 @@ class SimplePkgResolver(PkgResolver):
 
         metadata["aliases"] = pkg_aliases
 
-        args = await self.get_args(
-            source_args=source_details.get("args", None),
-            versions=versions,
-            aliases=pkg_aliases,
-            pkg_args=pkg_args,
-        )
-        metadata["pkg_args"] = args
-
-        metadata["metadata_check"] = str(arrow.Arrow.now())
-
         for version in versions:
 
             sam = source_details.get("artefact", None)
@@ -379,65 +370,114 @@ class SimplePkgResolver(PkgResolver):
                 else:
                     version["_mogrify"].extend(mogrifiers)
 
+        pkg_vars = await self.process_vars(
+            source_args=source_details.get("args", None),
+            pkg_args=pkg_args,
+            mogrifiers=mogrifiers,
+            source_vars=source_details.get("vars", None),
+            versions=versions,
+            aliases=pkg_aliases,
+        )
+        metadata["pkg_vars"] = pkg_vars
+
+        metadata["metadata_check"] = str(arrow.Arrow.now())
+
         await self.write_metadata(
             metadata_file, metadata, source_details, bring_context
         )
 
         return metadata
 
-    async def get_args(
+    async def process_vars(
         self,
         source_args: Mapping[str, Any],
-        versions: List[Mapping[str, Any]],
-        aliases: Mapping[str, Dict[str, str]],
         pkg_args: Mapping[str, Any],
+        mogrifiers: Union[Iterable, Mapping],
+        source_vars: Mapping[str, Any],
+        versions: List[Mapping[str, Any]],
+        aliases: Mapping[str, Mapping[str, str]],
     ) -> Mapping[str, Mapping[str, Any]]:
+        """Return the (remaining) args a user can specify to select a version or mogrify options.
 
-        computed_args = {}
+        Source args can contain more arguments than will eventually be used/displayed to the user.
+
+        Args:
+            - *source_args*: dictionary of args to describe the type/schema of an argument
+            - *pkg_args*: a dictionary of automatically created args by a specific resolver. Those will be used as base, but will be overwritten by anything in 'source_args'
+            - *mogrifiers*: the 'mogrify' section of the pkg 'source'
+            - *source_vars*: vars that are hardcoded in the 'source' section of a package, can also contain templates
+            - *versions*: all avaailable versions of a package
+            - *aliases*: a dictionary of value aliases that can be used by the user instead of the 'real' ones. Aliases are per arg name.
+        """
+
+        # calculate args to select version
+        version_vars: Mapping[str, Mapping] = {}
         for version in versions:
             for k in version.keys():
                 if k == "_meta" or k == "_mogrify":
                     continue
-                elif k in computed_args.keys():
+                elif k in version_vars.keys():
                     val = version[k]
-                    if val not in computed_args[k]["allowed"]:
-                        computed_args[k]["allowed"].append(val)
+                    if val not in version_vars[k]["allowed"]:
+                        version_vars[k]["allowed"].append(val)
                     continue
 
-                computed_args[k] = {
+                version_vars[k] = {
                     "default": version[k],
                     "allowed": [version[k]],
                     "type": "string",
                 }
-
+        # add aliases to 'allowed' values in version select args
         for var_name, alias_details in aliases.items():
 
             for alias, value in alias_details.items():
-                if var_name in computed_args.keys():
-                    if value not in computed_args[var_name]["allowed"]:
+                if var_name in version_vars.keys():
+                    if value not in version_vars[var_name]["allowed"]:
                         log.debug(
                             f"Alias '{alias}' does not have a corresponding value registered ('{value}'). Ignoring it..."
                         )
                         continue
-                    if alias in computed_args[var_name]["allowed"]:
+                    if alias in version_vars[var_name]["allowed"]:
                         log.debug(
                             f"Alias '{alias}' (for value '{value}') already in possible values for key '{var_name}'. It'll be ignored if specified by the user."
                         )
                     else:
-                        computed_args[var_name]["allowed"].append(alias)
+                        version_vars[var_name]["allowed"].append(alias)
 
-        required_keys = computed_args.keys()
+        mogrify_vars: Mapping[str, Mapping] = None
+        duplicates = {}
+        if mogrifiers:
+            template_schema = get_template_schema(mogrifiers)
+            mogrify_vars = template_schema_to_args(template_schema)
+
+            for k in mogrify_vars.keys():
+                if k in version_vars.keys():
+                    duplicates[k] = (mogrify_vars[k], version_vars[k])
+
+        computed_vars = get_seeded_dict(
+            mogrify_vars, version_vars, merge_strategy="update"
+        )
+
+        if source_vars is None:
+            source_vars = {}
+
+        required_keys = computed_vars.keys()
         # now try to find keys that are not included in the first/latest version (most of the time there won't be any)
         args = get_seeded_dict(
-            pkg_args, computed_args, source_args, merge_strategy="merge"
+            pkg_args, computed_vars, source_args, merge_strategy="merge"
         )
 
         final_args = {}
+
         for k, v in args.items():
-            if k in required_keys:
+            if k in required_keys and k not in source_vars.keys():
                 final_args[k] = v
 
-        return final_args
+        return {
+            "args": final_args,
+            "version_vars": version_vars,
+            "mogrify_vars": mogrify_vars,
+        }
 
     async def get_metadata(self, metadata_file: str):
 

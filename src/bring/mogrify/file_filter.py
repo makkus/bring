@@ -4,8 +4,8 @@ import shutil
 from typing import Any, Iterable, Mapping, Union
 
 from bring.mogrify import Mogrifier
+from bring.utils.paths import find_matches
 from frtls.files import ensure_folder
-from pathspec import PathSpec, patterns
 
 
 class FileFilterMogrifier(Mogrifier):
@@ -33,7 +33,7 @@ class FileFilterMogrifier(Mogrifier):
         path: str = requirements["folder_path"]
         include_patterns: Union[str, Iterable[str]] = requirements["include"]
 
-        matches = self.find_matches(path, include_patterns=include_patterns)
+        matches = find_matches(path=path, include_patterns=include_patterns)
 
         result = self.create_temp_dir(prefix="file_filter_")
         if not matches:
@@ -47,24 +47,3 @@ class FileFilterMogrifier(Mogrifier):
             shutil.move(source, target)
 
         return {"folder_path": result}
-
-    def find_matches(
-        self,
-        path: str,
-        include_patterns: Union[str, Iterable[str]],
-        output_absolute_paths=False,
-    ) -> Iterable:
-
-        if isinstance(include_patterns, str):
-            _include_patterns: Iterable[str] = [include_patterns]
-        else:
-            _include_patterns = include_patterns
-
-        path_spec = PathSpec.from_lines(patterns.GitWildMatchPattern, _include_patterns)
-
-        matches = path_spec.match_tree(path)
-
-        if output_absolute_paths:
-            matches = (os.path.join(path, m) for m in matches)
-
-        return matches

@@ -1,34 +1,49 @@
 # -*- coding: utf-8 -*-
 import os
 import stat
-from typing import Dict
+from typing import Any, Mapping, Optional
 
-from bring.transform import Transformer
+from bring.mogrify import Mogrifier
+from bring.utils.paths import find_matches
 
 
-class SetModeTransformer(Transformer):
+class SetModeTransformer(Mogrifier):
 
     _plugin_name: str = "set_mode"
 
-    def __init__(self, **config):
-
-        super().__init__(**config)
-
-    def get_config_keys(self) -> Dict:
+    def requires(self) -> Mapping[str, str]:
 
         return {
-            "set_executable": self._config,
-            "set_readable": None,
-            "set_writeable": None,
+            "folder_path": "string",
+            "set_executable": "boolean?",
+            "set_readable": "boolean?",
+            "set_writeable": "boolean?",
+            "include": "list?",
         }
 
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
+    def get_msg(self) -> Optional[str]:
 
-        matches = self.find_matches(path, transform_config, output_absolute_paths=True)
+        return "setting file mode"
 
-        set_executable = transform_config["set_executable"]
-        set_readable = transform_config["set_readable"]
-        set_writeable = transform_config["set_writeable"]
+    def provides(self) -> Mapping[str, str]:
+
+        return {"folder_path": "string"}
+
+    def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
+
+        pass
+
+    async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        path = requirements["folder_path"]
+        include_pattern = requirements.get("include", ["*", ".*"])
+        matches = find_matches(
+            path, include_patterns=include_pattern, output_absolute_paths=True
+        )
+
+        set_executable = requirements.get("set_executable", None)
+        set_readable = requirements.get("set_readable", None)
+        set_writeable = requirements.get("set_writeable", None)
 
         for m in matches:
             st = os.stat(m)
@@ -42,4 +57,4 @@ class SetModeTransformer(Transformer):
             if set_writeable in [True, False]:
                 raise NotImplementedError()
 
-        return path
+        return {"folder_path": path}
