@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Dict, Iterable, Mapping, Optional
 
-from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
 from frtls.dicts import dict_merge
-from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Tasks
+from frtls.tasks import FlattenParallelTasksAsync, SingleTaskAsync, TaskDesc, Tasks
 from tings.makers import TingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
-from tings.tingistry import Tingistry
 
 
 class BringContextTing(InheriTing, SimpleTing):
@@ -17,7 +15,6 @@ class BringContextTing(InheriTing, SimpleTing):
         self, name: str, parent_key: str = "parent", meta: Dict[str, Any] = None
     ):
 
-        self._tingistry_obj: Tingistry = meta["tingistry"]
         self._parent_key = parent_key
         super().__init__(name=name, meta=meta)
 
@@ -128,10 +125,16 @@ class BringContextTing(InheriTing, SimpleTing):
 
     async def _create_update_tasks(self) -> Tasks:
 
-        tasks = ParallelTasksAsync(name=self.name)
+        task_desc = TaskDesc(
+            name=f"metadata update {self.name}",
+            msg=f"updating metadata for context '{self.name}'",
+        )
+        tasks = FlattenParallelTasksAsync(desc=task_desc)
         pkgs = await self.pkgs
         for pkg_name, pkg in pkgs.pkgs.items():
-            t = SingleTaskAsync(pkg.update_metadata, name=pkg_name)
+            t = SingleTaskAsync(pkg.update_metadata)
+            t.task_desc.name = pkg_name
+            t.task_desc.msg = f"updating metadata for pkg '{pkg_name}'"
             tasks.add_task(t)
 
         return tasks
@@ -143,11 +146,8 @@ class BringContextTing(InheriTing, SimpleTing):
             raise NotImplementedError()
 
         tasks = await self._create_update_tasks()
-        # run_watch = RunWatch()
-        # tui_run_watch = TuiRunWatch()
-        term_run_watch = TerminalRunWatch()
 
-        await term_run_watch.run_tasks(tasks)
+        await tasks.run_async()
 
     async def get_maker(self, config) -> TingMaker:
 

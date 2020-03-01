@@ -11,10 +11,9 @@ from bring.defaults import (
     BRING_WORKSPACE_FOLDER,
 )
 from bring.interfaces.cli.task_watcher import TerminalRunWatcher
-from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.mogrify import Transmogritory
 from frtls.files import ensure_folder
-from frtls.tasks import ParallelTasksAsync
+from frtls.tasks import FlattenParallelTasksAsync, TaskDesc
 from tings.makers.file import TextFileTingMaker
 from tings.tingistry import Tingistry
 
@@ -80,14 +79,13 @@ class Bring(Tingistry):
 
     async def update(self):
 
-        tasks = ParallelTasksAsync()
+        td = TaskDesc(name="update metadata", msg="updating metadata for all contexts")
+        tasks = FlattenParallelTasksAsync(desc=td)
         for context in self.contexts.values():
             t = await context._create_update_tasks()
             tasks.add_task(t)
 
-        term_run_watch = TerminalRunWatch()
-
-        await term_run_watch.run_tasks(tasks)
+        await tasks.run_async()
 
     def install(self, pkgs):
         pass

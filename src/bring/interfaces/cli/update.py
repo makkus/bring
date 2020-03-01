@@ -2,16 +2,24 @@
 from typing import Optional, Union
 
 import asyncclick as click
+from blessings import Terminal
 from bring.bring import Bring
 from bring.context import BringContextTing
 
 
 class BringUpdateCommand(click.Command):
     def __init__(
-        self, name: str, bring: Bring, context: Union[BringContextTing, str] = None
+        self,
+        name: str,
+        bring: Bring,
+        context: Union[BringContextTing, str] = None,
+        terminal=None,
     ):
 
         self._bring: Bring = bring
+        if terminal is None:
+            terminal = Terminal()
+        self._terminal = terminal
         if isinstance(context, str):
             _context = self._bring.get_context(context)
         else:

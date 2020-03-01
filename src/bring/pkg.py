@@ -151,23 +151,43 @@ class PkgTing(SimpleTing):
         return arg
 
     async def get_metadata(
-        self, config: Optional[Mapping[str, Any]] = None
+        self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
     ) -> Mapping[str, Any]:
         """Return metadata associated with this package."""
 
         vals = await self.get_values("source")
-        return await self._get_metadata(vals["source"], config=config)
+        return await self._get_metadata(
+            vals["source"], config=config, register_task=False
+        )
 
     async def _get_metadata(
-        self, source_dict, config: Optional[Mapping[str, Any]] = None
+        self,
+        source_dict,
+        config: Optional[Mapping[str, Any]] = None,
+        register_task: bool = False,
     ) -> Mapping[str, Any]:
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
         resolver = self._get_resolver(source_dict)
 
-        return await resolver.get_pkg_metadata(
-            source_dict, self.bring_context, self.full_name, override_config=config
+        cached = await resolver.metadata_is_valid(
+            source_dict, self.bring_context, override_config=config
         )
+        if not cached and register_task:
+            task_desc = TaskDesc(
+                name=f"metadata retrieval {self.name}",
+                msg=f"retrieving valid metadata for package '{self.name}'",
+            )
+            task_desc.task_started()
+
+        metadata = await resolver.get_pkg_metadata(
+            source_dict, self.bring_context, override_config=config
+        )
+
+        if not cached and register_task:
+            task_desc.task_finished(msg="metadata retrieved")
+
+        return metadata
 
     def _get_resolver(self, source_dict: Dict) -> PkgResolver:
 
@@ -244,7 +264,7 @@ class PkgTing(SimpleTing):
         metadata: Dict[str, Any] = None
         if include_metadata:
             metadata = await self._get_metadata(
-                source_dict=source_details, config=retrieve_config
+                source_dict=source_details, config=retrieve_config, register_task=True
             )
 
         result = {}

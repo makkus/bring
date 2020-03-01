@@ -11,7 +11,6 @@ from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
-from frtls.tasks import TaskDesc
 from frtls.templating import get_template_schema, template_schema_to_args
 
 
@@ -180,11 +179,34 @@ class PkgResolver(metaclass=ABCMeta):
             return None
         return arrow.get(last_access)
 
+    async def metadata_is_valid(
+        self,
+        source_details: Union[str, Mapping[str, Any]],
+        bring_context: "BringContextTing",
+        override_config: Optional[Mapping[str, Any]] = None,
+    ) -> bool:
+
+        if isinstance(source_details, str):
+            _source_details = {"url": source_details}
+        else:
+            _source_details = source_details
+
+        config = get_seeded_dict(self.get_resolver_config(), override_config)
+
+        metadata = await self._get_cached_metadata(
+            source_details=_source_details, bring_context=bring_context, config=config
+        )
+
+        if metadata:
+            return True
+
+        else:
+            return False
+
     async def get_pkg_metadata(
         self,
         source_details: Union[str, Mapping[str, Any]],
         bring_context: "BringContextTing",
-        pkg_name: str,
         override_config: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
         """Return metadata of a bring package, specified via the provided source details and current context.
@@ -213,35 +235,12 @@ class PkgResolver(metaclass=ABCMeta):
         if metadata:
             return metadata
 
-        # retrieve the metadata
-        metadata = await self._get_pkg_metadata(
-            source_details=_source_details,
-            bring_context=bring_context,
-            config=config,
-            cached_only=True,
-        )
-        if metadata is not None:
-            PkgResolver.metadata_cache[self.__class__][id] = {
-                "metadata": metadata,
-                "source": source_details,
-                "context": bring_context.full_name,
-            }
-            return metadata
-
-        task = TaskDesc()
-        pkg = pkg_name.split(".")[-1]
-        task.name = f"{pkg} metadata"
-        task.msg = f"retrieving metadata for pkg '{pkg}'"
-        task.task_started()
-
         metadata = await self._get_pkg_metadata(
             source_details=_source_details,
             bring_context=bring_context,
             config=config,
             cached_only=False,
         )
-
-        task.task_finished()
 
         PkgResolver.metadata_cache[self.__class__][id] = {
             "metadata": metadata,
