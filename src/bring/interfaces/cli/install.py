@@ -7,7 +7,6 @@ from bring.defaults import DEFAULT_INSTALL_PROFILE_NAME
 from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
-from frtls.tasks import RunWatch
 
 
 class BringInstallGroup(FrklBaseCommand):
@@ -16,6 +15,7 @@ class BringInstallGroup(FrklBaseCommand):
         bring: Bring,
         name: str = None,
         context: str = None,
+        **kwargs
         # print_version_callback=None,
         # invoke_without_command=False,
     ):
@@ -34,6 +34,7 @@ class BringInstallGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             arg_hive=bring.arg_hive,
+            **kwargs
         )
 
     def get_common_options(self) -> Union[Arg, Dict]:
@@ -93,34 +94,15 @@ class BringInstallGroup(FrklBaseCommand):
             @handle_exc_async
             async def command(**vars):
 
-                # target = self._group_params.get("target")
+                target = self._group_params.get("target")
                 # profiles = self._group_params.get("profile")
                 # strategy = self._group_params.get("strategy")
                 # merge = self._group_params.get("merge")
                 #
                 # write_metadata = self._group_params.get("write_metadata")
 
-                path = await pkg.create_version_folder(vars=vars)
-                tasks = None
-                if tasks is None:
-                    print(path["folder_path"])
-                    return
-
-                run_watch = RunWatch()
-                await tasks.run_async(run_watch)
-
-                print(path["folder_path"])
-
-                # result = await pkg.install(
-                #     vars=vars,
-                #     profiles=profiles,
-                #     target=target,
-                #     merge=merge,
-                #     strategy=strategy,
-                #     write_metadata=write_metadata,
-                # )
-                #
-                # print(result)
+                path = await pkg.create_version_folder(vars=vars, target=target)
+                print(path)
 
             try:
                 vals = await pkg.get_values("args", "info", raise_exception=True)

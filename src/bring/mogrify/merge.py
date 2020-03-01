@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 
 
-class MergeMogrifier(Mogrifier):
+class MergeMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "merge"
 
@@ -21,9 +21,9 @@ class MergeMogrifier(Mogrifier):
 
         return {"folder_paths": "list", "merge_strategy": "dict?"}
 
-    def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
+    def get_msg(self) -> Optional[str]:
 
-        pass
+        return "merging folders"
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

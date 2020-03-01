@@ -3,12 +3,12 @@ import os
 import shutil
 from typing import Any, Iterable, Mapping, Union
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
 from frtls.files import ensure_folder
 
 
-class FileFilterMogrifier(Mogrifier):
+class FileFilterMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "file_filter"
 
@@ -23,10 +23,6 @@ class FileFilterMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        shutil.rmtree(result["folder_path"], ignore_errors=True)
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

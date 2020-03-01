@@ -10,6 +10,7 @@ from bring.defaults import (
     BRING_CONTEXTS_FOLDER,
     BRING_WORKSPACE_FOLDER,
 )
+from bring.interfaces.cli.task_watcher import TerminalRunWatcher
 from bring.interfaces.tui.task_progress import TerminalRunWatch
 from bring.mogrify import Transmogritory
 from frtls.files import ensure_folder
@@ -60,6 +61,8 @@ class Bring(Tingistry):
         self._context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
 
         self._initialized = False
+
+        self._task_watcher = TerminalRunWatcher()
 
     async def init(self):
         if not self._initialized:

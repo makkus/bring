@@ -71,14 +71,20 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.info import BringInfoGroup
 
             command = BringInfoGroup(
-                bring=self._bring, context=self._context, name="info"
+                bring=self._bring,
+                context=self._context,
+                name="info",
+                terminal=self._terminal,
             )
             command.short_help = "display information for packages"
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
 
             command = BringInstallGroup(
-                bring=self._bring, context=self._context, name="install"
+                bring=self._bring,
+                context=self._context,
+                name="install",
+                terminal=self._terminal,
             )
             if self._context:
                 command.short_help = "install a package"
@@ -87,14 +93,19 @@ class BringCommandGroup(FrklBaseCommand):
         elif name == "context":
             from bring.interfaces.cli.contexts import BringContextGroup
 
-            command = BringContextGroup(bring=self._bring, name="context")
+            command = BringContextGroup(
+                bring=self._bring, name="context", terminal=self._terminal
+            )
             command.short_help = "context-specific sub-command group"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
 
             command = BringUpdateCommand(
-                bring=self._bring, context=self._context, name="update"
+                bring=self._bring,
+                context=self._context,
+                name="update",
+                terminal=self._terminal,
             )
             if self._context:
                 command.short_help = "update package metadata for this context"

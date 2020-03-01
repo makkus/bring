@@ -2,10 +2,10 @@
 import shutil
 from typing import Any, Mapping
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 
 
-class FolderMogrifier(Mogrifier):
+class FolderMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "folder"
 
@@ -20,10 +20,6 @@ class FolderMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        shutil.rmtree(result["folder_path"])
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

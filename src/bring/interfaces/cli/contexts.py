@@ -2,7 +2,6 @@
 
 import asyncclick as click
 from bring.bring import Bring
-from colored import style
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -59,7 +58,9 @@ class BringContextGroup(FrklBaseCommand):
         for context_name, context in self._bring.contexts.items():
             info = await context.get_info()
             slug = info.get("slug", "no description available")
-            click.echo(f"  - {style.BOLD}{context_name}{style.RESET}: {slug}")
+            click.echo(
+                f"  - {self.terminal.bold}{context_name}{self.terminal.normal}: {slug}"
+            )
 
     async def _list_commands(self, ctx):
 

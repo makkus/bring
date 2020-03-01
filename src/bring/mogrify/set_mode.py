@@ -3,11 +3,11 @@ import os
 import stat
 from typing import Any, Mapping, Optional
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
 
 
-class SetModeTransformer(Mogrifier):
+class SetModeTransformer(SimpleMogrifier):
 
     _plugin_name: str = "set_mode"
 

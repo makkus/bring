@@ -2,6 +2,7 @@
 import sys
 
 import asyncclick as click
+from blessings import Terminal
 from bring.bring import Bring
 from bring.interfaces.cli.command_group import BringCommandGroup
 from frtls.cli.exceptions import handle_exc_async
@@ -15,8 +16,10 @@ click.anyio_backend = "asyncio"
 
 bring_obj: Bring = Bring("bring")
 
+terminal = Terminal()
 
-@click.command(name="bring", cls=BringCommandGroup, bring=bring_obj)
+
+@click.command(name="bring", cls=BringCommandGroup, bring=bring_obj, terminal=terminal)
 @logzero_option_async()
 @click.pass_context
 @handle_exc_async

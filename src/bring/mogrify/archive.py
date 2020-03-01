@@ -3,11 +3,11 @@ import os
 import shutil
 from typing import Any, Mapping, Optional
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from frtls.exceptions import FrklException
 
 
-class ArchiveMogrifier(Mogrifier):
+class ArchiveMogrifier(SimpleMogrifier):
 
     _plugin_name = "archive"
 
@@ -26,10 +26,6 @@ class ArchiveMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        shutil.rmtree(result["folder_path"], ignore_errors=True)
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

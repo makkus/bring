@@ -4,7 +4,7 @@ import os
 import shutil
 from typing import Any, Mapping
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
 from frtls.files import ensure_folder
 
@@ -12,7 +12,7 @@ from frtls.files import ensure_folder
 log = logging.getLogger("bring")
 
 
-class MoveToSubfolderMogrifier(Mogrifier):
+class MoveToSubfolderMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "move_to_subfolder"
 
@@ -27,10 +27,6 @@ class MoveToSubfolderMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        shutil.rmtree(result["folder_path"])
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

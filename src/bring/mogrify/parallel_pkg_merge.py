@@ -1,36 +1,43 @@
 # -*- coding: utf-8 -*-
 import logging
-import shutil
-from typing import Any, Iterable, Mapping
+from typing import Any, List, Mapping, Optional
 
 from anyio import create_task_group
 from bring.mogrify import Mogrifier, Transmogrificator
-from bring.mogrify.merge import MergeMogrifier
-from frtls.tasks import RunWatch, Tasks
+from frtls.tasks import Tasks
 
 
 log = logging.getLogger("bring")
 
 
-class ParallelPkgsAsync(Tasks):
-    def __init__(self, **kwargs):
-
-        super().__init__(**kwargs)
-
-    async def run_async(self, *watchers: "RunWatch") -> None:
-
-        async with create_task_group() as tg:
-            for child in self._children.values():
-                await tg.spawn(child.run_async, *watchers)
-
-
-class ParallelPkgMergeMogrifier(Mogrifier):
+class ParallelPkgMergeMogrifier(Tasks, Mogrifier):
 
     _plugin_name: str = "parallel_pkg_merge"
 
+    def __init__(self, name: str, meta: Optional[Mapping[str, Any]], **kwargs):
+
+        self._mogrificators: List[Transmogrificator] = []
+        self._merge_task: Optional[Mogrifier] = None
+        Mogrifier.__init__(self, name=name, meta=meta)
+        Tasks.__init__(self, **kwargs)
+
+    def add_mogrificators(self, *mogrificators: Transmogrificator):
+
+        if self._started:
+            raise Exception("Can't add child mogrifiers: already started")
+
+        for m in mogrificators:
+            self.add_task(m)
+
+    def set_merge_task(self, merge_task: Mogrifier):
+
+        self._merge_task = merge_task
+        self._merge_task.parent_task = self
+        self._merge_task.working_dir = self.working_dir
+
     def requires(self) -> Mapping[str, str]:
 
-        return {"transmogrificators": "list", "watchers": "list", "merge": "any"}
+        return {"pipeline_id": "string", "merge": "any"}
 
     def get_msg(self) -> str:
 
@@ -40,28 +47,21 @@ class ParallelPkgMergeMogrifier(Mogrifier):
 
         return {"folder_path": "string"}
 
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
+    async def execute(self) -> Any:
 
-        shutil.rmtree(result["folder_path"])
+        return await self.get_values()
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        tms: Iterable[Transmogrificator] = requirements["transmogrificators"]
-        watchers: Iterable[RunWatch] = requirements["watchers"]
-        merge: MergeMogrifier = requirements["merge"]
-
-        tasks = ParallelPkgsAsync()
-        for tm in tms:
-            tasks.add_task(tm)
-
-        await tasks.run_async(*watchers)
+        async with create_task_group() as tg:
+            for tm in self._children.values():
+                await tg.spawn(tm.transmogrify)
 
         folders = []
-        for tm in tasks._children.values():
+        for tm in self._children.values():
             folder = tm._last_item.current_state["folder_path"]
             folders.append(folder)
 
-        merge.input.set_values(**{"folder_paths": folders})
-
-        vals = await merge.get_values()
+        self._merge_task.input.set_values(**{"folder_paths": folders})
+        vals = await self._merge_task.run_async()
         return vals

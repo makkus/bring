@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Dict
+from typing import Dict, Optional
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 
 
-class RenameTransformer(Mogrifier):
+class RenameTransformer(SimpleMogrifier):
 
     _plugin_name: str = "rename"
 
     def __init__(self, **config):
 
         super().__init__(**config)
+
+    def get_msg(self) -> Optional[str]:
+
+        return "renaming files"
 
     def get_config_keys(self) -> Dict:
 

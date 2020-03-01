@@ -3,14 +3,15 @@ import copy
 import logging
 import os
 import shutil
-from typing import Any, Dict, Iterable, Mapping, Optional
+from pathlib import Path
+from typing import Any, Dict, Iterable, Mapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
 from bring.utils import find_version
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
-from frtls.tasks import Tasks
+from frtls.tasks import TaskDesc
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
@@ -165,7 +166,7 @@ class PkgTing(SimpleTing):
         resolver = self._get_resolver(source_dict)
 
         return await resolver.get_pkg_metadata(
-            source_dict, self.bring_context, override_config=config
+            source_dict, self.bring_context, self.full_name, override_config=config
         )
 
     def _get_resolver(self, source_dict: Dict) -> PkgResolver:
@@ -288,16 +289,29 @@ class PkgTing(SimpleTing):
 
         transmogritory: Transmogritory = self._tingistry_obj._transmogritory
 
+        task_desc = TaskDesc(name=f"{self.name}", msg=f"installing pkg {self.name}")
+
         tm = transmogritory.create_transmogrificator(
             mogrify_list,
             vars=vars,
             args=metadata["pkg_vars"]["mogrify_vars"],
             name=self.name,
+            task_desc=task_desc,
         )
 
         return tm
 
-    async def create_version_folder(self, vars: Dict[str, Any]) -> Tasks:
+    async def create_version_folder(
+        self,
+        vars: Dict[str, Any],
+        target: Union[str, Path] = None,
+        delete_result: bool = True,
+    ) -> str:
+        """Create a folder that contains the version specified via the provided 'vars'.
+
+        If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
+        is provided, the path to a randomly named temp folder will be returned.
+        """
 
         vals = await self.get_values("source", "metadata")
         metadata = vals["metadata"]
@@ -306,67 +320,13 @@ class PkgTing(SimpleTing):
 
         # run_watcher = TerminalRunWatch(sort_task_names=False)
         vals = await tm.transmogrify()
+        log.debug(f"finsished transmogrification: {vals}")
 
-        return vals
-
-    # async def get_artefact(self, vars: Dict[str, str]) -> Dict:
-    #
-    #     vals = await self.get_values("metadata", "source")
-    #     source_details = vals["source"]
-    #     metadata = vals["metadata"]
-    #
-    #     resolver = self._get_resolver(source_details)
-    #
-    #     version = resolver.find_version(
-    #         vars=vars,
-    #         pkg_args=metadata["args"],
-    #         aliases=metadata["aliases"],
-    #         versions=metadata["versions"],
-    #         var_map=source_details.get("var_map", {}),
-    #     )
-    #
-    #     if version is None:
-    #
-    #         # TODO: translate aliases
-    #         var_combinations = await self._get_valid_var_combinations(
-    #             metadata=metadata
-    #         )
-    #         comb_string = ""
-    #         for vc in var_combinations:
-    #             comb_string = comb_string + "  - " + str(vc) + "\n"
-    #
-    #         raise FrklException(
-    #             msg=f"Can't retrieve artefact for package '{self.name}'.",
-    #             reason=f"Can't find version that matches provided variables: {vars}",
-    #             solution=f"Choose a valid variable combinations:\n{comb_string}",
-    #         )
-    #
-    #     download_path = await resolver.create_version_folder(
-    #         vars=vars, source_details=source_details
-    #     )
-    #
-    #     return download_path
-
-    # async def provide_artefact_folder(self, vars: Dict[str, str]):
-    #
-    #     vals = await self.get_values("source")
-    #     source = vals["source"]
-    #
-    #     resolver_defaults = self._get_resolver(source).get_artefact_defaults(source)
-    #
-    #     artefact_details = get_seeded_dict(
-    #         DEFAULT_ARTEFACT_METADATA, resolver_defaults, source.get("artefact", None)
-    #     )
-    #
-    #     art_path = await self.get_artefact(vars=vars)
-    #
-    #     handler: ArtefactHandler = self._get_artefact_handler(artefact_details)
-    #
-    #     folder = await handler.provide_artefact_folder(
-    #         artefact_path=art_path, artefact_details=artefact_details
-    #     )
-    #
-    #     return folder
+        if target is not None:
+            tm.set_target(target, delete_pipeline_folder=delete_result)
+            return target
+        else:
+            return tm.result_path
 
     def copy_file(self, source, target, force=False, method="move"):
 
@@ -379,100 +339,3 @@ class PkgTing(SimpleTing):
             # TODO: file attributes
         elif method == "move":
             shutil.move(source, target)
-
-    # async def install(
-    #     self,
-    #     vars: Dict[str, str],
-    #     profiles: Optional[Union[List[str], str]] = None,
-    #     target: Optional[Union[str, Path]] = None,
-    #     merge: bool = False,
-    #     strategy="default",
-    #     write_metadata=False,
-    # ) -> Dict[str, str]:
-    #
-    #     if strategy not in ["force", "default"]:
-    #         raise NotImplementedError()
-    #
-    #     # TODO: read from profile
-    #     profile_defaults = {}
-    #     vars_final = get_seeded_dict(profile_defaults, vars)
-    #     artefact_folder = await self.provide_artefact_folder(vars=vars_final)
-    #
-    #     results = {}
-    #
-    #     async def transform_one_profile(
-    #         profile_name, transform_profile, source_folder, p_config
-    #     ):
-    #
-    #         if not isinstance(p_config, Mapping):
-    #             content = serialize(p_config, format("yaml"))
-    #             raise FrklException(
-    #                 msg=f"Can't process profile '{profile_name}' for package '{self.name}'.",
-    #                 reason=f"Config object is not a dictionary (instead: {type(p_config)}).\n\nContent of invalid config:\n{content}",
-    #             )
-    #         p_config["vars"] = vars
-    #
-    #         result_path = transform_profile.transform(
-    #             input_path=source_folder, config=p_config
-    #         )
-    #
-    #         results[profile_name] = result_path
-    #
-    #     async with create_task_group() as tg:
-    #
-    #         for profile_name in profiles:
-    #
-    #             transform_profile = self._tingistry_obj.get_ting(
-    #                 f"bring.transform.{profile_name}"
-    #             )
-    #             if transform_profile is None:
-    #                 raise FrklException(
-    #                     msg=f"Can't process file set '{profile_name}' for package '{self.name}'.",
-    #                     reason=f"No profile configured to handle a file set called '{profile_name}'.",
-    #                 )
-    #             p_config = {}
-    #
-    #             await tg.spawn(
-    #                 transform_one_profile,
-    #                 profile_name,
-    #                 transform_profile.transform_profile,
-    #                 artefact_folder,
-    #                 p_config,
-    #             )
-    #
-    #     if target is None and not merge:
-    #         return results
-    #
-    #     if target is None:
-    #         target = tempfile.mkdtemp(
-    #             prefix=f"{self.name}_install_", dir=BRING_WORKSPACE_FOLDER
-    #         )
-    #
-    #     if not is_valid_bring_target(target):
-    #         raise FrklException(
-    #             f"Can't install files from temp install folder(s) to target '{target}'",
-    #             reason="Folder exists, is non-empty and was not created by bring.",
-    #             solution=f"Either delete the folder or it's content, or create a marker file '.{BRING_ALLOWED_MARKER_NAME}' or '{BRING_METADATA_FOLDER_NAME}{os.path.sep}{BRING_ALLOWED_MARKER_NAME}' to indicate it is ok for bring to add/delete files in there. Back up the contents of that folder in case there is important data!",
-    #         )
-    #
-    #     if isinstance(target, Path):
-    #         _target = target.resolve().as_posix()
-    #     else:
-    #         _target = os.path.expanduser(target)
-    #
-    #     if len(results) == 1 and not os.path.exists(_target):
-    #         target_base = os.path.dirname(_target)
-    #         ensure_folder(target_base)
-    #         source = list(results.values())[0]
-    #         log.info(f"moving: {source} \u2192 {target}")
-    #         shutil.move(source, _target)
-    #         if write_metadata:
-    #             set_folder_bring_allowed(_target)
-    #         return {"target": _target}
-    #     else:
-    #         merge = MergeTransformer()
-    #         config = {"sources": results.values(), "vars": vars, "delete_sources": True}
-    #         merge.transform(_target, transform_config=config)
-    #         if write_metadata:
-    #             set_folder_bring_allowed(_target)
-    #         return {"target": _target}

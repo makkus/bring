@@ -73,3 +73,5 @@ PKG_RESOLVER_DEFAULTS: Dict[str, Any] = {"metadata_max_age": 3600 * 24}
 
 BRING_METADATA_FOLDER_NAME = ".bring"
 BRING_ALLOWED_MARKER_NAME = "bring_allowed"
+
+BRING_TASKS_BASE_TOPIC = "bring.tasks"

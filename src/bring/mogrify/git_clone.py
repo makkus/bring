@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
-import shutil
 from typing import Any, Mapping
 
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from bring.utils.git import ensure_repo_cloned
 from frtls.subprocesses.git import GitProcess
 
 
-class GitCloneMogrifier(Mogrifier):
+class GitCloneMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "git_clone"
 
@@ -23,10 +22,6 @@ class GitCloneMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        shutil.rmtree(result["folder_path"], ignore_errors=True)
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

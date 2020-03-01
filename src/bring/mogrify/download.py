@@ -6,7 +6,7 @@ from typing import Any, Mapping, Optional
 import httpx
 from anyio import aopen
 from bring.defaults import BRING_DOWNLOAD_CACHE
-from bring.mogrify import Mogrifier
+from bring.mogrify import SimpleMogrifier
 from frtls.downloads import calculate_cache_path
 from frtls.files import ensure_folder
 
@@ -14,7 +14,7 @@ from frtls.files import ensure_folder
 log = logging.getLogger("bring")
 
 
-class DownloadMogrifier(Mogrifier):
+class DownloadMogrifier(SimpleMogrifier):
 
     _plugin_name = "download"
 
@@ -33,11 +33,6 @@ class DownloadMogrifier(Mogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"file_path": "string"}
-
-    async def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        # TODO: config option to delete download cache
-        pass
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

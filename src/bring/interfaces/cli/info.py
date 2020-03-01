@@ -72,7 +72,7 @@ class BringInfoGroup(FrklBaseCommand):
     async def all_info_no_context(self):
 
         print()
-        print(HTML("<b>Available contexts:</b>"))
+        print(f"{self.terminal.bold}Available contexts:{self.terminal.normal}")
         print()
         for context in self._bring.contexts.values():
             print(HTML(f"<slategray><b>{context.name}</b></slategray>"))

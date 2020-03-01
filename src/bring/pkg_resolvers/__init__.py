@@ -11,6 +11,7 @@ from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
+from frtls.tasks import TaskDesc
 from frtls.templating import get_template_schema, template_schema_to_args
 
 
@@ -183,6 +184,7 @@ class PkgResolver(metaclass=ABCMeta):
         self,
         source_details: Union[str, Mapping[str, Any]],
         bring_context: "BringContextTing",
+        pkg_name: str,
         override_config: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
         """Return metadata of a bring package, specified via the provided source details and current context.
@@ -194,6 +196,7 @@ class PkgResolver(metaclass=ABCMeta):
         *aliases*: TO BE DONE
         *metadata_check*: timestamp string (incl. timezone) describing the date of the metadata check
         *args*: a mapping describing the available args that are required/optional to point to a specific version of a pkg
+        @param pkg_name:
         """
 
         if isinstance(source_details, str):
@@ -225,12 +228,20 @@ class PkgResolver(metaclass=ABCMeta):
             }
             return metadata
 
+        task = TaskDesc()
+        pkg = pkg_name.split(".")[-1]
+        task.name = f"{pkg} metadata"
+        task.msg = f"retrieving metadata for pkg '{pkg}'"
+        task.task_started()
+
         metadata = await self._get_pkg_metadata(
             source_details=_source_details,
             bring_context=bring_context,
             config=config,
             cached_only=False,
         )
+
+        task.task_finished()
 
         PkgResolver.metadata_cache[self.__class__][id] = {
             "metadata": metadata,
