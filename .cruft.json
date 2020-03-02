@@ -1,6 +1,6 @@
 {
     "template": "https://gitlab.com/frkl/template-python-project.git",
-    "commit": "74ff1f4fd2dc119836b4e3fec8332aa0609774fb",
+    "commit": "3f885691802320147960cc6fd96bdff0fd6fabef",
     "context": {
         "cookiecutter": {
             "full_name": "Markus Binsteiner",
