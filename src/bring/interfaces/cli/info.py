@@ -15,7 +15,7 @@ class BringInfoGroup(FrklBaseCommand):
     def __init__(
         self,
         bring: Bring,
-        context: str = None,
+        context: Optional[BringContextTing] = None,
         name=None,
         print_version_callback=None,
         no_args_is_help=None,
@@ -30,11 +30,8 @@ class BringInfoGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
         self._bring: Bring = bring
-        if context:
-            _context = self._bring.get_context(context)
-        else:
-            _context = None
-        self._context: Optional[BringContextTing] = _context
+
+        self._context: Optional[BringContextTing] = context
 
         super(BringInfoGroup, self).__init__(
             name=name,

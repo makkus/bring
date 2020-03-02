@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.context import BringContextTing
 from bring.defaults import DEFAULT_INSTALL_PROFILE_NAME
 from frtls.args.arg import Arg, RecordArg
 from frtls.cli.exceptions import handle_exc_async
@@ -14,7 +15,7 @@ class BringInstallGroup(FrklBaseCommand):
         self,
         bring: Bring,
         name: str = None,
-        context: str = None,
+        context: Optional[BringContextTing] = None,
         **kwargs
         # print_version_callback=None,
         # invoke_without_command=False,
@@ -23,9 +24,7 @@ class BringInstallGroup(FrklBaseCommand):
         # self.print_version_callback = print_version_callback
         self._bring = bring
 
-        self._context = None
-        if context is not None:
-            self._context = self._bring.get_context(context)
+        self._context: Optional[BringContextTing] = context
 
         super(BringInstallGroup, self).__init__(
             name=name,

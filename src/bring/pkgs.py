@@ -86,17 +86,18 @@ class Pkgs(SubscripTings):
 
         return result
 
-    async def get_all_pkg_values(self) -> Dict[str, Dict]:
+    async def get_all_pkg_values(self, *value_names) -> Dict[str, Dict]:
 
         result = {}
 
         async def get_value(pkg):
-            vals = await pkg.get_values()
+            vals = await pkg.get_values(*value_names)
             result[pkg.name] = vals
 
         async with create_task_group() as tg:
             for pkg in self.pkgs.values():
                 await tg.spawn(get_value, pkg)
+                # break
 
         return result
 

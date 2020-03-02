@@ -17,7 +17,7 @@ class BringContextGroup(FrklBaseCommand):
     def __init__(
         self,
         bring: Bring,
-        context: str = None,
+        context: Optional[BringContextTing] = None,
         name=None,
         print_version_callback=None,
         no_args_is_help=None,
@@ -31,11 +31,7 @@ class BringContextGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
         self._bring: Bring = bring
-        if context:
-            _context = self._bring.get_context(context)
-        else:
-            _context = None
-        self._context: Optional[BringContextTing] = _context
+        self._context: Optional[BringContextTing] = context
 
         super(BringContextGroup, self).__init__(
             name=name,
@@ -83,7 +79,7 @@ class BringContextGroup(FrklBaseCommand):
         from bring.interfaces.cli.command_group import BringCommandGroup
 
         context_info_command = BringCommandGroup(
-            bring=self._bring, context=name, name=name
+            bring=self._bring, context=context, name=name
         )
         # import pp
         # pp(context._input_ting.__dict__)

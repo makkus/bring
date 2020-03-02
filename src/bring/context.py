@@ -175,3 +175,17 @@ class BringContextTing(InheriTing, SimpleTing):
             self._maker.add_base_paths(index)  # type: ignore
 
         return self._maker  # type: ignore
+
+    async def export(self) -> Mapping[str, Any]:
+
+        pkgs = await self.pkgs
+        all_values = await pkgs.get_all_pkg_values(
+            "source", "metadata", "aliases", "info", "labels", "tags"
+        )
+
+        return all_values
+
+
+class BringDynamicContextTing(BringContextTing):
+
+    pass

@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+from typing import Optional
+
 import asyncclick as click
 from bring.bring import Bring
+from bring.context import BringContextTing
+from bring.interfaces.cli.export_context import BringExportContextCommand
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -8,7 +12,7 @@ class BringCommandGroup(FrklBaseCommand):
     def __init__(
         self,
         bring: Bring,
-        context: str = None,
+        context: Optional[BringContextTing] = None,
         name=None,
         print_version_callback=None,
         callback=None,
@@ -23,7 +27,10 @@ class BringCommandGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
         self._bring: Bring = bring
-        self._context = context
+
+        self._bring: Bring = bring
+
+        self._context: Optional[BringContextTing] = context
 
         if not callback:
             callback = self.overview
@@ -48,9 +55,7 @@ class BringCommandGroup(FrklBaseCommand):
         if ctx.invoked_subcommand:
             return
 
-        context = self._bring.get_context(self._context)
-
-        print(await context.get_info())
+        print(await self._context.get_info())
 
     async def init_command_async(self, ctx):
 
@@ -58,7 +63,7 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["info", "install", "update"]
+        result = ["info", "install", "update", "export"]
         if self._context is None:
             result.append("context")
             result.append("dev")
@@ -116,5 +121,18 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.dev import dev
 
             command = dev
+
+        elif name == "export":
+
+            command = BringExportContextCommand(
+                bring=self._bring,
+                context=self._context,
+                name="export",
+                terminal=self._terminal,
+            )
+            if self._context:
+                command.short_help = f"export context '{self._context.name}'"
+            else:
+                command.short_help = "export all contexts"
 
         return command

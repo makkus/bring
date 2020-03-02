@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Optional, Union
+from typing import Optional
 
 import asyncclick as click
 from blessings import Terminal
@@ -12,7 +12,7 @@ class BringUpdateCommand(click.Command):
         self,
         name: str,
         bring: Bring,
-        context: Union[BringContextTing, str] = None,
+        context: Optional[BringContextTing] = None,
         terminal=None,
     ):
 
@@ -20,11 +20,7 @@ class BringUpdateCommand(click.Command):
         if terminal is None:
             terminal = Terminal()
         self._terminal = terminal
-        if isinstance(context, str):
-            _context = self._bring.get_context(context)
-        else:
-            _context = context
-        self._context: Optional[BringContextTing] = _context
+        self._context: Optional[BringContextTing] = context
 
         super().__init__(name=name, callback=self.update)
 
