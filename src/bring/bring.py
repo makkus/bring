@@ -80,8 +80,8 @@ class Bring(Tingistry):
 
         contexts: SubscripTings = self.get_ting("bring.contexts")  # type: ignore
         return {
-            x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()
-        }  # type: ignore
+            x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
+        }
 
     def get_context(self, context_name: str) -> Optional[BringContextTing]:
 
