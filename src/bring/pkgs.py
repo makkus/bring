@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping
 
 from anyio import create_task_group
 from bring.pkg import PkgTing
@@ -31,23 +31,23 @@ class Pkgs(SubscripTings):
         self._bring_context = bring_context
         super().__init__(
             name=name,
-            prototing="bring.types.pkg",
+            prototing="bring.types.dynamic_pkg",
             subscription_namespace=subscription_namespace,
             meta=meta,
         )
 
-    def _ting_added(self, ting: Ting):
+    def _ting_added(self, ting: Ting) -> None:
 
         if not isinstance(ting, PkgTing):
             raise TypeError(f"Invalid type '{type(ting)}', 'PkgTing' required.")
         ting.bring_context = self._bring_context
         self._pkgs[ting.name] = ting
 
-    def _ting_removed(self, ting: Ting):
+    def _ting_removed(self, ting: Ting) -> None:
 
         self._pkgs.pop(ting.name)
 
-    def _ting_updated(self, ting: Ting, current_values: Dict[str, Any]):
+    def _ting_updated(self, ting: Ting, current_values: Mapping[str, Any]):
 
         pass
         # print("TING UPDATED: {}".format(ting.name))
@@ -61,7 +61,7 @@ class Pkgs(SubscripTings):
         return self._pkgs.values().__next__()  # type: ignore
 
     @property
-    def pkgs(self) -> Dict[str, PkgTing]:
+    def pkgs(self) -> Mapping[str, PkgTing]:
 
         return self._pkgs
 

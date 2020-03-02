@@ -3,6 +3,7 @@ import copy
 import logging
 import os
 import shutil
+from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Union
 
@@ -65,76 +66,6 @@ class PkgTing(SimpleTing):
             "tags": "list",
         }
 
-    def requires(self) -> Dict[str, str]:
-
-        return {
-            "source": "dict",
-            "aliases": "dict?",
-            "info": "dict?",
-            "labels": "dict?",
-            "tags": "list?",
-            "ting_make_timestamp": "string",
-            "ting_make_metadata": "dict",
-        }
-
-    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
-
-        if not self.bring_context:
-            raise FrklException(
-                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
-                reason="Context not set yet.",
-            )
-
-        result: Dict[str, Any] = {}
-        source = requirements["source"]
-
-        resolver = self._get_resolver(source_dict=source)
-
-        seed_data = await resolver.get_seed_data(
-            source, bring_context=self.bring_context
-        )
-        if seed_data is None:
-            seed_data = {}
-
-        if "source" in value_names:
-            result["source"] = source
-
-        metadata = None
-        if (
-            "metadata" in value_names
-            or "args" in value_names
-            or "aliases" in value_names
-            or "metadata_valid" in value_names
-        ):
-            metadata = await self._get_metadata(source)
-            result["metadata"] = metadata
-
-        if "args" in value_names:
-            result["args"] = await self._calculate_args(metadata=metadata)
-
-        if "aliases" in value_names:
-            result["aliases"] = await self._get_aliases(metadata)
-
-        if "info" in value_names:
-            info = requirements.get("info", {})
-            result["info"] = get_seeded_dict(
-                seed_data.get("info", None), info, merge_strategy="merge"
-            )
-
-        if "labels" in value_names:
-            labels = requirements.get("labels", {})
-            result["labels"] = get_seeded_dict(
-                seed_data.get("labels", None), labels, merge_strategy="update"
-            )
-
-        if "tags" in value_names:
-            result["tags"] = requirements.get("tags", [])
-            parent_tags: Iterable[str] = seed_data.get("tags", None)
-            if parent_tags:
-                result["tags"].extend(parent_tags)
-
-        return result
-
     async def _get_aliases(self, metadata):
 
         return metadata.get("aliases", {})
@@ -154,81 +85,27 @@ class PkgTing(SimpleTing):
 
         return arg
 
+    @abstractmethod
     async def get_metadata(
         self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
     ) -> Mapping[str, Any]:
         """Return metadata associated with this package."""
 
-        vals: Mapping[str, Any] = await self.get_values(
-            "source", resolve=True
-        )  # type: ignore
-        return await self._get_metadata(
-            vals["source"], config=config, register_task=False
-        )
+        pass
 
-    async def _get_metadata(
-        self,
-        source_dict,
-        config: Optional[Mapping[str, Any]] = None,
-        register_task: bool = False,
-    ) -> Mapping[str, Any]:
-        """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
+    # def _get_translated_value(self, var_map, value):
+    #
+    #     if value not in var_map.keys():
+    #         return value
+    #
+    #     return var_map[value]
 
-        resolver = self._get_resolver(source_dict)
-
-        cached = await resolver.metadata_is_valid(
-            source_dict, self.bring_context, override_config=config
-        )
-        if not cached and register_task:
-            task_desc = TaskDesc(
-                name=f"metadata retrieval {self.name}",
-                msg=f"retrieving valid metadata for package '{self.name}'",
-            )
-            task_desc.task_started()
-
-        metadata = await resolver.get_pkg_metadata(
-            source_dict, self.bring_context, override_config=config
-        )
-
-        if not cached and register_task:
-            task_desc.task_finished(msg="metadata retrieved")  # type: ignore
-
-        return metadata
-
-    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
-
-        pkg_type = source_dict.get("type", None)
-        if pkg_type is None:
-            raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
-
-        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager(
-            "pkg_resolver"
-        )
-
-        resolver: PkgResolver = pm.get_plugin_for(pkg_type)
-        if resolver is None:
-            r_type = source_dict.get("type", source_dict)
-            raise TingException(
-                ting=self,
-                msg=f"Can't retrieve metadata for pkg '{self.name}'.",
-                reason=f"No resolver registered for: {r_type}",
-            )
-
-        return resolver
-
-    def _get_translated_value(self, var_map, value):
-
-        if value not in var_map.keys():
-            return value
-
-        return var_map[value]
-
-    async def get_valid_var_combinations(self):
-
-        vals = await self.get_values("metadata")
-        metadata = vals["metadata"]
-
-        return self._get_valid_var_combinations(metadata=metadata)
+    # async def get_valid_var_combinations(self):
+    #
+    #     vals = await self.get_values("metadata")
+    #     metadata = vals["metadata"]
+    #
+    #     return self._get_valid_var_combinations(metadata=metadata)
 
     async def _get_valid_var_combinations(
         self, metadata
@@ -267,7 +144,7 @@ class PkgTing(SimpleTing):
         )  # type: ignore
 
         info = vals["info"]
-        source_details = vals["source"]
+        # source_details = vals["source"]
 
         result = {}
 
@@ -276,8 +153,8 @@ class PkgTing(SimpleTing):
 
         if include_metadata:
 
-            metadata: Mapping[str, Any] = await self._get_metadata(
-                source_dict=source_details, config=retrieve_config, register_task=True
+            metadata: Mapping[str, Any] = await self.get_metadata(
+                config=retrieve_config, register_task=True
             )
 
             timestamp = metadata["metadata_check"]
@@ -366,3 +243,185 @@ class PkgTing(SimpleTing):
             # TODO: file attributes
         elif method == "move":
             shutil.move(source, target)
+
+
+class StaticPkgTing(PkgTing):
+    def __init__(self, name, meta: Dict[str, Any]):
+
+        super().__init__(name=name, meta=meta)
+
+    def requires(self) -> Dict[str, str]:
+
+        return {
+            "source": "dict",
+            "aliases": "dict?",
+            "info": "dict?",
+            "labels": "dict?",
+            "tags": "list?",
+            "metadata": "dict",
+        }
+
+    async def get_metadata(
+        self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
+    ) -> Mapping[str, Any]:
+
+        vals: Mapping[str, Any] = await self.get_values(
+            "metadata", resolve=True
+        )  # type: ignore
+        return vals["metadata"]
+
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        if not self.bring_context:
+            raise FrklException(
+                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
+                reason="Context not set yet.",
+            )
+
+        result: Dict[str, Any] = {}
+
+        for vn in value_names:
+            if vn == "args":
+                result[vn] = await self._calculate_args(requirements["metadata"])
+            else:
+                result[vn] = requirements[vn]
+
+        return result
+
+
+class DynamicPkgTing(PkgTing):
+    def __init__(self, name, meta: Dict[str, Any]):
+
+        super().__init__(name=name, meta=meta)
+
+    async def get_metadata(
+        self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
+    ) -> Mapping[str, Any]:
+        """Return metadata associated with this package."""
+
+        vals: Mapping[str, Any] = await self.get_values(
+            "source", resolve=True
+        )  # type: ignore
+        return await self._get_metadata(
+            vals["source"], config=config, register_task=False
+        )
+
+    async def _get_metadata(
+        self,
+        source_dict,
+        config: Optional[Mapping[str, Any]] = None,
+        register_task: bool = False,
+    ) -> Mapping[str, Any]:
+        """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
+
+        resolver = self._get_resolver(source_dict)
+
+        cached = await resolver.metadata_is_valid(
+            source_dict, self.bring_context, override_config=config
+        )
+        if not cached and register_task:
+            task_desc = TaskDesc(
+                name=f"metadata retrieval {self.name}",
+                msg=f"retrieving valid metadata for package '{self.name}'",
+            )
+            task_desc.task_started()
+
+        metadata = await resolver.get_pkg_metadata(
+            source_dict, self.bring_context, override_config=config
+        )
+
+        if not cached and register_task:
+            task_desc.task_finished(msg="metadata retrieved")  # type: ignore
+
+        return metadata
+
+    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
+
+        pkg_type = source_dict.get("type", None)
+        if pkg_type is None:
+            raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
+
+        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager(
+            "pkg_resolver"
+        )
+
+        resolver: PkgResolver = pm.get_plugin_for(pkg_type)
+        if resolver is None:
+            r_type = source_dict.get("type", source_dict)
+            raise TingException(
+                ting=self,
+                msg=f"Can't retrieve metadata for pkg '{self.name}'.",
+                reason=f"No resolver registered for: {r_type}",
+            )
+
+        return resolver
+
+    def requires(self) -> Dict[str, str]:
+
+        return {
+            "source": "dict",
+            "aliases": "dict?",
+            "info": "dict?",
+            "labels": "dict?",
+            "tags": "list?",
+            "ting_make_timestamp": "string?",
+            "ting_make_metadata": "dict?",
+        }
+
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        if not self.bring_context:
+            raise FrklException(
+                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
+                reason="Context not set yet.",
+            )
+
+        result: Dict[str, Any] = {}
+        source = requirements["source"]
+
+        resolver = self._get_resolver(source_dict=source)
+
+        seed_data = await resolver.get_seed_data(
+            source, bring_context=self.bring_context
+        )
+        if seed_data is None:
+            seed_data = {}
+
+        if "source" in value_names:
+            result["source"] = source
+
+        metadata = None
+        if (
+            "metadata" in value_names
+            or "args" in value_names
+            or "aliases" in value_names
+            or "metadata_valid" in value_names
+        ):
+            metadata = await self._get_metadata(source)
+            result["metadata"] = metadata
+
+        if "args" in value_names:
+            result["args"] = await self._calculate_args(metadata=metadata)
+
+        if "aliases" in value_names:
+            result["aliases"] = await self._get_aliases(metadata)
+
+        if "info" in value_names:
+            info = requirements.get("info", {})
+            result["info"] = get_seeded_dict(
+                seed_data.get("info", None), info, merge_strategy="merge"
+            )
+
+        if "labels" in value_names:
+            labels = requirements.get("labels", {})
+            result["labels"] = get_seeded_dict(
+                seed_data.get("labels", None), labels, merge_strategy="update"
+            )
+
+        if "tags" in value_names:
+            result["tags"] = requirements.get("tags", [])
+            parent_tags: Iterable[str] = seed_data.get("tags", None)
+            if parent_tags:
+                result["tags"].extend(parent_tags)
+
+        return result

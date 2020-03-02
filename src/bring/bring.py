@@ -4,7 +4,7 @@
 import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
-from bring.context import BringContextTing
+from bring.context import BringContextTing, BringStaticContextTing
 from bring.defaults import (
     BRINGISTRY_CONFIG,
     BRING_CONTEXTS_FOLDER,
@@ -61,11 +61,22 @@ class Bring(Tingistry):
 
         self._transmogritory = Transmogritory(self)
 
-        self._context_maker: TextFileTingMaker = self.create_ting(
+        self._dynamic_context_maker: TextFileTingMaker = self.create_ting(
             "bring.types.config_file_context_maker", "bring.context_maker"
         )  # type: ignore
+        self._dynamic_context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
 
-        self._context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
+        self._default_contexts: Mapping[str, BringStaticContextTing] = {}
+        ctx: BringStaticContextTing = self.create_ting(
+            "bring.types.contexts.default_context", "bring.contexts.default.exe"
+        )  # type: ignore
+        # ctx.input.set_values(ting_dict={"url": "/home/markus/projects/tings/executable.json"})
+        ctx.input.set_values(
+            ting_dict={
+                "url": "https://gitlab.com/tingistries/executables/-/raw/master/executable.json"
+            }
+        )
+        self._default_contexts["exe"] = ctx
 
         self._initialized = False
 
@@ -73,15 +84,21 @@ class Bring(Tingistry):
 
     async def init(self):
         if not self._initialized:
-            await self._context_maker.sync()
+            await self._dynamic_context_maker.sync()
 
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
-        contexts: SubscripTings = self.get_ting("bring.contexts")  # type: ignore
-        return {
+        contexts: SubscripTings = self.get_ting(
+            "bring.contexts.dynamic"
+        )  # type: ignore
+        result: Dict[str, BringContextTing] = {
             x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
-        }
+        }  # type: ignore
+
+        result.update(self._default_contexts)
+
+        return result
 
     def get_context(self, context_name: str) -> Optional[BringContextTing]:
 

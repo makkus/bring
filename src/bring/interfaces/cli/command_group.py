@@ -28,8 +28,6 @@ class BringCommandGroup(FrklBaseCommand):
         # )
         self._bring: Bring = bring
 
-        self._bring: Bring = bring
-
         self._context: Optional[BringContextTing] = context
 
         if not callback:

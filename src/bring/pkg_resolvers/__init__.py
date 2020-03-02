@@ -479,7 +479,7 @@ class SimplePkgResolver(PkgResolver):
                     else:
                         version_vars[var_name]["allowed"].append(alias)
 
-        mogrify_vars: Optional[Mapping[str, Mapping]] = None
+        mogrify_vars: Mapping[str, Mapping]
         duplicates = {}
         if mogrifiers:
             template_schema = get_template_schema(mogrifiers)
@@ -488,6 +488,8 @@ class SimplePkgResolver(PkgResolver):
             for k in mogrify_vars.keys():
                 if k in version_vars.keys():
                     duplicates[k] = (mogrify_vars[k], version_vars[k])
+        else:
+            mogrify_vars = {}
 
         computed_vars = get_seeded_dict(
             mogrify_vars, version_vars, merge_strategy="update"

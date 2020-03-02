@@ -29,23 +29,34 @@ DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 
 BRINGISTRY_CONFIG = {
     "prototings": [
-        {"prototing_name": "bring.types.pkg", "ting_class": "pkg_ting"},
+        {"prototing_name": "bring.types.dynamic_pkg", "ting_class": "dynamic_pkg_ting"},
+        {"prototing_name": "bring.types.static_pkg", "ting_class": "static_pkg_ting"},
         {
             "prototing_name": "internal.singletings.context_list",
             "ting_class": "subscrip_tings",
             "prototing_factory": "singleting",
-            "prototing": "bring_context_ting",
-            "subscription_namespace": "bring.contexts",
-            "ting_name": "bring.contexts",
+            "prototing": "bring_dynamic_context_ting",
+            "subscription_namespace": "bring.contexts.dynamic",
+            "ting_name": "bring.contexts.dynamic",
         },
         {
             "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
-            "prototing": "bring_context_ting",
+            "prototing": "bring_dynamic_context_ting",
             "ting_name_strategy": "basename_no_ext",
-            "ting_target_namespace": "bring.contexts",
+            "ting_target_namespace": "bring.contexts.dynamic",
             "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
         },
+        {
+            "prototing_name": "bring.types.contexts.default_context",
+            "ting_class": "bring_static_context_ting",
+        }
+        # {
+        #     "prototing_name": "bring.types.static_context_maker",
+        #     "ting_class": "smart_input_dict_ting_maker",
+        #     "prototing": "bring_static_context_ting",
+        #     "ting_target_namespace": "bring.contexts.static"
+        # }
     ],
     "tings": [],
     "modules": [

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+from abc import abstractmethod
 from typing import Any, Dict, Iterable, Mapping, Optional
 
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
 from frtls.dicts import dict_merge
+from frtls.formats.input_formats import SmartInput
 from frtls.tasks import FlattenParallelTasksAsync, SingleTaskAsync, TaskDesc, Tasks
 from tings.makers import TingMaker
 from tings.ting import SimpleTing
@@ -12,31 +14,23 @@ from tings.ting.inheriting import InheriTing
 
 class BringContextTing(InheriTing, SimpleTing):
     def __init__(
-        self, name: str, parent_key: str = "parent", meta: Dict[str, Any] = None
+        self,
+        name: str,
+        parent_key: str = "parent",
+        meta: Optional[Mapping[str, Any]] = None,
     ):
 
-        self._parent_key = parent_key
+        self._parent_key: str = parent_key
+        self._initialized: bool = False
         super().__init__(name=name, meta=meta)
-
-        self._pkg_namespace = f"bring.contexts.{self.name}.pkgs"
-        self._pkg_list = self._tingistry_obj.create_singleting(
-            name=self._pkg_namespace,
-            ting_class="pkgs",
-            subscription_namespace=self._pkg_namespace,
-            bring_context=self,
-        )
-        self._maker_config: Optional[Mapping[str, Any]] = None
-        self._maker: Optional[TingMaker] = None
 
     def provides(self) -> Dict[str, str]:
 
         return {
             self._parent_key: "string?",
             "info": "dict",
-            "pkgs": "ting",
+            "pkgs": "dict",
             "config": "dict",
-            "indexes": "list",
-            "maker": "ting",
         }
 
     def requires(self) -> Dict[str, str]:
@@ -58,21 +52,19 @@ class BringContextTing(InheriTing, SimpleTing):
         else:
             config = await self._get_config(data)
 
+        if not self._initialized:
+            await self.init(config)
+            self._initialized = True
+
         if "config" in value_names:
             result["config"] = config
 
         if "info" in value_names:
             result["info"] = config.get("info", {})
 
-        if "indexes" in value_names:
-            result["indexes"] = config.get("indexes", [])
-
-        if "maker" in value_names:
-            result["maker"] = await self.get_maker(config)
-
         if "pkgs" in value_names:
-            await self._ensure_pkgs(config)
-            result["pkgs"] = self._pkg_list
+            # await self._ensure_pkgs(config)
+            result["pkgs"] = await self.get_pkgs()
 
         return result
 
@@ -101,45 +93,30 @@ class BringContextTing(InheriTing, SimpleTing):
             parent = "(no parent)"
         return {"name": self.name, "parent": parent, "config": config["config"]}
 
-    async def _ensure_pkgs(self, config: Dict[str, Any]) -> None:
+    @abstractmethod
+    async def get_pkgs(self) -> Mapping[str, PkgTing]:
 
-        maker = await self.get_maker(config)
-        await maker.sync()
+        pass
 
-    @property
-    async def pkgs(self) -> Pkgs:
+    @abstractmethod
+    async def init(self, config: Mapping[str, Any]):
 
-        vals: Mapping[str, Any] = await self.get_values(
-            "pkgs", resolve=True
-        )  # type: ignore
-        return vals["pkgs"]
+        pass
 
-    async def get_pkg(self, name: str) -> PkgTing:
+    async def get_pkg(self, name: str) -> Optional[PkgTing]:
 
-        pkgs = await self.pkgs
-        return pkgs.get_pkg(name)
+        pkgs = await self.get_pkgs()
+        return pkgs.get(name, None)
 
     @property
     async def pkg_names(self) -> Iterable[str]:
 
-        pkgs = await self.pkgs
-        return pkgs.get_pkg_names()
+        pkgs = await self.get_pkgs()
+        return pkgs.keys()
 
+    @abstractmethod
     async def _create_update_tasks(self) -> Tasks:
-
-        task_desc = TaskDesc(
-            name=f"metadata update {self.name}",
-            msg=f"updating metadata for context '{self.name}'",
-        )
-        tasks = FlattenParallelTasksAsync(desc=task_desc)
-        pkgs = await self.pkgs
-        for pkg_name, pkg in pkgs.pkgs.items():
-            t = SingleTaskAsync(pkg.update_metadata)
-            t.task_desc.name = pkg_name
-            t.task_desc.msg = f"updating metadata for pkg '{pkg_name}'"
-            tasks.add_task(t)
-
-        return tasks
+        pass
 
     async def update(self, in_background: bool = False) -> None:
         """Updates pkg metadata."""
@@ -150,6 +127,109 @@ class BringContextTing(InheriTing, SimpleTing):
         tasks = await self._create_update_tasks()
 
         await tasks.run_async()
+
+
+class BringStaticContextTing(BringContextTing):
+    def __init__(
+        self,
+        name: str,
+        parent_key: str = "parent",
+        meta: Optional[Mapping[str, Any]] = None,
+    ):
+        self._url: Optional[str] = None
+        self._data: Optional[Mapping[str, Mapping[str, Any]]] = None
+        self._pkgs: Dict[str, PkgTing] = {}
+        self._config: Optional[Mapping[str, Any]] = None
+        super().__init__(name=name, parent_key=parent_key, meta=meta)
+
+    def set_url(self, url: str):
+
+        self._url = url
+        self.invalidate()
+
+    async def load_pkgs(self):
+
+        self._pkgs.clear()
+        si = SmartInput(self._url, content_type="json")
+        self._data = await si.content_async()
+
+        for name, data in self._data.items():
+            ting: PkgTing = self._tingistry_obj.create_ting(
+                "bring.types.static_pkg", f"{self.full_name}.pkgs.{name}"
+            )  # type: ignore
+            ting.bring_context = self
+            ting.input.set_values(**data)
+            # ting._set_result(data)
+            self._pkgs[name] = ting
+
+    async def get_pkgs(self) -> Mapping[str, PkgTing]:
+
+        if self._data is None:
+            await self.load_pkgs()
+
+        return self._pkgs
+
+    async def _create_update_tasks(self) -> Tasks:
+
+        raise NotImplementedError()
+
+    async def init(self, config: Mapping[str, Any]) -> None:
+        self._config = config
+        self.set_url(config["url"])
+
+
+class BringDynamicContextTing(BringContextTing):
+    def __init__(
+        self,
+        name: str,
+        parent_key: str = "parent",
+        meta: Optional[Mapping[str, Any]] = None,
+    ):
+
+        super().__init__(name=name, parent_key=parent_key, meta=meta)
+
+        self._pkg_namespace = f"bring.contexts.dynamic.{self.name}.pkgs"
+        self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(
+            name=self._pkg_namespace,
+            ting_class="pkgs",
+            subscription_namespace=self._pkg_namespace,
+            bring_context=self,
+        )  # type: ignore
+        self._maker_config: Optional[Mapping[str, Any]] = None
+        self._maker: Optional[TingMaker] = None
+
+    async def export_context(self) -> Mapping[str, Any]:
+
+        all_values = await self._pkg_list.get_all_pkg_values(
+            "source", "metadata", "aliases", "info", "labels", "tags"
+        )
+
+        return all_values
+
+    async def init(self, config: Mapping[str, Any]) -> None:
+
+        maker = await self.get_maker(config)
+        await maker.sync()
+
+    async def get_pkgs(self) -> Mapping[str, PkgTing]:
+
+        return self._pkg_list.pkgs
+
+    async def _create_update_tasks(self) -> Tasks:
+
+        task_desc = TaskDesc(
+            name=f"metadata update {self.name}",
+            msg=f"updating metadata for context '{self.name}'",
+        )
+        tasks = FlattenParallelTasksAsync(desc=task_desc)
+        pkgs = await self.get_pkgs()
+        for pkg_name, pkg in pkgs.items():
+            t = SingleTaskAsync(pkg.update_metadata)
+            t.task_desc.name = pkg_name
+            t.task_desc.msg = f"updating metadata for pkg '{pkg_name}'"
+            tasks.add_task(t)
+
+        return tasks
 
     async def get_maker(self, config) -> TingMaker:
 
@@ -164,7 +244,7 @@ class BringContextTing(InheriTing, SimpleTing):
         self._maker = self._tingistry_obj.create_singleting(
             name=maker_name,
             ting_class="text_file_ting_maker",
-            prototing="bring.types.pkg",
+            prototing="bring.types.dynamic_pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
             file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],
@@ -175,17 +255,3 @@ class BringContextTing(InheriTing, SimpleTing):
             self._maker.add_base_paths(index)  # type: ignore
 
         return self._maker  # type: ignore
-
-    async def export(self) -> Mapping[str, Any]:
-
-        pkgs = await self.pkgs
-        all_values = await pkgs.get_all_pkg_values(
-            "source", "metadata", "aliases", "info", "labels", "tags"
-        )
-
-        return all_values
-
-
-class BringDynamicContextTing(BringContextTing):
-
-    pass

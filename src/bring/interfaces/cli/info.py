@@ -60,11 +60,11 @@ class BringInfoGroup(FrklBaseCommand):
         print()
         print(HTML("<b>Available packages:</b>"))
         print()
-        pkgs = await self._context.pkgs
+        pkgs = await self._context.get_pkgs()
 
-        if not pkgs.pkgs:
+        if not pkgs:
             print("  - no packages")
-        for pkg in pkgs:
+        for pkg in pkgs.values():
             print(HTML(f"  - {pkg.name}"))
         print()
 
@@ -78,10 +78,10 @@ class BringInfoGroup(FrklBaseCommand):
             print()
             print(HTML("  Packages:"))
             print()
-            pkgs = await context.pkgs
-            if not pkgs.pkgs:
+            pkgs = await context.get_pkgs()
+            if not pkgs:
                 print("    - no packages")
-            for pkg in pkgs:
+            for pkg in pkgs.values():
                 print(HTML(f"    - {pkg.name}"))
             print()
 
@@ -101,7 +101,9 @@ class BringInfoGroup(FrklBaseCommand):
     async def _get_command(self, ctx, name):
 
         if self._context is not None:
+            await self._context.get_values()
             pkg = await self._context.get_pkg(name)
+
         else:
             if "__" not in name:
                 return None

@@ -53,7 +53,7 @@ class BringExportContextCommand(click.Command):
             # all_values = await pkg.get_values("metadata")
             # print(vals)
 
-            all_values = await self._context.export()
+            all_values = await self._context_context.export()
 
             json_data = json.dumps(all_values, indent=2)
 
