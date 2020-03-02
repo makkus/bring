@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from typing import Any, Dict, Optional
+
 import arrow
 import asyncclick as click
 from bring.bring import Bring
@@ -32,7 +34,7 @@ class BringInfoGroup(FrklBaseCommand):
             _context = self._bring.get_context(context)
         else:
             _context = None
-        self._context: BringContextTing = _context
+        self._context: Optional[BringContextTing] = _context
 
         super(BringInfoGroup, self).__init__(
             name=name,
@@ -52,7 +54,7 @@ class BringInfoGroup(FrklBaseCommand):
     @click.pass_context
     async def all_info(ctx, self, *args, **kwargs):
 
-        if ctx.invoked_subcommand:
+        if ctx.invoked_subcommand:  # type: ignore
             return
 
         if not self._context:
@@ -116,7 +118,7 @@ class BringInfoGroup(FrklBaseCommand):
         @handle_exc_async
         async def command(update: bool, full: bool):
 
-            args = {"include_metadata": True}
+            args: Dict[str, Any] = {"include_metadata": True}
             if update:
                 args["retrieve_config"] = {"metadata_max_age": 0}
             info = await pkg.get_info(**args)

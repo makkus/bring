@@ -33,13 +33,13 @@ async def cli_func(ctx, *args, **kwargs):
     # print_formatted_text('Hello world')
 
 
-def cli():
+def cli(*args):
 
-    return cli_func()
+    return cli_func(*args)
 
 
 if __name__ == "__main__":
     cli()
 
 if getattr(sys, "frozen", False):
-    cli(sys.argv[1:])
+    cli(*sys.argv[1:])

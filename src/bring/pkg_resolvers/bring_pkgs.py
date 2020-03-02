@@ -15,7 +15,12 @@ class BringPkgsResolver(SimplePkgResolver):
 
     _plugin_name: str = "bring_pkgs"
 
-    def __init__(self, config: Optional[Mapping[str, Any]]):
+    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+
+        if config is None:
+            raise TypeError(
+                "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
+            )
 
         self._bringistry: Bring = config["bringistry"]
         super().__init__(config=config)
@@ -38,7 +43,7 @@ class BringPkgsResolver(SimplePkgResolver):
         return result
 
     async def get_seed_data(
-        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> Mapping[str, Any]:
         """Overwrite to provide seed data for a pkg.
 
@@ -49,7 +54,9 @@ class BringPkgsResolver(SimplePkgResolver):
         for pkg in self.get_child_pkgs(
             source_details=source_details, bring_context=bring_context
         ).values():
-            vals = await pkg.get_values("info")
+            vals: Mapping[str, Any] = await pkg.get_values(
+                "info", resolve=True
+            )  # type: ignore
             info = vals["info"]
             childs[pkg.name] = info.get("slug", "n/a")
 
@@ -82,7 +89,7 @@ class BringPkgsResolver(SimplePkgResolver):
                 reason=f"Parent pkg '{ting_name}' does not sub-class the PkgTing class.",
             )
 
-        return ting
+        return ting  # type: ignore
 
     def get_unique_source_id(
         self, source_details: Mapping, bring_context: BringContextTing
@@ -108,9 +115,17 @@ class BringPkgsResolver(SimplePkgResolver):
             vars = pkg.get("vars", {})
 
             pkg_obj = self.get_pkg(name, bring_context=bring_context)
-            vals = await pkg_obj.get_values("metadata")
+            vals: Mapping[str, Any] = await pkg_obj.get_values(
+                "metadata", resolve=True
+            )  # type: ignore
             metadata = vals["metadata"]
             version = find_version(vars=vars, metadata=metadata)
+
+            if version is None:
+                raise Exception(
+                    f"Error when processing pkg '{pkg.name}'. Can't find version for vars: {vars}"
+                )
+
             mogrifier_list = assemble_mogrifiers(
                 version["_mogrify"],
                 vars=vars,

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from abc import ABCMeta, abstractmethod
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 from blessings import Terminal
 from bring.defaults import BRING_TASKS_BASE_TOPIC
 from frtls.tasks import TaskDesc
 from pubsub import pub
-from treelib import Tree
+from treelib import Node, Tree
 
 
 class BringTaskWatcher(metaclass=ABCMeta):
@@ -58,33 +58,28 @@ class TerminalRunWatcher(BringTaskWatcher):
         self._old_height = 0
         self._sort_task_names = sort_task_names
 
-        self._tasks = Tree()
-        self._root_tasks = self._tasks.create_node(
+        self._tasks: Tree = Tree()
+        self._root_tasks: Node = self._tasks.create_node(
             tag="tasks", identifier="root", data=None
         )
 
-        self._running_tasks = {}
-        self._finished_tasks = {}
+        self._running_tasks: Dict[str, TaskDesc] = {}
+        self._finished_tasks: Dict[str, TaskDesc] = {}
 
         super().__init__(base_topic=base_topic)
 
     def _task_started(self, source: TaskDesc, event_details: Mapping[str, Any]):
 
         if source.parent:
-            parent_id = source.parent.id
+            parent_id: Optional[str] = source.parent.id
         else:
-            parent_id = None
+            parent_id = "root"
 
         if self._tasks.get_node(source.id):
             raise Exception(f"Task with id '{source.id}' already registered.")
 
         if source.id in self._running_tasks.keys():
             raise Exception(f"Task with id '{source.id}' already registered.")
-
-        if not source.parent:
-            parent_id: str = "root"
-        else:
-            parent_id: str = source.parent.id
 
         self._tasks.create_node(
             tag=f"{source.name} (running)",

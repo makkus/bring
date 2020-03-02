@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import TYPE_CHECKING, Any, Dict, Iterator
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from anyio import create_task_group
 from bring.pkg import PkgTing
@@ -21,7 +21,12 @@ class Pkgs(SubscripTings):
         meta: Dict[str, Any] = None,
     ):
 
-        self._pkgs = {}
+        if meta is None:
+            raise Exception(
+                f"Can't create Pkgs '{name}'. No metadata provided, so can't get tingistry."
+            )
+
+        self._pkgs: Dict[str, PkgTing] = {}
         self._tingistry_obj: "Tingistry" = meta["tingistry"]
         self._bring_context = bring_context
         super().__init__(
@@ -33,6 +38,8 @@ class Pkgs(SubscripTings):
 
     def _ting_added(self, ting: Ting):
 
+        if not isinstance(ting, PkgTing):
+            raise TypeError(f"Invalid type '{type(ting)}', 'PkgTing' required.")
         ting.bring_context = self._bring_context
         self._pkgs[ting.name] = ting
 
@@ -51,7 +58,7 @@ class Pkgs(SubscripTings):
 
     def __next__(self):
 
-        return self._pkgs.values().__next__()
+        return self._pkgs.values().__next__()  # type: ignore
 
     @property
     def pkgs(self) -> Dict[str, PkgTing]:
@@ -88,7 +95,7 @@ class Pkgs(SubscripTings):
             result[pkg.name] = vals
 
         async with create_task_group() as tg:
-            for pkg in self._bring_pkgs._childs.values():
+            for pkg in self.pkgs.values():
                 await tg.spawn(get_value, pkg)
 
         return result
@@ -107,5 +114,5 @@ class Pkgs(SubscripTings):
         pkg_vals = await pkg.get_values()
         return pkg_vals
 
-    def get_pkg_names(self) -> Iterator[str]:
-        return self.pkgs.keys()
+    def get_pkg_names(self) -> List[str]:
+        return list(self.pkgs.keys())

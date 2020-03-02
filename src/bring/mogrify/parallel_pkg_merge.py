@@ -10,7 +10,7 @@ from frtls.tasks import Tasks
 log = logging.getLogger("bring")
 
 
-class ParallelPkgMergeMogrifier(Tasks, Mogrifier):
+class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
 
     _plugin_name: str = "parallel_pkg_merge"
 
@@ -18,8 +18,9 @@ class ParallelPkgMergeMogrifier(Tasks, Mogrifier):
 
         self._mogrificators: List[Transmogrificator] = []
         self._merge_task: Optional[Mogrifier] = None
-        Mogrifier.__init__(self, name=name, meta=meta)
+
         Tasks.__init__(self, **kwargs)
+        Mogrifier.__init__(self, name=name, meta=meta, **kwargs)
 
     def add_mogrificators(self, *mogrificators: Transmogrificator):
 
@@ -53,13 +54,16 @@ class ParallelPkgMergeMogrifier(Tasks, Mogrifier):
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
+        if self._merge_task is None:
+            raise Exception("Can't execute parallel package merge. Merge task not set.")
+
         async with create_task_group() as tg:
             for tm in self._children.values():
-                await tg.spawn(tm.transmogrify)
+                await tg.spawn(tm.transmogrify)  # type: ignore
 
         folders = []
         for tm in self._children.values():
-            folder = tm._last_item.current_state["folder_path"]
+            folder = tm._last_item.current_state["folder_path"]  # type: ignore
             folders.append(folder)
 
         self._merge_task.input.set_values(**{"folder_paths": folders})

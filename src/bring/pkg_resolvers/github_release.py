@@ -1,9 +1,18 @@
 # -*- coding: utf-8 -*-
-import copy
 import logging
 import re
 import time
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Union,
+)
 
 import arrow
 import httpx
@@ -30,13 +39,18 @@ DEFAULT_ARGS_DICT = {
 
 class GithubRelease(SimplePkgResolver):
 
-    last_github_limit_details = None
+    last_github_limit_details: Optional[Mapping] = None
 
     @classmethod
-    def get_github_limits(cls) -> Dict[str, Any]:
+    def get_github_limits(cls) -> Mapping[str, Any]:
 
         r = httpx.get("https://api.github.com/rate_limit")
         data = r.json()
+
+        if not isinstance(data, Mapping):
+            raise Exception(
+                f"Unexpected return type '{type(data)}' when querying github limits: {data}"
+            )
 
         details = {}
         details["limit"] = data["limit"]
@@ -56,7 +70,7 @@ class GithubRelease(SimplePkgResolver):
             cls.get_github_limits()
 
         now = arrow.now()
-        delta = cls.last_github_limit_details["reset"] - now
+        delta = cls.last_github_limit_details["reset"] - now  # type: ignore
         secs = delta.total_seconds()
         return secs
 
@@ -75,7 +89,7 @@ class GithubRelease(SimplePkgResolver):
         return ["github-release"]
 
     def get_unique_source_id(
-        self, source_details: Dict, bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> str:
 
         github_user = source_details.get("user_name")
@@ -106,7 +120,7 @@ class GithubRelease(SimplePkgResolver):
             return {"type": "file"}
 
     async def _process_pkg_versions(
-        self, source_details: Union[str, Dict], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> Mapping[str, Any]:
 
         github_user = source_details.get("user_name")
@@ -116,7 +130,7 @@ class GithubRelease(SimplePkgResolver):
 
         req_headers = Headers({"Accept": "application/vnd.github.v3+json"})
         async with httpx.AsyncClient() as client:
-            req = {"headers": req_headers}
+            req: Dict[str, Any] = {"headers": req_headers}
             if self._github_username and self._github_token:
                 req["auth"] = (self._github_username, self._github_token)
 
@@ -143,7 +157,9 @@ class GithubRelease(SimplePkgResolver):
             if github_details["remaining"] == 0:
                 reason = f"Github rate limit exceeded (quota: {github_details['limit']}, reset: {reset.humanize()})"
                 if not self._github_username or not self._github_token:
-                    solution = f"Set both 'github_user' and 'github_access_token' configuration values to make authenticated requests to GitHub and get a higher quota."
+                    solution: Optional[
+                        str
+                    ] = f"Set both 'github_user' and 'github_access_token' configuration values to make authenticated requests to GitHub and get a higher quota."
                 else:
                     solution = f"Wait until your limit is reset: {str(reset)}"
             else:
@@ -156,15 +172,15 @@ class GithubRelease(SimplePkgResolver):
                 solution=solution,
             )
 
-        url_regexes = source_details.get("url_regex", None)
+        url_regexes: Iterable[str] = source_details.get("url_regex", None)
         if not url_regexes:
             url_regexes = DEFAULT_URL_REGEXES
         elif isinstance(url_regexes, str):
             url_regexes = [url_regexes]
 
         log.debug(f"Regexes for {github_user}/{repo_name}: {url_regexes}")
-        result = []
-        aliases = {}
+        result: List[Mapping] = []
+        aliases: Dict[str, MutableMapping] = {}
         for release in releases:
 
             version_data = self.parse_release_data(release, url_regexes, aliases)
@@ -174,8 +190,11 @@ class GithubRelease(SimplePkgResolver):
         return {"versions": result, "aliases": aliases, "args": DEFAULT_ARGS_DICT}
 
     def parse_release_data(
-        self, data: Dict, url_regexes: List, aliases: Dict
-    ) -> Union[Tuple[List[Dict], Dict], List[Dict]]:
+        self,
+        data: Mapping,
+        url_regexes: Iterable[str],
+        aliases: MutableMapping[str, MutableMapping],
+    ) -> Sequence[Mapping[str, Any]]:
 
         result = []
         version = data["name"]
@@ -230,14 +249,14 @@ class GithubRelease(SimplePkgResolver):
             content_type = asset["content_type"]
             size = asset["size"]
 
-            m = copy.copy(meta)
-            m["asset_name"] = asset_name
-            m["content_type"] = content_type
-            m["size"] = size
-            m["url"] = browser_download_url
-            vars["_meta"] = m
+            _m = dict(meta)
+            _m["asset_name"] = asset_name
+            _m["content_type"] = content_type
+            _m["size"] = size
+            _m["url"] = browser_download_url
+            vars["_meta"] = _m
             vars["_mogrify"] = [
-                {"type": "download", "url": m["url"], "target_file_name": asset_name}
+                {"type": "download", "url": _m["url"], "target_file_name": asset_name}
             ]
 
             result.append(vars)

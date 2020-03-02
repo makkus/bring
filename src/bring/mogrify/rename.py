@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Dict, Optional
+from typing import Any, Mapping, Optional
 
 from bring.mogrify import SimpleMogrifier
 
@@ -18,13 +18,15 @@ class RenameTransformer(SimpleMogrifier):
 
         return "renaming files"
 
-    def get_config_keys(self) -> Dict:
+    def requires(self) -> Mapping[str, str]:
 
-        return {"rename": {}}
+        return {"rename": "dict", "folder_path": "string"}
 
-    def _transform(self, path: str, transform_config: Dict = None) -> str:
+    async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        rename = transform_config["rename"]
+        path = requirements["folder_path"]
+        rename = requirements["rename"]
+
         if not rename:
             return path
 

@@ -3,7 +3,18 @@ import json
 import logging
 import os
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Type,
+    Union,
+)
 
 import arrow
 from anyio import aopen
@@ -26,7 +37,7 @@ class PkgResolver(metaclass=ABCMeta):
 
     """
 
-    metadata_cache = {}
+    metadata_cache: Dict[Type, MutableMapping] = {}
 
     @abstractmethod
     def _supports(self) -> Iterable[str]:
@@ -44,7 +55,7 @@ class PkgResolver(metaclass=ABCMeta):
 
     @abstractmethod
     def get_unique_source_id(
-        self, source_details: Mapping, bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
     ) -> str:
         """Return a calculated unique id for a package, derived from the contexts of the source details (and possibly the current context).
 
@@ -119,6 +130,9 @@ class PkgResolver(metaclass=ABCMeta):
     ):
         """Return potentially cached (in memory) metadata for the package described by the provided details."""
 
+        if config is None:
+            config = {}
+
         id = self.get_unique_source_id(source_details, bring_context)
         if not id:
             raise Exception("Unique source id can't be empty")
@@ -162,7 +176,7 @@ class PkgResolver(metaclass=ABCMeta):
         """
 
         if isinstance(source_details, str):
-            _source_details = {"url": source_details}
+            _source_details: Mapping[str, Any] = {"url": source_details}
         else:
             _source_details = source_details
 
@@ -187,7 +201,7 @@ class PkgResolver(metaclass=ABCMeta):
     ) -> bool:
 
         if isinstance(source_details, str):
-            _source_details = {"url": source_details}
+            _source_details: Mapping[str, Any] = {"url": source_details}
         else:
             _source_details = source_details
 
@@ -222,7 +236,7 @@ class PkgResolver(metaclass=ABCMeta):
         """
 
         if isinstance(source_details, str):
-            _source_details = {"url": source_details}
+            _source_details: Mapping[str, Any] = {"url": source_details}
         else:
             _source_details = source_details
 
@@ -257,16 +271,19 @@ class PkgResolver(metaclass=ABCMeta):
         bring_context: "BringContextTing",
         config: Mapping[str, Any],
         cached_only=False,
-    ) -> Mapping[str, Any]:
+    ) -> Optional[Mapping[str, Any]]:
         """Concrete implementation of the method to retrieve the metadata for a specific package.
 
         This is called by 'get_pkg_metadata', if no in-memory cached version of the metadata can be found.
+
+        Returns:
+            the metadata, or None if 'cached_only' is specified and no cached metadata exists
         """
         pass
 
 
 class SimplePkgResolver(PkgResolver):
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Mapping[str, Any]] = None):
 
         self._cache_dir = os.path.join(
             BRING_PKG_CACHE, "resolvers", from_camel_case(self.__class__.__name__)
@@ -281,7 +298,7 @@ class SimplePkgResolver(PkgResolver):
 
     @abstractmethod
     async def _process_pkg_versions(
-        self, source_details: Mapping, bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
     ) -> Mapping[str, Any]:
         """Process the provided source details, and retrieve a list of versions and other metadata related to the current state of the package.
 
@@ -295,7 +312,12 @@ class SimplePkgResolver(PkgResolver):
 
     def get_artefact_mogrify(
         self, source_details: Mapping[str, Any], version: Mapping[str, Any]
-    ) -> Union[Mapping, Iterable]:
+    ) -> Optional[Union[Mapping, Iterable]]:
+        """Return the mogrify instructions for a specific version item.
+
+        Returns:
+            either a single mogrify instructions, or several
+        """
         return None
 
     async def _get_pkg_metadata(
@@ -328,14 +350,14 @@ class SimplePkgResolver(PkgResolver):
                 source_details=source_details, bring_context=bring_context
             )
             versions: List[Mapping] = result["versions"]
-            aliases: Mapping[str, str] = result.get("aliases", None)
+            aliases: MutableMapping[str, str] = result.get("aliases", None)
             pkg_args: Mapping[str, Mapping] = result.get("args", None)
 
         except (Exception) as e:
             log.debug(f"Can't retrieve versions for pkg: {e}")
             log.debug(
                 f"Error retrieving versions in resolver '{self.__class__.__name__}': {e}",
-                exc_info=1,
+                exc_info=True,
             )
             raise e
 
@@ -406,7 +428,7 @@ class SimplePkgResolver(PkgResolver):
         source_vars: Mapping[str, Any],
         versions: List[Mapping[str, Any]],
         aliases: Mapping[str, Mapping[str, str]],
-    ) -> Mapping[str, Mapping[str, Any]]:
+    ) -> Mapping[str, Any]:
         """Return the (remaining) args a user can specify to select a version or mogrify options.
 
         Source args can contain more arguments than will eventually be used/displayed to the user.
@@ -418,10 +440,13 @@ class SimplePkgResolver(PkgResolver):
             - *source_vars*: vars that are hardcoded in the 'source' section of a package, can also contain templates
             - *versions*: all avaailable versions of a package
             - *aliases*: a dictionary of value aliases that can be used by the user instead of the 'real' ones. Aliases are per arg name.
+
+        Returns:
+            a dictionary with 3 keys: args, version_vars, mogrify_vars
         """
 
         # calculate args to select version
-        version_vars: Mapping[str, Mapping] = {}
+        version_vars: MutableMapping[str, Mapping] = {}
         for version in versions:
             for k in version.keys():
                 if k == "_meta" or k == "_mogrify":
@@ -454,7 +479,7 @@ class SimplePkgResolver(PkgResolver):
                     else:
                         version_vars[var_name]["allowed"].append(alias)
 
-        mogrify_vars: Mapping[str, Mapping] = None
+        mogrify_vars: Optional[Mapping[str, Mapping]] = None
         duplicates = {}
         if mogrifiers:
             template_schema = get_template_schema(mogrifiers)

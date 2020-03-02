@@ -2,7 +2,7 @@
 import os
 from collections import Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, List, Mapping, Optional, Union
 
 from bring.defaults import BRING_ALLOWED_MARKER_NAME, BRING_METADATA_FOLDER_NAME
 
@@ -54,7 +54,7 @@ def set_folder_bring_allowed(path: Union[str, Path]):
 
 def find_versions(
     vars: Mapping[str, str], metadata: Mapping[str, Any]
-) -> Iterable[Mapping[str, Any]]:
+) -> List[Mapping[str, Any]]:
     aliases = metadata.get("aliases", {})
     # pkg_args = metadata.get("pkg_args", {})
     versions = metadata["versions"]
@@ -108,7 +108,7 @@ def find_versions(
 
 def find_version(
     vars: Mapping[str, str], metadata: Mapping[str, Any]
-) -> Mapping[str, Any]:
+) -> Optional[Mapping[str, Any]]:
     """Return details about one version item of a package, using the provided vars to find one (or the first) version that matches most/all of the provided vars.
 
         Args:
@@ -118,7 +118,7 @@ def find_version(
 
     matches = find_versions(vars=vars, metadata=metadata)
 
-    if not matches:
+    if matches is None:
         return None
 
     if len(matches) == 1:

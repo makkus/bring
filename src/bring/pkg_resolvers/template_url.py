@@ -2,7 +2,7 @@
 import copy
 import itertools
 import os
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
+from typing import Any, Iterable, List, Mapping, Optional, Union
 
 from bring.context import BringContextTing
 from bring.pkg_resolvers import SimplePkgResolver
@@ -25,7 +25,7 @@ class TemplateUrlResolver(SimplePkgResolver):
         return ["template-url"]
 
     async def _process_pkg_versions(
-        self, source_details: Dict, bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> Mapping[str, Any]:
 
         vars = source_details["template_vars"]
@@ -62,7 +62,7 @@ class TemplateUrlResolver(SimplePkgResolver):
             return {"type": "file"}
 
     def get_unique_source_id(
-        self, source_details: Dict, bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> str:
 
         return source_details["url"]

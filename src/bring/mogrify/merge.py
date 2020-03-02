@@ -45,7 +45,7 @@ class MergeMogrifier(SimpleMogrifier):
 
         return {"folder_path": target_path}
 
-    def process_folder(self, source: str, target: str, strategy: Dict):
+    def process_folder(self, source: str, target: str, strategy: Mapping[str, Any]):
 
         exclude_dirs = strategy.get("exclude_dirs", DEFAULT_EXCLUDE_DIRS)
 

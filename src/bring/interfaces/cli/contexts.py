@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from typing import Optional
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.context import BringContextTing
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -29,7 +31,11 @@ class BringContextGroup(FrklBaseCommand):
         #     print_version_callback=self.print_version_callback
         # )
         self._bring: Bring = bring
-        self._context: str = context
+        if context:
+            _context = self._bring.get_context(context)
+        else:
+            _context = None
+        self._context: Optional[BringContextTing] = _context
 
         super(BringContextGroup, self).__init__(
             name=name,
@@ -49,7 +55,7 @@ class BringContextGroup(FrklBaseCommand):
     @click.pass_context
     async def all_contexts(ctx, self, *args, **kwargs):
 
-        if ctx.invoked_subcommand:
+        if ctx.invoked_subcommand:  # type: ignore
             return
 
         click.echo()

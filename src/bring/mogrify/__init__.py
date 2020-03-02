@@ -6,13 +6,12 @@ import shutil
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Optional, Union
 
-from anyio import create_task_group
 from bring.defaults import BRING_WORKSPACE_FOLDER
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.tasks import SingleTaskAsync, TaskDesc, Tasks
+from frtls.tasks import Task, TaskDesc, Tasks
 from frtls.templating import replace_strings_in_obj
 from frtls.types.utils import generate_valid_identifier
 from tings.ting import SimpleTing
@@ -20,6 +19,7 @@ from tings.ting import SimpleTing
 
 if TYPE_CHECKING:
     from bring.bring import Bring
+    from bring.mogrify.parallel_pkg_merge import ParallelPkgMergeMogrifier
 
 
 def assemble_mogrifiers(
@@ -27,7 +27,7 @@ def assemble_mogrifiers(
     vars: Mapping[str, Any],
     args: Mapping[str, Any],
     task_desc: Mapping[str, Any] = None,
-) -> Iterable[Mapping]:
+) -> Iterable[Union[Mapping, Iterable[Mapping]]]:
 
     # TODO: validate vars
     if not vars or not args:
@@ -46,34 +46,24 @@ def assemble_mogrifiers(
     for index, _mog in enumerate(_data):
         if isinstance(_mog, str):
             mog: Mapping[str, Any] = {"type": _mog, "_task_desc": task_desc}
+            mog_data.append(mog)
         elif isinstance(_mog, collections.Mapping):
-            mog = _mog
+            mog = dict(_mog)
             if "_task_desc" not in mog.keys():
                 mog["_task_desc"] = task_desc
+            mog_data.append(mog)
         elif isinstance(_mog, collections.Iterable):
-            mog = assemble_mogrifiers(
+            mog_l: Iterable[Union[Mapping, Iterable[Mapping]]] = assemble_mogrifiers(
                 mogrifier_list=_mog, vars=vars, args=args, task_desc=task_desc
             )
+            mog_data.append(mog_l)
         else:
             raise FrklException(
                 msg="Can't create transmogrifier.",
                 reason=f"Invalid configuration type '{type(_mog)}': {_mog}",
             )
-        mog_data.append(mog)
 
     return mog_data
-
-
-class ParallelPkgsAsync(Tasks):
-    def __init__(self, **kwargs):
-
-        super().__init__(**kwargs)
-
-    async def execute(self) -> None:
-
-        async with create_task_group() as tg:
-            for child in self._children.values():
-                await tg.spawn(child.get_values)
 
 
 class Mogrifiception(FrklException):
@@ -84,7 +74,7 @@ class Mogrifiception(FrklException):
         super().__init__(*args, **kwargs)
 
 
-class Mogrifier(SimpleTing):
+class Mogrifier(Task, SimpleTing):
     def __init__(
         self, name: str, meta: Optional[Mapping[str, Any]] = None, **kwargs
     ) -> None:
@@ -92,7 +82,8 @@ class Mogrifier(SimpleTing):
         self._mogrify_result: Optional[Mapping[str, Any]] = None
 
         self._working_dir: Optional[str] = None
-        super().__init__(name=name, meta=meta)
+        SimpleTing.__init__(self, name=name, meta=meta)
+        Task.__init__(self, **kwargs)
 
     @property
     def working_dir(self) -> Optional[str]:
@@ -129,11 +120,18 @@ class Mogrifier(SimpleTing):
         return self._mogrify_result
 
 
-class SimpleMogrifier(SingleTaskAsync, Mogrifier):
+class SimpleMogrifier(Mogrifier):
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]], **kwargs):
 
         Mogrifier.__init__(self, name=name, meta=meta)
-        SingleTaskAsync.__init__(self, self.get_values, **kwargs)
+        # SingleTaskAsync.__init__(self, self.get_values, **kwargs)
+        self._func: Callable = self.get_values
+
+    async def execute(self) -> Any:
+
+        result = await self._func()
+
+        return result
 
 
 class Transmogrificator(Tasks):
@@ -184,7 +182,7 @@ class Transmogrificator(Tasks):
         if self._current is not None:
             mogrifier.set_requirements(self._current)
 
-        self.add_task(mogrifier)
+        self.add_task(mogrifier)  # type: ignore
 
         self._current = mogrifier
 
@@ -194,7 +192,7 @@ class Transmogrificator(Tasks):
 
         await self.run_async()
 
-        result = self._last_item.current_state
+        result = self._last_item.current_state  # type: ignore
 
         if not self._is_root_transmogrifier:
             return result
@@ -218,13 +216,19 @@ class Transmogrificator(Tasks):
                 reason=f"Result already moved to a target location and result folder deleted.",
             )
 
-        return self._mogrify_result["folder_path"]
+        return self._mogrify_result["folder_path"]  # type: ignore
 
     def set_target(
         self, target: Union[str, Path], delete_pipeline_folder: bool = True
-    ) -> None:
+    ) -> str:
 
-        folder_path = self._mogrify_result["folder_path"]
+        if self._result_moved:
+            raise FrklException(
+                msg="Can't return result path for transmogrifier.",
+                reason=f"Result already moved to a target location and result folder deleted.",
+            )
+
+        folder_path = self._mogrify_result["folder_path"]  # type: ignore
 
         if isinstance(target, Path):
             _target = target.resolve().as_posix()
@@ -238,6 +242,8 @@ class Transmogrificator(Tasks):
         else:
             shutil.move(folder_path, _target)
             self._result_moved = True
+
+        return _target
 
     async def execute(self) -> Any:
 
@@ -261,7 +267,7 @@ class Transmogritory(object):
         pipeline_id: str,
         index: str,
         input_vals: Mapping[str, Any],
-    ):
+    ) -> Mogrifier:
 
         plugin: Mogrifier = self._plugin_manager.get_plugin(mogrify_plugin)
         if not plugin:
@@ -273,7 +279,7 @@ class Transmogritory(object):
         ting: Mogrifier = self._bring.create_ting(
             prototing=f"bring.mogrify.plugins.{mogrify_plugin}",
             ting_name=f"bring.mogrify.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
-        )
+        )  # type: ignore
         ting.input.set_values(**input_vals)
         msg = ting.get_msg()
         ting.task_desc.name = mogrify_plugin
@@ -307,14 +313,15 @@ class Transmogritory(object):
 
             if isinstance(_mog, collections.Mapping):
 
-                mogrify_plugin = _mog.pop("type", None)
+                vals = dict(_mog)
+                mogrify_plugin: Optional[str] = vals.pop("type", None)
                 if not mogrify_plugin:
                     raise FrklException(
                         msg="Can't create transmogrificator.",
                         reason=f"No mogrifier type specified in config: {mogrifier_list}",
                     )
 
-                ting = self.create_mogrifier_ting(
+                ting: Mogrifier = self.create_mogrifier_ting(
                     mogrify_plugin=mogrify_plugin,
                     pipeline_id=pipeline_id,
                     index=str(index),
@@ -330,7 +337,7 @@ class Transmogritory(object):
                     tings = []
                     for k, m in enumerate(child_list):
                         mogrify_plugin = m.pop("type", None)
-                        sub_task_desc = m.pop("_task_desc", {})
+                        # sub_task_desc = m.pop("_task_desc", {})
                         if not mogrify_plugin:
                             raise FrklException(
                                 msg="Can't create transmogrificator.",
@@ -345,8 +352,8 @@ class Transmogritory(object):
                         tings.append(t)
 
                     td = TaskDesc(
-                        name=f"{sub_task_desc['name']}",
-                        msg=f"retrieving {sub_task_desc['name']}",
+                        # name=f"{sub_task_desc['name']}",
+                        # msg=f"retrieving {sub_task_desc['name']}",
                     )
                     tm_working_dir = os.path.join(
                         transmogrificator.working_dir, f"{index}_{j}"
@@ -368,20 +375,21 @@ class Transmogritory(object):
                     index=f"{index}_merge",
                     input_vals={},
                 )
-                ting = self.create_mogrifier_ting(
+                p_ting: ParallelPkgMergeMogrifier = self.create_mogrifier_ting(
                     mogrify_plugin="parallel_pkg_merge",
                     pipeline_id=pipeline_id,
                     index=str(index),
                     input_vals={"pipeline_id": pipeline_id, "merge": merge},
-                )
-                ting.add_mogrificators(*tms)
+                )  # type: ignore
+                p_ting.add_mogrificators(*tms)
 
-                transmogrificator.add_mogrifier(ting)
-                ting.set_merge_task(merge)
+                transmogrificator.add_mogrifier(p_ting)
+                p_ting.set_merge_task(merge)
             else:
+
                 raise FrklException(
                     msg="Can't create transmogrificator.",
-                    reason=f"Invalid configuration type '{type(_mog.__class__)}': {_mog}",
+                    reason=f"Invalid configuration type '{type(_mog)}': {_mog}",
                 )
 
         return transmogrificator

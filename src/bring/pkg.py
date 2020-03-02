@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Iterable, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
@@ -15,7 +15,11 @@ from frtls.tasks import TaskDesc
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
-from tings.tingistry import Tingistry
+
+
+if TYPE_CHECKING:
+    from bring.bring import Bring
+    from bring.context import BringContextTing  # noqa
 
 
 log = logging.getLogger("bring")
@@ -33,7 +37,7 @@ DEFAULT_ARG_DICT = {
 class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
-        self._tingistry_obj: Tingistry = meta["tingistry"]
+        self._tingistry_obj: Bring = meta["tingistry"]
         # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
         self._context: Optional["BringContextTing"] = None
@@ -73,7 +77,7 @@ class PkgTing(SimpleTing):
             "ting_make_metadata": "dict",
         }
 
-    async def retrieve(self, *value_names: str, **requirements) -> Dict[str, Any]:
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
         if not self.bring_context:
             raise FrklException(
@@ -81,7 +85,7 @@ class PkgTing(SimpleTing):
                 reason="Context not set yet.",
             )
 
-        result = {}
+        result: Dict[str, Any] = {}
         source = requirements["source"]
 
         resolver = self._get_resolver(source_dict=source)
@@ -124,7 +128,7 @@ class PkgTing(SimpleTing):
             )
 
         if "tags" in value_names:
-            result["tags"]: Iterable[str] = requirements.get("tags", [])
+            result["tags"] = requirements.get("tags", [])
             parent_tags: Iterable[str] = seed_data.get("tags", None)
             if parent_tags:
                 result["tags"].extend(parent_tags)
@@ -155,7 +159,9 @@ class PkgTing(SimpleTing):
     ) -> Mapping[str, Any]:
         """Return metadata associated with this package."""
 
-        vals = await self.get_values("source")
+        vals: Mapping[str, Any] = await self.get_values(
+            "source", resolve=True
+        )  # type: ignore
         return await self._get_metadata(
             vals["source"], config=config, register_task=False
         )
@@ -185,7 +191,7 @@ class PkgTing(SimpleTing):
         )
 
         if not cached and register_task:
-            task_desc.task_finished(msg="metadata retrieved")
+            task_desc.task_finished(msg="metadata retrieved")  # type: ignore
 
         return metadata
 
@@ -256,16 +262,12 @@ class PkgTing(SimpleTing):
     ):
 
         val_keys = ["info", "source", "labels"]
-        vals = await self.get_values(*val_keys)
+        vals: Mapping[str, Any] = await self.get_values(
+            *val_keys, resolve=True
+        )  # type: ignore
 
         info = vals["info"]
         source_details = vals["source"]
-
-        metadata: Dict[str, Any] = None
-        if include_metadata:
-            metadata = await self._get_metadata(
-                source_dict=source_details, config=retrieve_config, register_task=True
-            )
 
         result = {}
 
@@ -273,6 +275,10 @@ class PkgTing(SimpleTing):
         result["labels"] = vals["labels"]
 
         if include_metadata:
+
+            metadata: Mapping[str, Any] = await self._get_metadata(
+                source_dict=source_details, config=retrieve_config, register_task=True
+            )
 
             timestamp = metadata["metadata_check"]
 
@@ -333,7 +339,9 @@ class PkgTing(SimpleTing):
         is provided, the path to a randomly named temp folder will be returned.
         """
 
-        vals = await self.get_values("source", "metadata")
+        vals: Mapping[str, Any] = await self.get_values(
+            "source", "metadata", resolve=True
+        )  # type: ignore
         metadata = vals["metadata"]
 
         tm = self.create_transmogrificator(vars=vars, metadata=metadata)
@@ -343,8 +351,7 @@ class PkgTing(SimpleTing):
         log.debug(f"finsished transmogrification: {vals}")
 
         if target is not None:
-            tm.set_target(target, delete_pipeline_folder=delete_result)
-            return target
+            return tm.set_target(target, delete_pipeline_folder=delete_result)
         else:
             return tm.result_path
 

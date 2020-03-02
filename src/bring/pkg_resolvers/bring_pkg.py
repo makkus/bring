@@ -16,6 +16,11 @@ class BringPkgResolver(SimplePkgResolver):
 
     def __init__(self, config: Optional[Mapping[str, Any]]):
 
+        if config is None:
+            raise TypeError(
+                "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
+            )
+
         self._bringistry: Bring = config["bringistry"]
         super().__init__(config=config)
 
@@ -64,7 +69,7 @@ class BringPkgResolver(SimplePkgResolver):
                 reason=f"Parent pkg '{ting_name}' does not sub-class the PkgTing class.",
             )
 
-        return ting
+        return ting  # type: ignore
 
     def get_unique_source_id(
         self, source_details: Mapping, bring_context: BringContextTing
@@ -79,7 +84,9 @@ class BringPkgResolver(SimplePkgResolver):
     ) -> Mapping[str, Any]:
 
         pkg = self.get_parent_pkg(source_details, bring_context=bring_context)
-        values = await pkg.get_values("metadata")
+        values: Mapping[str, Any] = await pkg.get_values(
+            "metadata", resolve=True
+        )  # type: ignore
         metadata = values["metadata"]
 
         vars = source_details.get("vars", {})

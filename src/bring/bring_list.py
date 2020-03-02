@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
+import collections
 from typing import Any, Iterable, Mapping, Union
 
 
 class BringItem(object):
     @classmethod
-    def create(cls, item: Union[str, Mapping]) -> "BringItem":
+    def create(cls, item: Union[str, Mapping[str, Any]]) -> "BringItem":
 
         if isinstance(item, str):
-            result = {"name": item}
+            result: Mapping[str, Any] = {"name": item}
         elif isinstance(item, Mapping):
             result = item
         else:
@@ -21,7 +22,7 @@ class BringItem(object):
         except Exception as e:
             raise ValueError(f"Can't create bring item with input '{item}': {e}")
 
-    def __init__(self, name: str, context):
+    def __init__(self, name: str, context) -> None:
 
         self._name: str = name
         self._context: str = context
@@ -35,10 +36,10 @@ class BringList(object):
         item_defaults: Mapping[str, Any] = None,
     ) -> "BringList":
 
-        if data is not Mapping:
+        if not isinstance(data, collections.abc.Mapping):
             _data: Mapping[str, Any] = {"items": data}
         else:
-            _data: Mapping[str, Any] = data
+            _data = data
 
         items = []
         for item in _data.get("items", []):

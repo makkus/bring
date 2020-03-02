@@ -2,7 +2,7 @@
 
 """Main module."""
 import os
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from bring.context import BringContextTing
 from bring.defaults import (
@@ -15,6 +15,7 @@ from bring.mogrify import Transmogritory
 from frtls.files import ensure_folder
 from frtls.tasks import FlattenParallelTasksAsync, TaskDesc
 from tings.makers.file import TextFileTingMaker
+from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
 
@@ -31,16 +32,23 @@ class Bring(Tingistry):
 
         ensure_folder(BRING_WORKSPACE_FOLDER)
 
+        prototings: Iterable[Mapping] = BRINGISTRY_CONFIG["prototings"]  # type: ignore
+        tings: Iterable[Mapping] = BRINGISTRY_CONFIG["tings"]  # type: ignore
+        modules: Iterable[str] = BRINGISTRY_CONFIG["modules"]  # type: ignore
+        classes: Iterable[Union[Type, str]] = BRINGISTRY_CONFIG[
+            "classes"
+        ]  # type: ignore
+
         super().__init__(
             name,
-            prototings=BRINGISTRY_CONFIG["prototings"],
-            tings=BRINGISTRY_CONFIG["tings"],
-            modules=BRINGISTRY_CONFIG["modules"],
-            classes=BRINGISTRY_CONFIG["classes"],
+            prototings=prototings,
+            tings=tings,
+            modules=modules,
+            classes=classes,
             meta=meta,
         )
 
-        config = {}
+        config: MutableMapping[str, Any] = {}
         for k, v in os.environ.items():
             k = k.lower()
             if not k.startswith("bring_"):
@@ -55,7 +63,7 @@ class Bring(Tingistry):
 
         self._context_maker: TextFileTingMaker = self.create_ting(
             "bring.types.config_file_context_maker", "bring.context_maker"
-        )
+        )  # type: ignore
 
         self._context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
 
@@ -70,10 +78,12 @@ class Bring(Tingistry):
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
-        contexts = self.get_ting("bring.contexts")
-        return {x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()}
+        contexts: SubscripTings = self.get_ting("bring.contexts")  # type: ignore
+        return {
+            x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()
+        }  # type: ignore
 
-    def get_context(self, context_name: str) -> BringContextTing:
+    def get_context(self, context_name: str) -> Optional[BringContextTing]:
 
         return self.contexts.get(context_name)
 

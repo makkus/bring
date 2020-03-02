@@ -76,9 +76,9 @@ class BringContextTing(InheriTing, SimpleTing):
 
         return result
 
-    async def get_config(self) -> Dict[str, Any]:
+    async def get_config(self) -> Mapping[str, Any]:
 
-        return await self.get_values("config")
+        return await self.get_values("config", resolve=True)  # type: ignore
 
     async def _get_config(self, raw_config) -> Dict[str, Any]:
 
@@ -95,7 +95,7 @@ class BringContextTing(InheriTing, SimpleTing):
 
     async def get_info(self) -> Dict[str, Any]:
 
-        config = await self.get_values()
+        config: Mapping[str, Any] = await self.get_values(resolve=True)  # type: ignore
         parent = config[self._parent_key]
         if parent is None:
             parent = "(no parent)"
@@ -109,7 +109,9 @@ class BringContextTing(InheriTing, SimpleTing):
     @property
     async def pkgs(self) -> Pkgs:
 
-        vals = await self.get_values("pkgs")
+        vals: Mapping[str, Any] = await self.get_values(
+            "pkgs", resolve=True
+        )  # type: ignore
         return vals["pkgs"]
 
     async def get_pkg(self, name: str) -> PkgTing:
@@ -139,7 +141,7 @@ class BringContextTing(InheriTing, SimpleTing):
 
         return tasks
 
-    async def update(self, in_background: bool = False) -> False:
+    async def update(self, in_background: bool = False) -> None:
         """Updates pkg metadata."""
 
         if in_background:
@@ -151,10 +153,11 @@ class BringContextTing(InheriTing, SimpleTing):
 
     async def get_maker(self, config) -> TingMaker:
 
+        # TODO: revisit typing here
         if self._maker is not None:
             if config != self._maker_config:
                 raise Exception("Maker config changed, this is not supported yet...")
-            return self._maker
+            return self._maker  # type: ignore
 
         maker_name = f"bring.pkg_maker.{self.name}"
         self._maker_config = config
@@ -165,10 +168,10 @@ class BringContextTing(InheriTing, SimpleTing):
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
             file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],
-        )
+        )  # type: ignore
 
         indexes = config.get("indexes", [])
         for index in indexes:
-            self._maker.add_base_paths(index)
+            self._maker.add_base_paths(index)  # type: ignore
 
-        return self._maker
+        return self._maker  # type: ignore
