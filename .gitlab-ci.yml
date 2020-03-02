@@ -1,5 +1,7 @@
 ---
 variables:
+  GIT_STRATEGY: fetch
+  GIT_DEPTH: 0
   GIT_SUBMODULE_STRATEGY: recursive
   LM_PYTHON_VERSION: "2"
   DS_PYTHON_VERSION: "3"
