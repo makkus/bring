@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
+import typing
 from collections import Sequence
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
-from bring.defaults import BRING_ALLOWED_MARKER_NAME, BRING_METADATA_FOLDER_NAME
+from bring.defaults import (
+    BRING_ALLOWED_MARKER_NAME,
+    BRING_METADATA_FOLDER_NAME,
+    BRING_TASKS_BASE_TOPIC,
+)
+from frtls.tasks import TaskDesc
 
 
 def is_valid_bring_target(target: Union[str, Path]):
@@ -52,13 +58,11 @@ def set_folder_bring_allowed(path: Union[str, Path]):
     marker_file.touch()
 
 
-def find_versions(
-    vars: Mapping[str, str], metadata: Mapping[str, Any]
-) -> List[Mapping[str, Any]]:
-    aliases = metadata.get("aliases", {})
-    # pkg_args = metadata.get("pkg_args", {})
-    versions = metadata["versions"]
+def replace_var_aliases(
+    vars: Mapping[str, Any], metadata: Mapping[str, Any]
+) -> Mapping[str, Any]:
 
+    aliases = metadata.get("aliases", {})
     version_vars = metadata["pkg_vars"]["version_vars"]
 
     relevant_vars = {}
@@ -67,25 +71,40 @@ def find_versions(
         if k in version_vars.keys():
             relevant_vars[k] = v
 
-    # TODO: parse args
-
-    vars_final = {}
+    vars_final: Dict[str, Any] = {}
     for k, v in relevant_vars.items():
         vars_final[k] = aliases.get(k, {}).get(v, v)
 
-    if not vars_final:
-        return versions
+    return vars_final
+
+
+def find_versions(
+    vars: Mapping[str, str], metadata: Mapping[str, Any], var_aliases_replaced=False
+) -> typing.Sequence[Tuple[Mapping[str, Any], int]]:
+
+    versions: Sequence[Mapping] = metadata["versions"]
+
+    if not var_aliases_replaced:
+        vars = replace_var_aliases(vars=vars, metadata=metadata)
+
+    # TODO: parse args
+
+    if not vars:
+        return [(x, 0) for x in versions]
 
     matches = []
     for version in versions:
 
         match = True
+        matched_keys = 0
         for k, v in version.items():
             if k == "_meta" or k == "_mogrify":
                 continue
 
-            comp_v = vars_final.get(k, None)
-            if not isinstance(comp_v, str) and isinstance(comp_v, Sequence):
+            comp_v = vars.get(k, None)
+            if comp_v is None:
+                continue
+            elif not isinstance(comp_v, str) and isinstance(comp_v, Sequence):
                 temp_match = False
                 for c in comp_v:
                     if c == v:
@@ -100,14 +119,16 @@ def find_versions(
                     match = False
                     break
 
+            matched_keys = matched_keys + 1
+
         if match:
-            matches.append(version)
+            matches.append((version, matched_keys))
 
     return matches
 
 
 def find_version(
-    vars: Mapping[str, str], metadata: Mapping[str, Any]
+    vars: Mapping[str, str], metadata: Mapping[str, Any], var_aliases_replaced=False
 ) -> Optional[Mapping[str, Any]]:
     """Return details about one version item of a package, using the provided vars to find one (or the first) version that matches most/all of the provided vars.
 
@@ -116,18 +137,27 @@ def find_version(
             - *metadata*: the package metadata
         """
 
-    matches = find_versions(vars=vars, metadata=metadata)
+    matches = find_versions(
+        vars=vars, metadata=metadata, var_aliases_replaced=var_aliases_replaced
+    )
 
-    if matches is None:
+    if not matches:
         return None
 
     if len(matches) == 1:
-        return matches[0]
+        return matches[0][0]
 
     # find the first 'exactest" match
     max_match = matches[0]
     for m in matches[1:]:
-        if len(m) > len(max_match):
+        if m[1] > max_match[1]:
             max_match = m
 
-    return max_match
+    return max_match[0]
+
+
+class BringTaskDesc(TaskDesc):
+    def __init__(self, **kwargs: Any) -> None:
+
+        kwargs["topic"] = BRING_TASKS_BASE_TOPIC
+        super().__init__(**kwargs)

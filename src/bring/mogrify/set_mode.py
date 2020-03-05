@@ -7,7 +7,7 @@ from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
 
 
-class SetModeTransformer(SimpleMogrifier):
+class SetModeMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "set_mode"
 
@@ -28,10 +28,6 @@ class SetModeTransformer(SimpleMogrifier):
     def provides(self) -> Mapping[str, str]:
 
         return {"folder_path": "string"}
-
-    def cleanup(self, result: Mapping[str, Any], *value_names, **requirements):
-
-        pass
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
+import json
 import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
+from anyio import aopen, create_task_group
 from bring.context import BringContextTing, BringStaticContextTing
 from bring.defaults import (
     BRINGISTRY_CONFIG,
     BRING_CONTEXTS_FOLDER,
+    BRING_DEFAULT_CONTEXTS_FOLDER,
     BRING_WORKSPACE_FOLDER,
 )
-from bring.interfaces.cli.task_watcher import TerminalRunWatcher
 from bring.mogrify import Transmogritory
+from bring.utils import BringTaskDesc
+from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.tasks import FlattenParallelTasksAsync, TaskDesc
+from frtls.tasks import FlattenParallelTasksAsync
 from tings.makers.file import TextFileTingMaker
 from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
@@ -28,7 +32,10 @@ DEFAULT_TRANSFORM_PROFILES = {
 
 
 class Bring(Tingistry):
-    def __init__(self, name: str, meta: Dict[str, Any] = None):
+    def __init__(self, name: str = None, meta: Dict[str, Any] = None):
+
+        if name is None:
+            name = "bring"
 
         ensure_folder(BRING_WORKSPACE_FOLDER)
 
@@ -66,25 +73,55 @@ class Bring(Tingistry):
         )  # type: ignore
         self._dynamic_context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
 
-        self._default_contexts: Mapping[str, BringStaticContextTing] = {}
-        ctx: BringStaticContextTing = self.create_ting(
-            "bring.types.contexts.default_context", "bring.contexts.default.exe"
-        )  # type: ignore
-        # ctx.input.set_values(ting_dict={"url": "/home/markus/projects/tings/executable.json"})
-        ctx.input.set_values(
-            ting_dict={
-                "url": "https://gitlab.com/tingistries/executables/-/raw/master/executable.json"
-            }
-        )
-        self._default_contexts["exe"] = ctx
+        self._default_contexts: Dict[str, BringStaticContextTing] = {}
 
+        self._extra_contexts: Dict[str, BringContextTing] = {}
         self._initialized = False
 
-        self._task_watcher = TerminalRunWatcher()
+        # self._task_watcher = TerminalRunWatcher(base_topic=BRING_TASKS_BASE_TOPIC)
+        # self._task_watcher = PrintLineRunWatcher(base_topic=BRING_TASKS_BASE_TOPIC)
 
     async def init(self):
-        if not self._initialized:
-            await self._dynamic_context_maker.sync()
+        if self._initialized:
+            return
+
+        await self._dynamic_context_maker.sync()
+
+        async def add_default_context(fn: str):
+
+            path = os.path.join(BRING_DEFAULT_CONTEXTS_FOLDER, fn)
+            async with await aopen(path) as f:
+                content = await f.read()
+
+            context_name = fn.split(".")[0]
+            if context_name in self._default_contexts:
+                raise FrklException(
+                    msg=f"Can't add context '{context_name}'.",
+                    reason="Default context with that name already exists.",
+                )
+
+            json_content: Mapping[str, Any] = json.loads(content)
+            ctx: BringStaticContextTing = self.create_ting(
+                "bring.types.contexts.default_context",
+                f"bring.contexts.default.{context_name}",
+            )  # type: ignore
+            ctx.input.set_values(ting_dict=json_content)
+            self._default_contexts[context_name] = ctx
+
+        async with create_task_group() as tg:
+            for file_name in os.listdir(BRING_DEFAULT_CONTEXTS_FOLDER):
+                if not file_name.endswith(".context"):
+                    continue
+                await tg.spawn(add_default_context, file_name)
+
+            for context in self.contexts.values():
+                await tg.spawn(context.get_values, "config")
+
+        self._initialized = True
+
+    def add_context(self, context_name: str, context: BringContextTing):
+
+        self._extra_contexts[context_name] = context
 
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
@@ -96,6 +133,8 @@ class Bring(Tingistry):
             x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
         }  # type: ignore
 
+        result.update(self._extra_contexts)
+
         result.update(self._default_contexts)
 
         return result
@@ -106,7 +145,9 @@ class Bring(Tingistry):
 
     async def update(self):
 
-        td = TaskDesc(name="update metadata", msg="updating metadata for all contexts")
+        td = BringTaskDesc(
+            name="update metadata", msg="updating metadata for all contexts"
+        )
         tasks = FlattenParallelTasksAsync(desc=td)
         for context in self.contexts.values():
             t = await context._create_update_tasks()

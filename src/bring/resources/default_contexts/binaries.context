@@ -1,0 +1,13 @@
+{
+  "info": {
+    "slug": "single file binaries",
+    "homepage": "https://gitlab.com/tingistries/binaries",
+    "desc": "A collection of binaries that are statically combined, so no further requirements apart from the binary is\nnecessary to execute them.\n"
+  },
+  "tags": [
+    "binaries"
+  ],
+  "indexes": [
+    "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bring-ctx"
+  ]
+}

@@ -59,7 +59,7 @@ class BringContextGroup(FrklBaseCommand):
         click.echo()
         for context_name, context in self._bring.contexts.items():
             info = await context.get_info()
-            slug = info.get("slug", "no description available")
+            slug = info.get("slug")
             click.echo(
                 f"  - {self.terminal.bold}{context_name}{self.terminal.normal}: {slug}"
             )

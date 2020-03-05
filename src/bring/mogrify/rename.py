@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 import shutil
 from typing import Any, Mapping, Optional
@@ -6,13 +7,12 @@ from typing import Any, Mapping, Optional
 from bring.mogrify import SimpleMogrifier
 
 
-class RenameTransformer(SimpleMogrifier):
+log = logging.getLogger("bring")
+
+
+class RenameMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "rename"
-
-    def __init__(self, **config):
-
-        super().__init__(**config)
 
     def get_msg(self) -> Optional[str]:
 
@@ -20,19 +20,23 @@ class RenameTransformer(SimpleMogrifier):
 
     def requires(self) -> Mapping[str, str]:
 
-        return {"rename": "dict", "folder_path": "string"}
+        return {"rename_map": "dict", "folder_path": "string"}
+
+    def provides(self) -> Mapping[str, str]:
+
+        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
         path = requirements["folder_path"]
-        rename = requirements["rename"]
+        rename_map = requirements["rename_map"]
 
-        if not rename:
+        if not rename_map:
             return path
 
-        for source, target in rename.items():
+        for source, target in rename_map.items():
             full_source = os.path.join(path, source)
             full_target = os.path.join(path, target)
             shutil.move(full_source, full_target)
 
-        return path
+        return {"folder_path": path}

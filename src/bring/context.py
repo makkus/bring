@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
+import json
+import zlib
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from anyio import create_task_group
+from bring.defaults import BRING_CONTEXT_FILES_CACHE
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
+from bring.utils import BringTaskDesc
 from frtls.dicts import dict_merge
-from frtls.formats.input_formats import SmartInput
-from frtls.tasks import FlattenParallelTasksAsync, SingleTaskAsync, TaskDesc, Tasks
+from frtls.downloads import download_cached_binary_file_async
+from frtls.exceptions import FrklException
+from frtls.tasks import FlattenParallelTasksAsync, SingleTaskAsync, Tasks
 from tings.makers import TingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
@@ -87,11 +93,15 @@ class BringContextTing(InheriTing, SimpleTing):
 
     async def get_info(self) -> Dict[str, Any]:
 
-        config: Mapping[str, Any] = await self.get_values(resolve=True)  # type: ignore
-        parent = config[self._parent_key]
+        vals: Mapping[str, Any] = await self.get_values(resolve=True)  # type: ignore
+
+        config = vals["config"]
+        parent = vals[self._parent_key]
         if parent is None:
             parent = "(no parent)"
-        return {"name": self.name, "parent": parent, "config": config["config"]}
+
+        slug = config.get("info", {}).get("slug", "no description available")
+        return {"name": self.name, "parent": parent, "slug": slug}
 
     @abstractmethod
     async def get_pkgs(self) -> Mapping[str, PkgTing]:
@@ -136,36 +146,63 @@ class BringStaticContextTing(BringContextTing):
         parent_key: str = "parent",
         meta: Optional[Mapping[str, Any]] = None,
     ):
-        self._url: Optional[str] = None
-        self._data: Optional[Mapping[str, Mapping[str, Any]]] = None
-        self._pkgs: Dict[str, PkgTing] = {}
+        self._urls: List[str] = []
+        self._pkgs: Optional[Dict[str, PkgTing]] = None
         self._config: Optional[Mapping[str, Any]] = None
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
-    def set_url(self, url: str):
+    def add_urls(self, *urls: str):
 
-        self._url = url
+        self._urls.extend(urls)
         self.invalidate()
 
-    async def load_pkgs(self):
+    async def _load_pkgs(self):
 
         self._pkgs.clear()
-        si = SmartInput(self._url, content_type="json")
-        self._data = await si.content_async()
 
-        for name, data in self._data.items():
-            ting: PkgTing = self._tingistry_obj.create_ting(
-                "bring.types.static_pkg", f"{self.full_name}.pkgs.{name}"
-            )  # type: ignore
-            ting.bring_context = self
-            ting.input.set_values(**data)
-            # ting._set_result(data)
-            self._pkgs[name] = ting
+        async def add_index(index_url: str):
+
+            update = False
+            content = await download_cached_binary_file_async(
+                url=index_url,
+                update=update,
+                cache_base=BRING_CONTEXT_FILES_CACHE,
+                return_content=True,
+            )
+
+            json_string = zlib.decompress(content, 16 + zlib.MAX_WBITS)  # type: ignore
+
+            data = json.loads(json_string)
+
+            if self._pkgs is None:
+                raise Exception("_pkgs variable not initialized yet, this is a bug")
+
+            for pkg_name, pkg_data in data.items():
+
+                if pkg_name in self._pkgs.keys():
+                    raise FrklException(
+                        msg=f"Can't add pkg '{pkg_name}'.",
+                        reason=f"Package with that name already exists in context '{self.name}'.",
+                    )
+
+                ting: PkgTing = self._tingistry_obj.create_ting(
+                    "bring.types.static_pkg",
+                    f"{self.full_name}.pkgs.{pkg_name}",  # type: ignore
+                )  # type: ignore
+                ting.bring_context = self
+                ting.input.set_values(**pkg_data)
+                # ting._set_result(data)
+                self._pkgs[pkg_name] = ting
+
+        async with create_task_group() as tg:
+            for url in self._urls:
+                await tg.spawn(add_index, url)
 
     async def get_pkgs(self) -> Mapping[str, PkgTing]:
 
-        if self._data is None:
-            await self.load_pkgs()
+        if self._pkgs is None:
+            self._pkgs = {}
+            await self._load_pkgs()
 
         return self._pkgs
 
@@ -174,8 +211,9 @@ class BringStaticContextTing(BringContextTing):
         raise NotImplementedError()
 
     async def init(self, config: Mapping[str, Any]) -> None:
+
         self._config = config
-        self.set_url(config["url"])
+        self.add_urls(*config["indexes"])
 
 
 class BringDynamicContextTing(BringContextTing):
@@ -217,16 +255,17 @@ class BringDynamicContextTing(BringContextTing):
 
     async def _create_update_tasks(self) -> Tasks:
 
-        task_desc = TaskDesc(
+        task_desc = BringTaskDesc(
             name=f"metadata update {self.name}",
             msg=f"updating metadata for context '{self.name}'",
         )
         tasks = FlattenParallelTasksAsync(desc=task_desc)
         pkgs = await self.get_pkgs()
         for pkg_name, pkg in pkgs.items():
-            t = SingleTaskAsync(pkg.update_metadata)
-            t.task_desc.name = pkg_name
-            t.task_desc.msg = f"updating metadata for pkg '{pkg_name}'"
+            td = BringTaskDesc(
+                name=pkg_name, msg=f"updating metadata for pkg '{pkg_name}'"
+            )
+            t = SingleTaskAsync(pkg.update_metadata, task_desc=td)
             tasks.add_task(t)
 
         return tasks

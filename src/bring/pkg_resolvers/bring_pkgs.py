@@ -6,7 +6,7 @@ from bring.context import BringContextTing
 from bring.mogrify import assemble_mogrifiers
 from bring.pkg import PkgTing
 from bring.pkg_resolvers import SimplePkgResolver
-from bring.utils import find_version
+from bring.utils import find_version, replace_var_aliases
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
@@ -36,8 +36,10 @@ class BringPkgsResolver(SimplePkgResolver):
         pkgs = source_details["pkgs"]
         result = {}
         for pkg in pkgs:
-
-            pkg_obj = self.get_pkg(pkg["name"], bring_context=bring_context)
+            context = pkg.get("context", None)
+            pkg_obj = self.get_pkg(
+                pkg["name"], bring_context=bring_context, pkg_context=context
+            )
             result[pkg_obj.full_name] = pkg_obj
 
         return result
@@ -70,17 +72,30 @@ class BringPkgsResolver(SimplePkgResolver):
     ) -> PkgTing:
 
         if pkg_context is None:
-            pkg_context = f"bring.contexts.{bring_context.name}"
+            pkg_context = bring_context.full_name
 
-        if pkg_context != f"bring.contexts.{bring_context.name}":
-            raise FrklException("BringPkg type does not support external contexts yet.")
+        elif "." not in pkg_context:
 
-        ting_name = f"{bring_context.full_name}.pkgs.{pkg_name}"
+            ctx = self._bringistry.get_context(pkg_context)
+            if ctx is None:
+                raise FrklException(
+                    msg=f"Can't retrieve child pkg '{pkg_name}'.",
+                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(self._bringistry.contexts.keys())}",
+                )
+            pkg_context = ctx.full_name
+
+        ting_name = f"{pkg_context}.pkgs.{pkg_name}"
+
         ting = self._bringistry.get_ting(ting_name)
         if ting is None:
+            pkg_list = []
+            for tn in self._bringistry.ting_names:
+                # if '.pkgs.' in tn:
+                pkg_list.append(tn)
+            pkg_list_string = "\n  - ".join(pkg_list)
             raise FrklException(
                 msg="Can't resolve bring pkg.",
-                reason=f"No parent pkg '{ting_name}' registered.",
+                reason=f"Requested child pkg '{ting_name}' not among available pkgs:\n\n{pkg_list_string}",
             )
 
         if not is_instance_or_subclass(ting, PkgTing):
@@ -113,17 +128,24 @@ class BringPkgsResolver(SimplePkgResolver):
         for pkg in pkgs:
             name = pkg["name"]
             vars = pkg.get("vars", {})
+            context = pkg.get("context", None)
 
-            pkg_obj = self.get_pkg(name, bring_context=bring_context)
+            pkg_obj = self.get_pkg(
+                name, bring_context=bring_context, pkg_context=context
+            )
             vals: Mapping[str, Any] = await pkg_obj.get_values(
                 "metadata", resolve=True
             )  # type: ignore
             metadata = vals["metadata"]
-            version = find_version(vars=vars, metadata=metadata)
+
+            vars = replace_var_aliases(vars=vars, metadata=metadata)
+            version = find_version(
+                vars=vars, metadata=metadata, var_aliases_replaced=True
+            )
 
             if version is None:
                 raise Exception(
-                    f"Error when processing pkg '{pkg.name}'. Can't find version for vars: {vars}"
+                    f"Error when processing pkg '{name}'. Can't find version for vars: {dict(vars)}"
                 )
 
             mogrifier_list = assemble_mogrifiers(
@@ -132,6 +154,11 @@ class BringPkgsResolver(SimplePkgResolver):
                 args=metadata["pkg_vars"]["mogrify_vars"],
                 task_desc={"name": name},
             )
+
+            item_mogrify = pkg.get("mogrify", None)
+            if item_mogrify:
+                mogrifier_list = mogrifier_list + item_mogrify
+
             mogrifier_lists.append(mogrifier_list)
 
         version = {"_mogrify": [mogrifier_lists]}

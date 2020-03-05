@@ -5,7 +5,7 @@ from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
 from bring.pkg_resolvers import SimplePkgResolver
-from bring.utils import find_versions
+from bring.utils import find_versions, replace_var_aliases
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
@@ -37,30 +37,44 @@ class BringPkgResolver(SimplePkgResolver):
         """
 
         parent = self.get_parent_pkg(
-            source_dict=source_details, bring_context=bring_context
+            source_details=source_details, bring_context=bring_context
         )
         vals = await parent.get_values("info", "labels")
 
         return vals
 
     def get_parent_pkg(
-        self, source_dict: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> PkgTing:
 
-        parent_name = source_dict["name"]
-        parent_context = source_dict.get("context", None)
-        if parent_context is None:
-            parent_context = f"bring.contexts.{bring_context.name}"
+        pkg_name = source_details["name"]
+        pkg_context = source_details.get("context", None)
 
-        if parent_context != f"bring.contexts.{bring_context.name}":
-            raise FrklException("BringPkg type does not support external contexts yet.")
+        if pkg_context is None:
+            pkg_context = bring_context.full_name
 
-        ting_name = f"{bring_context.full_name}.pkgs.{parent_name}"
+        elif "." not in pkg_context:
+
+            ctx = self._bringistry.get_context(pkg_context)
+            if ctx is None:
+                raise FrklException(
+                    msg=f"Can't retrieve child pkg '{pkg_name}'.",
+                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(self._bringistry.contexts.keys())}",
+                )
+            pkg_context = ctx.full_name
+
+        ting_name = f"{pkg_context}.pkgs.{pkg_name}"
+
         ting = self._bringistry.get_ting(ting_name)
         if ting is None:
+            pkg_list = []
+            for tn in self._bringistry.ting_names:
+                # if '.pkgs.' in tn:
+                pkg_list.append(tn)
+            pkg_list_string = "\n  - ".join(pkg_list)
             raise FrklException(
                 msg="Can't resolve bring pkg.",
-                reason=f"No parent pkg '{ting_name}' registered.",
+                reason=f"Requested child pkg '{ting_name}' not among available pkgs:\n\n{pkg_list_string}",
             )
 
         if not is_instance_or_subclass(ting, PkgTing):
@@ -90,6 +104,12 @@ class BringPkgResolver(SimplePkgResolver):
         metadata = values["metadata"]
 
         vars = source_details.get("vars", {})
-        versions = find_versions(vars, metadata)
+        vars = replace_var_aliases(vars=vars, metadata=metadata)
 
-        return {"versions": versions}
+        versions = find_versions(vars, metadata, var_aliases_replaced=True)
+
+        _versions = []
+        for v in versions:
+            _versions.append(v[0])
+
+        return {"versions": _versions}

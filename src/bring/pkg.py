@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 import copy
 import logging
-import os
-import shutil
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
-from bring.utils import find_version
+from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
@@ -175,74 +173,99 @@ class PkgTing(SimpleTing):
         return result
 
     def create_transmogrificator(
-        self, vars: Dict[str, Any], metadata: Mapping[str, Any]
+        self,
+        vars: Mapping[str, Any],
+        metadata: Mapping[str, Any],
+        extra_mogrifiers: Iterable[Union[str, Mapping[str, Any]]] = None,
+        target: Union[str, Path, Mapping[str, Any]] = None,
+        parent_task_desc: TaskDesc = None,
     ) -> Transmogrificator:
 
-        version = find_version(vars=vars, metadata=metadata)
+        _vars = replace_var_aliases(vars=vars, metadata=metadata)
+        version = find_version(vars=_vars, metadata=metadata, var_aliases_replaced=True)
 
         if not version:
             raise FrklException(
                 msg=f"Can't process pkg '{self.name}'.",
-                reason=f"Can't find version match for vars: {vars}",
+                reason=f"Can't find version match for vars: {_vars}",
             )
-        mogrify_list = version["_mogrify"]
+        mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version["_mogrify"])
 
+        if extra_mogrifiers:
+            mogrify_list.extend(extra_mogrifiers)
         # import pp
         # pp(metadata['pkg_vars'].keys())
 
         transmogritory: Transmogritory = self._tingistry_obj._transmogritory
 
-        task_desc = TaskDesc(name=f"{self.name}", msg=f"installing pkg {self.name}")
+        task_desc = BringTaskDesc(
+            name=f"{self.name}", msg=f"installing pkg {self.name}"
+        )
 
         tm = transmogritory.create_transmogrificator(
             mogrify_list,
-            vars=vars,
+            vars=_vars,
             args=metadata["pkg_vars"]["mogrify_vars"],
             name=self.name,
             task_desc=task_desc,
+            target=target,
         )
+        if parent_task_desc is not None:
+            tm.task_desc.parent = parent_task_desc
 
         return tm
 
     async def create_version_folder(
         self,
-        vars: Dict[str, Any],
-        target: Union[str, Path] = None,
+        vars: Optional[Mapping[str, Any]] = None,
+        target: Union[str, Path, Mapping[str, Any]] = None,
         delete_result: bool = True,
+        parent_task_desc: TaskDesc = None,
     ) -> str:
         """Create a folder that contains the version specified via the provided 'vars'.
 
         If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
         is provided, the path to a randomly named temp folder will be returned.
         """
-
+        if vars is None:
+            vars = {}
         vals: Mapping[str, Any] = await self.get_values(
             "source", "metadata", resolve=True
         )  # type: ignore
         metadata = vals["metadata"]
 
-        tm = self.create_transmogrificator(vars=vars, metadata=metadata)
+        extra_modifiers = None
+        # if target is not None:
+        #     extra_modifiers = [{"type": "merge_into", "target": target}]
+
+        tm = self.create_transmogrificator(
+            vars=vars,
+            metadata=metadata,
+            extra_mogrifiers=extra_modifiers,
+            target=target,
+            parent_task_desc=parent_task_desc,
+        )
 
         # run_watcher = TerminalRunWatch(sort_task_names=False)
         vals = await tm.transmogrify()
         log.debug(f"finsished transmogrification: {vals}")
 
-        if target is not None:
-            return tm.set_target(target, delete_pipeline_folder=delete_result)
-        else:
-            return tm.result_path
+        if not tm._is_root_transmogrifier and tm.target_path is None:
+            raise Exception("Root transmogrifier result is None, this is a bug")
 
-    def copy_file(self, source, target, force=False, method="move"):
+        return tm.target_path  # type: ignore
 
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        # if force and os.path.exists(target):
-        #     os.unlink(target)
-
-        if method == "copy":
-            shutil.copyfile(source, target, follow_symlinks=False)
-            # TODO: file attributes
-        elif method == "move":
-            shutil.move(source, target)
+    # def copy_file(self, source, target, force=False, method="move"):
+    #
+    #     os.makedirs(os.path.dirname(target), exist_ok=True)
+    #     # if force and os.path.exists(target):
+    #     #     os.unlink(target)
+    #
+    #     if method == "copy":
+    #         shutil.copyfile(source, target, follow_symlinks=False)
+    #         # TODO: file attributes
+    #     elif method == "move":
+    #         shutil.move(source, target)
 
 
 class StaticPkgTing(PkgTing):
@@ -320,7 +343,7 @@ class DynamicPkgTing(PkgTing):
             source_dict, self.bring_context, override_config=config
         )
         if not cached and register_task:
-            task_desc = TaskDesc(
+            task_desc = BringTaskDesc(
                 name=f"metadata retrieval {self.name}",
                 msg=f"retrieving valid metadata for package '{self.name}'",
             )

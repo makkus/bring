@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import gzip
 import json
 import logging
 import os
@@ -53,12 +54,18 @@ class BringExportContextCommand(click.Command):
             # all_values = await pkg.get_values("metadata")
             # print(vals)
 
-            all_values = await self._context_context.export()
+            all_values = await self._context.export_context()
 
-            json_data = json.dumps(all_values, indent=2)
+            json_data = json.dumps(all_values, indent=2) + "\n"
+
+            json_bytes = json_data.encode("utf-8")
 
             if path is None:
-                path = os.path.join(os.getcwd(), f"{self._context.name}.json")
+                _path = os.path.join(os.getcwd(), f"{self._context.name}.bring-ctx")
+            elif os.path.isdir(os.path.realpath(path)):
+                _path = os.path.join(path, f"{self._context.name}.bring-ctx")
+            else:
+                _path = path
 
-            with open(path, "w") as f:
-                f.write(json_data)
+            with gzip.GzipFile(_path, "w") as f:
+                f.write(json_bytes)

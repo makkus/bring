@@ -200,14 +200,14 @@ class GithubRelease(SimplePkgResolver):
         version = data["name"]
         prerelease = data["prerelease"]
         created_at = data["created_at"]
-        tarball_url = data["tarball_url"]
-        zipball_url = data["zipball_url"]
+        # tarball_url = data["tarball_url"]
+        # zipball_url = data["zipball_url"]
 
         meta = {
             "orig_version_name": version,
             "prerelease": prerelease,
-            "source_tarball_url": tarball_url,
-            "source_zipball_url": zipball_url,
+            # "source_tarball_url": tarball_url,
+            # "source_zipball_url": zipball_url,
             "release_date": created_at,
         }
 
@@ -246,12 +246,12 @@ class GithubRelease(SimplePkgResolver):
                         aliases["version"]["pre-release"] = vers
 
             asset_name = asset["name"]
-            content_type = asset["content_type"]
+            # content_type = asset["content_type"]
             size = asset["size"]
 
             _m = dict(meta)
-            _m["asset_name"] = asset_name
-            _m["content_type"] = content_type
+            # _m["asset_name"] = asset_name
+            # _m["content_type"] = content_type
             _m["size"] = size
             _m["url"] = browser_download_url
             vars["_meta"] = _m

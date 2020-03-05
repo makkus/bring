@@ -1,17 +1,28 @@
 # -*- coding: utf-8 -*-
 import atexit
 import collections
+import logging
 import os
 import shutil
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Mapping,
+    Optional,
+    Union,
+)
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
+from bring.utils import BringTaskDesc
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.tasks import Task, TaskDesc, Tasks
+from frtls.tasks import Task, Tasks
 from frtls.templating import replace_strings_in_obj
 from frtls.types.utils import generate_valid_identifier
 from tings.ting import SimpleTing
@@ -20,6 +31,9 @@ from tings.ting import SimpleTing
 if TYPE_CHECKING:
     from bring.bring import Bring
     from bring.mogrify.parallel_pkg_merge import ParallelPkgMergeMogrifier
+
+
+log = logging.getLogger("bring")
 
 
 def assemble_mogrifiers(
@@ -119,6 +133,11 @@ class Mogrifier(Task, SimpleTing):
 
         return self._mogrify_result
 
+    @abstractmethod
+    def get_msg(self) -> Optional[str]:
+
+        pass
+
 
 class SimpleMogrifier(Mogrifier):
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]], **kwargs):
@@ -129,7 +148,7 @@ class SimpleMogrifier(Mogrifier):
 
     async def execute(self) -> Any:
 
-        result = await self._func()
+        result = await self._func(raise_exception=True)
 
         return result
 
@@ -142,6 +161,7 @@ class Transmogrificator(Tasks):
         *transmogrifiers: Mogrifier,
         working_dir=None,
         is_root_transmogrifier: bool = True,
+        target: Union[str, Path, Mapping[str, Any]] = None,
         **kwargs,
     ):
 
@@ -161,16 +181,64 @@ class Transmogrificator(Tasks):
         atexit.register(delete_workspace)
         self._bring = bring
 
+        if target is None and self._is_root_transmogrifier:
+            target = os.path.join(BRING_WORKSPACE_FOLDER, "results", self._id)
+
+        if isinstance(target, str):
+            _target: Optional[Dict[str, Any]] = {
+                "target": target,
+                "merge_strategy": "default",
+            }
+        elif isinstance(target, collections.abc.Mapping):
+            if "target" not in target:
+                raise ValueError(
+                    f"Invalid 'target' specification, misses 'target' key: {target}"
+                )
+            _target = dict(target)
+        else:
+            if self._is_root_transmogrifier:
+                raise TypeError(
+                    f"Invalid type '{type(target)}' for 'target' specification (needs string or Mapping): {target}"
+                )
+
+            if target:
+                log.warning(
+                    f"'target' specified for non-root transmogrificator, will be ignored: {target}"
+                )
+            _target = None
+
+        self._target_spec: Optional[Mapping[str, Any]] = _target
+
         super().__init__(**kwargs)
 
         self._current: Optional[Mogrifier] = None
         self._last_item: Optional[Mogrifier] = None
 
-        self._mogrify_result: Optional[Mapping[str, Any]] = None
-        self._result_moved: bool = False
-
         for tm in transmogrifiers:
             self.add_mogrifier(tm)
+
+        if self._is_root_transmogrifier:
+
+            self._result_mogrifier: Optional[Mogrifier] = self._bring.create_ting(
+                prototing="bring.mogrify.plugins.merge_into",
+                ting_name=f"bring.mogrify.pipelines.{self._id}.merge_into_target_folder",
+            )  # type: ignore
+            if self._result_mogrifier is None:
+                raise Exception("Could not create result mogrifier.")
+            self._result_mogrifier.input.set_values(**self._target_spec)  # type: ignore
+            msg = self._result_mogrifier.get_msg()
+            td = BringTaskDesc(name="merge_result", msg=msg)
+            self._result_mogrifier.task_desc = td
+        else:
+            self._result_mogrifier = None
+
+    @property
+    def target_path(self) -> Optional[str]:
+
+        if self._target_spec is None:
+            return None
+
+        return self._target_spec["target"]
 
     @property
     def working_dir(self):
@@ -190,60 +258,14 @@ class Transmogrificator(Tasks):
 
     async def transmogrify(self) -> Mapping[str, Any]:
 
+        if self._result_mogrifier:
+            self.add_mogrifier(self._result_mogrifier)
+
         await self.run_async()
 
         result = self._last_item.current_state  # type: ignore
 
-        if not self._is_root_transmogrifier:
-            return result
-
-        result_folder = result["folder_path"]
-        self._mogrify_result = {
-            "folder_path": os.path.join(BRING_WORKSPACE_FOLDER, "results", self._id)
-        }
-
-        shutil.move(result_folder, self._mogrify_result["folder_path"])
-        shutil.rmtree(self.working_dir)
-
-        return self._mogrify_result
-
-    @property
-    def result_path(self) -> str:
-
-        if self._result_moved:
-            raise FrklException(
-                msg="Can't return result path for transmogrifier.",
-                reason=f"Result already moved to a target location and result folder deleted.",
-            )
-
-        return self._mogrify_result["folder_path"]  # type: ignore
-
-    def set_target(
-        self, target: Union[str, Path], delete_pipeline_folder: bool = True
-    ) -> str:
-
-        if self._result_moved:
-            raise FrklException(
-                msg="Can't return result path for transmogrifier.",
-                reason=f"Result already moved to a target location and result folder deleted.",
-            )
-
-        folder_path = self._mogrify_result["folder_path"]  # type: ignore
-
-        if isinstance(target, Path):
-            _target = target.resolve().as_posix()
-        else:
-            _target = os.path.expanduser(target)
-
-        ensure_folder(os.path.dirname(_target))
-
-        if not delete_pipeline_folder:
-            shutil.copy2(folder_path, _target)
-        else:
-            shutil.move(folder_path, _target)
-            self._result_moved = True
-
-        return _target
+        return result
 
     async def execute(self) -> Any:
 
@@ -267,6 +289,7 @@ class Transmogritory(object):
         pipeline_id: str,
         index: str,
         input_vals: Mapping[str, Any],
+        vars: Mapping[str, Any],
     ) -> Mogrifier:
 
         plugin: Mogrifier = self._plugin_manager.get_plugin(mogrify_plugin)
@@ -282,31 +305,32 @@ class Transmogritory(object):
         )  # type: ignore
         ting.input.set_values(**input_vals)
         msg = ting.get_msg()
-        ting.task_desc.name = mogrify_plugin
-        ting.task_desc.msg = msg
+        td = BringTaskDesc(name=mogrify_plugin, msg=msg)
+        ting.task_desc = td
 
         return ting
 
     def create_transmogrificator(
         self,
-        data: Iterable[Union[Mapping, str]],
+        data: Iterable[Union[Mapping[str, Any], str]],
         vars: Mapping[str, Any],
         args: Mapping[str, Any],
-        task_desc: Optional[TaskDesc] = None,
+        task_desc: Optional[BringTaskDesc] = None,
+        target: Union[str, Path, Mapping[str, Any]] = None,
         **kwargs,
     ) -> Transmogrificator:
 
         pipeline_id = generate_valid_identifier(prefix="pipe_", length_without_prefix=6)
 
         if task_desc is None:
-            task_desc = TaskDesc(
+            task_desc = BringTaskDesc(
                 name=pipeline_id, msg=f"executing pipeline '{pipeline_id}'"
             )
 
         mogrifier_list = assemble_mogrifiers(mogrifier_list=data, vars=vars, args=args)
 
         transmogrificator = Transmogrificator(
-            pipeline_id, self._bring, desc=task_desc, **kwargs
+            pipeline_id, self._bring, task_desc=task_desc, target=target, **kwargs
         )
 
         for index, _mog in enumerate(mogrifier_list):
@@ -326,6 +350,7 @@ class Transmogritory(object):
                     pipeline_id=pipeline_id,
                     index=str(index),
                     input_vals=_mog,
+                    vars=vars,
                 )
 
                 transmogrificator.add_mogrifier(ting)
@@ -335,7 +360,13 @@ class Transmogritory(object):
                 for j, child_list in enumerate(_mog):
 
                     tings = []
-                    for k, m in enumerate(child_list):
+                    guess_task_desc = None
+                    for k, _m in enumerate(child_list):
+
+                        if guess_task_desc is None and "_task_desc" in _m.keys():
+                            guess_task_desc = _m["_task_desc"]
+
+                        m = dict(_m)
                         mogrify_plugin = m.pop("type", None)
                         # sub_task_desc = m.pop("_task_desc", {})
                         if not mogrify_plugin:
@@ -348,21 +379,27 @@ class Transmogritory(object):
                             pipeline_id=pipeline_id,
                             index=f"{index}_{j}_{k}",
                             input_vals=m,
+                            vars=vars,
                         )
                         tings.append(t)
 
-                    td = TaskDesc(
-                        # name=f"{sub_task_desc['name']}",
-                        # msg=f"retrieving {sub_task_desc['name']}",
-                    )
                     tm_working_dir = os.path.join(
                         transmogrificator.working_dir, f"{index}_{j}"
                     )
+                    if guess_task_desc:
+                        td = BringTaskDesc()
+                        if "name" in guess_task_desc.keys():
+                            td.name = guess_task_desc["name"]
+                        if "msg" in guess_task_desc.keys():
+                            td.msg = guess_task_desc["msg"]
+                    else:
+                        td = BringTaskDesc()
+
                     tm = Transmogrificator(
                         f"{pipeline_id}_{index}_{j}",
                         self._bring,
                         *tings,
-                        desc=td,
+                        task_desc=td,
                         working_dir=tm_working_dir,
                         is_root_transmogrifier=False,
                     )
@@ -370,16 +407,18 @@ class Transmogritory(object):
                     tms.append(tm)
 
                 merge = self.create_mogrifier_ting(
-                    mogrify_plugin="merge",
+                    mogrify_plugin="merge_folders",
                     pipeline_id=pipeline_id,
                     index=f"{index}_merge",
                     input_vals={},
+                    vars=vars,
                 )
                 p_ting: ParallelPkgMergeMogrifier = self.create_mogrifier_ting(
                     mogrify_plugin="parallel_pkg_merge",
                     pipeline_id=pipeline_id,
                     index=str(index),
                     input_vals={"pipeline_id": pipeline_id, "merge": merge},
+                    vars=vars,
                 )  # type: ignore
                 p_ting.add_mogrificators(*tms)
 

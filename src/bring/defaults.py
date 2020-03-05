@@ -18,8 +18,11 @@ else:
 BRING_CONTEXTS_FOLDER = os.path.join(BRING_APP_DIRS.user_config_dir, "contexts")
 
 BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
+BRING_DEFAULT_CONTEXTS_FOLDER = os.path.join(BRING_RESOURCES_FOLDER, "default_contexts")
 
 BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
+BRING_CONTEXT_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "contexts")
+
 BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_checkouts")
 
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
@@ -67,13 +70,16 @@ BRINGISTRY_CONFIG = {
         "bring.mogrify.*",
         "bring.context",
     ],
-    "classes": ["bring.pkg_resolvers.PkgResolver"],
+    "classes": [
+        "bring.pkg_resolvers.PkgResolver",
+        "frtls.tasks.task_watcher.TaskWatcher",
+    ],
 }
 
 # DEFAULT_CONTEXTS = {
-#     "executables": {
-#         "index": ["/home/markus/projects/tings/bring/repos/executables"],
-#         "default_transform_profile": "executables",
+#     "binaries": {
+#         "index": ["/home/markus/projects/tings/bring/repos/binaries"],
+#         "default_transform_profile": "binaries",
 #         "metadata_max_age": 3600 * 24,
 #         "defaults": get_current_system_info(),
 #     }
