@@ -95,7 +95,10 @@ commitlint:
 binary_linux:
   image:
     name: registry.gitlab.com/frkl/frkl-python-build:dev
+    entrypoint: [""]
   stage: release
+  script:
+    - "/entrypoint.sh"
   artifacts:
     paths:
       - dist/linux-gnu/freckles
