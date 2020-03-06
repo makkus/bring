@@ -109,6 +109,7 @@ binary_linux:
     expire_in: 1 week
 
 release_binary_linux:
+  image: registry.gitlab.com/gitlab-org/cloud-deploy:latest
   stage: release
   only:
     - develop
