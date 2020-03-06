@@ -97,6 +97,8 @@ binary_linux:
     name: registry.gitlab.com/frkl/frkl-python-build:dev
     entrypoint: [""]
   stage: release
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
   script:
     - "/entrypoint.sh"
   artifacts:
