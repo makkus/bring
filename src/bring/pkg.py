@@ -137,9 +137,9 @@ class PkgTing(SimpleTing):
     ):
 
         val_keys = ["info", "source", "labels"]
-        vals: Mapping[str, Any] = await self.get_values(
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             *val_keys, resolve=True
-        )  # type: ignore
+        )
 
         info = vals["info"]
         # source_details = vals["source"]
@@ -182,6 +182,7 @@ class PkgTing(SimpleTing):
     ) -> Transmogrificator:
 
         _vars = replace_var_aliases(vars=vars, metadata=metadata)
+
         version = find_version(vars=_vars, metadata=metadata, var_aliases_replaced=True)
 
         if not version:
@@ -229,9 +230,9 @@ class PkgTing(SimpleTing):
         """
         if vars is None:
             vars = {}
-        vals: Mapping[str, Any] = await self.get_values(
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "source", "metadata", resolve=True
-        )  # type: ignore
+        )
         metadata = vals["metadata"]
 
         extra_modifiers = None
@@ -288,9 +289,9 @@ class StaticPkgTing(PkgTing):
         self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
     ) -> Mapping[str, Any]:
 
-        vals: Mapping[str, Any] = await self.get_values(
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "metadata", resolve=True
-        )  # type: ignore
+        )
         return vals["metadata"]
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
@@ -322,9 +323,9 @@ class DynamicPkgTing(PkgTing):
     ) -> Mapping[str, Any]:
         """Return metadata associated with this package."""
 
-        vals: Mapping[str, Any] = await self.get_values(
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "source", resolve=True
-        )  # type: ignore
+        )
         return await self._get_metadata(
             vals["source"], config=config, register_task=False
         )

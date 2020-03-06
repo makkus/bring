@@ -18,9 +18,7 @@ click.anyio_backend = "asyncio"
 uvloop.install()
 
 bring_obj: Bring = Bring("bring")
-
 terminal = Terminal()
-watch_mgmt = TaskWatchManager(typistry=bring_obj.typistry)
 
 
 @click.command(name="bring", cls=BringCommandGroup, bring=bring_obj, terminal=terminal)
@@ -29,12 +27,18 @@ watch_mgmt = TaskWatchManager(typistry=bring_obj.typistry)
     multiple=True,
     required=False,
     type=str,
-    help=f"output plugin(s) for running tasks. available: {', '.join(watch_mgmt.available_plugins)}",
+    help=f"output plugin(s) for running tasks. available: {', '.join(['simple', 'terminal'])}",
 )
 @logzero_option_async()
 @click.pass_context
 @handle_exc_async
-async def cli_func(ctx, task_output: Iterable[str]):
+async def cli_bring(ctx, task_output: Iterable[str]):
+
+    ctx.obj = {}
+    ctx.obj["bring"] = bring_obj
+    watch_mgmt = TaskWatchManager(typistry=bring_obj.typistry)
+
+    ctx.obj["watch_mgmt"] = watch_mgmt
 
     if not task_output:
         task_output = ["terminal"]
@@ -51,13 +55,9 @@ async def cli_func(ctx, task_output: Iterable[str]):
     # print_formatted_text('Hello world')
 
 
-def cli(*args):
-
-    return cli_func(*args)
+def cli(*args, **kwargs):
+    return cli_bring(*args, **kwargs)
 
 
 if __name__ == "__main__":
-    cli()
-
-if getattr(sys, "frozen", False):
-    cli(*sys.argv[1:])
+    sys.exit(cli(_anyio_backend="asyncio"))  # pragma: no cover

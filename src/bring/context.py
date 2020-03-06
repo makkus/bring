@@ -185,10 +185,10 @@ class BringStaticContextTing(BringContextTing):
                         reason=f"Package with that name already exists in context '{self.name}'.",
                     )
 
-                ting: PkgTing = self._tingistry_obj.create_ting(
+                ting: PkgTing = self._tingistry_obj.create_ting(  # type: ignore
                     "bring.types.static_pkg",
                     f"{self.full_name}.pkgs.{pkg_name}",  # type: ignore
-                )  # type: ignore
+                )
                 ting.bring_context = self
                 ting.input.set_values(**pkg_data)
                 # ting._set_result(data)
@@ -227,12 +227,12 @@ class BringDynamicContextTing(BringContextTing):
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
         self._pkg_namespace = f"bring.contexts.dynamic.{self.name}.pkgs"
-        self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(
+        self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(  # type: ignore
             name=self._pkg_namespace,
             ting_class="pkgs",
             subscription_namespace=self._pkg_namespace,
             bring_context=self,
-        )  # type: ignore
+        )
         self._maker_config: Optional[Mapping[str, Any]] = None
         self._maker: Optional[TingMaker] = None
 
@@ -280,14 +280,14 @@ class BringDynamicContextTing(BringContextTing):
 
         maker_name = f"bring.pkg_maker.{self.name}"
         self._maker_config = config
-        self._maker = self._tingistry_obj.create_singleting(
+        self._maker = self._tingistry_obj.create_singleting(  # type: ignore
             name=maker_name,
             ting_class="text_file_ting_maker",
             prototing="bring.types.dynamic_pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
             file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],
-        )  # type: ignore
+        )
 
         indexes = config.get("indexes", [])
         for index in indexes:

@@ -56,9 +56,9 @@ class BringPkgsResolver(SimplePkgResolver):
         for pkg in self.get_child_pkgs(
             source_details=source_details, bring_context=bring_context
         ).values():
-            vals: Mapping[str, Any] = await pkg.get_values(
+            vals: Mapping[str, Any] = await pkg.get_values(  # type: ignore
                 "info", resolve=True
-            )  # type: ignore
+            )
             info = vals["info"]
             childs[pkg.name] = info.get("slug", "n/a")
 
@@ -133,9 +133,9 @@ class BringPkgsResolver(SimplePkgResolver):
             pkg_obj = self.get_pkg(
                 name, bring_context=bring_context, pkg_context=context
             )
-            vals: Mapping[str, Any] = await pkg_obj.get_values(
+            vals: Mapping[str, Any] = await pkg_obj.get_values(  # type: ignore
                 "metadata", resolve=True
-            )  # type: ignore
+            )
             metadata = vals["metadata"]
 
             vars = replace_var_aliases(vars=vars, metadata=metadata)

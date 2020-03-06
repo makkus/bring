@@ -98,9 +98,9 @@ class BringPkgResolver(SimplePkgResolver):
     ) -> Mapping[str, Any]:
 
         pkg = self.get_parent_pkg(source_details, bring_context=bring_context)
-        values: Mapping[str, Any] = await pkg.get_values(
+        values: Mapping[str, Any] = await pkg.get_values(  # type: ignore
             "metadata", resolve=True
-        )  # type: ignore
+        )
         metadata = values["metadata"]
 
         vars = source_details.get("vars", {})

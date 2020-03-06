@@ -26,13 +26,13 @@ class BringCommandGroup(FrklBaseCommand):
         # self.params[:0] = self.get_common_options(
         #     print_version_callback=self.print_version_callback
         # )
+
         self._bring: Bring = bring
 
         self._context: Optional[BringContextTing] = context
 
         if not callback:
             callback = self.overview
-
         super(BringCommandGroup, self).__init__(
             name=name,
             invoke_without_command=True,
@@ -55,9 +55,12 @@ class BringCommandGroup(FrklBaseCommand):
 
         print(await self._context.get_info())
 
-    async def init_command_async(self, ctx):
-
-        await self._bring.init()
+    # async def init_command_async(self, ctx):
+    #
+    # if ctx.obj is None:
+    #     ctx.obj = {}
+    #     ctx.obj["bring"] = self._bring
+    #     await self._bring.init()
 
     async def _list_commands(self, ctx):
 
@@ -69,6 +72,8 @@ class BringCommandGroup(FrklBaseCommand):
         return result
 
     async def _get_command(self, ctx, name):
+
+        command = None
         if name == "info":
 
             from bring.interfaces.cli.info import BringInfoGroup

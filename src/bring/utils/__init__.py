@@ -64,11 +64,14 @@ def replace_var_aliases(
 
     aliases = metadata.get("aliases", {})
     version_vars = metadata["pkg_vars"]["version_vars"]
+    mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
 
     relevant_vars = {}
 
     for k, v in vars.items():
         if k in version_vars.keys():
+            relevant_vars[k] = v
+        elif k in mogrify_vars.keys():
             relevant_vars[k] = v
 
     vars_final: Dict[str, Any] = {}

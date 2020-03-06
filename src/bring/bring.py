@@ -42,9 +42,9 @@ class Bring(Tingistry):
         prototings: Iterable[Mapping] = BRINGISTRY_CONFIG["prototings"]  # type: ignore
         tings: Iterable[Mapping] = BRINGISTRY_CONFIG["tings"]  # type: ignore
         modules: Iterable[str] = BRINGISTRY_CONFIG["modules"]  # type: ignore
-        classes: Iterable[Union[Type, str]] = BRINGISTRY_CONFIG[
+        classes: Iterable[Union[Type, str]] = BRINGISTRY_CONFIG[  # type: ignore
             "classes"
-        ]  # type: ignore
+        ]
 
         super().__init__(
             name,
@@ -68,9 +68,9 @@ class Bring(Tingistry):
 
         self._transmogritory = Transmogritory(self)
 
-        self._dynamic_context_maker: TextFileTingMaker = self.create_ting(
+        self._dynamic_context_maker: TextFileTingMaker = self.create_ting(  # type: ignore
             "bring.types.config_file_context_maker", "bring.context_maker"
-        )  # type: ignore
+        )
         self._dynamic_context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
 
         self._default_contexts: Dict[str, BringStaticContextTing] = {}
@@ -101,10 +101,10 @@ class Bring(Tingistry):
                 )
 
             json_content: Mapping[str, Any] = json.loads(content)
-            ctx: BringStaticContextTing = self.create_ting(
+            ctx: BringStaticContextTing = self.create_ting(  # type: ignore
                 "bring.types.contexts.default_context",
                 f"bring.contexts.default.{context_name}",
-            )  # type: ignore
+            )
             ctx.input.set_values(ting_dict=json_content)
             self._default_contexts[context_name] = ctx
 
@@ -126,12 +126,12 @@ class Bring(Tingistry):
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
-        contexts: SubscripTings = self.get_ting(
+        contexts: SubscripTings = self.get_ting(  # type: ignore
             "bring.contexts.dynamic"
-        )  # type: ignore
-        result: Dict[str, BringContextTing] = {
+        )
+        result: Dict[str, BringContextTing] = {  # type: ignore
             x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
-        }  # type: ignore
+        }
 
         result.update(self._extra_contexts)
 

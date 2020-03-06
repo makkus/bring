@@ -219,10 +219,12 @@ class Transmogrificator(Tasks):
 
         if self._is_root_transmogrifier:
 
-            self._result_mogrifier: Optional[Mogrifier] = self._bring.create_ting(
+            self._result_mogrifier: Optional[
+                Mogrifier
+            ] = self._bring.create_ting(  # type: ignore
                 prototing="bring.mogrify.plugins.merge_into",
                 ting_name=f"bring.mogrify.pipelines.{self._id}.merge_into_target_folder",
-            )  # type: ignore
+            )
             if self._result_mogrifier is None:
                 raise Exception("Could not create result mogrifier.")
             self._result_mogrifier.input.set_values(**self._target_spec)  # type: ignore
@@ -299,10 +301,10 @@ class Transmogritory(object):
                 reason=f"No mogrify plugin '{mogrify_plugin}' available.",
             )
 
-        ting: Mogrifier = self._bring.create_ting(
+        ting: Mogrifier = self._bring.create_ting(  # type: ignore
             prototing=f"bring.mogrify.plugins.{mogrify_plugin}",
             ting_name=f"bring.mogrify.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
-        )  # type: ignore
+        )
         ting.input.set_values(**input_vals)
         msg = ting.get_msg()
         td = BringTaskDesc(name=mogrify_plugin, msg=msg)
@@ -413,13 +415,13 @@ class Transmogritory(object):
                     input_vals={},
                     vars=vars,
                 )
-                p_ting: ParallelPkgMergeMogrifier = self.create_mogrifier_ting(
+                p_ting: ParallelPkgMergeMogrifier = self.create_mogrifier_ting(  # type: ignore
                     mogrify_plugin="parallel_pkg_merge",
                     pipeline_id=pipeline_id,
                     index=str(index),
                     input_vals={"pipeline_id": pipeline_id, "merge": merge},
                     vars=vars,
-                )  # type: ignore
+                )
                 p_ting.add_mogrificators(*tms)
 
                 transmogrificator.add_mogrifier(p_ting)
