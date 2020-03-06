@@ -92,6 +92,15 @@ commitlint:
     - export LAST_TAG=$(git describe --abbrev=0 --tags) # get last tag
     - commitlint --from=$LAST_TAG   # check commit convention from last tag
 
+binary_linux:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev
+  stage: release
+  artifacts:
+    paths:
+      - dist/linux-gnu/freckles
+    expire_in: 1 week
+
 build:
   stage: release
   only:
