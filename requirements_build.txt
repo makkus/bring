@@ -1,0 +1,7 @@
+git+https://github.com/makkus/asyncclick.git#egg=asyncclick
+git+https://gitlab.com/frkl/bring.git#egg=bring
+git+https://gitlab.com/frkl/freckops.git#egg=freckops
+git+https://gitlab.com/frkl/frkl.jinja2schema.git#egg=frkl.jinja2schema
+git+https://gitlab.com/frkl/frtls.git#egg=frtls
+git+https://gitlab.com/frkl/tings.git#egg=tings
+setuptools<45.0.0
