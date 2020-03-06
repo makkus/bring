@@ -99,6 +99,7 @@ binary_linux:
   stage: release
   variables:
     SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/workdir"
   script:
     - "/entrypoint.sh"
   artifacts:
