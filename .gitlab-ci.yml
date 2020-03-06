@@ -99,12 +99,12 @@ binary_linux:
   stage: release
   variables:
     SRCDIR: $CI_PROJECT_DIR
-    TEMPDIR: "$CI_PROJECT_DIR/workdir"
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
   script:
     - "/entrypoint.sh"
   artifacts:
     paths:
-      - dist/linux-gnu/freckles
+      - dist/linux-gnu/bring
     expire_in: 1 week
 
 build:
