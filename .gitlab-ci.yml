@@ -107,6 +107,23 @@ binary_linux:
       - dist/linux-gnu/bring
     expire_in: 1 week
 
+release_dev:
+  stage: release
+  except:
+    variables:
+      - $FRECKWORKS == "true"
+      - $LADATA == "true"
+      - $RETAILIATE == "true"
+  only:
+    - develop
+  environment:
+    name: dev
+  tags:
+    - shell
+  script:
+  - aws s3 cp --content-type binary/octet-stream binary/dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+#  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/freckles
+
 pkg_python_dev:
   stage: release
   only:
