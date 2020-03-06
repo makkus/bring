@@ -16,6 +16,7 @@ image: python:3.8
 stages:
   - test
   - build
+  - release
 
 #python36:
 #  image: python:3.6
