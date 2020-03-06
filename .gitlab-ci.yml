@@ -58,7 +58,7 @@ pages:
     - portray as_html -o public
   artifacts:
     paths:
-    - public
+      - public
 
 mypy:
   image: python:3.8
@@ -107,7 +107,7 @@ binary_linux:
       - dist/linux-gnu/bring
     expire_in: 1 week
 
-build:
+pkg_python_dev:
   stage: release
   only:
     - develop
@@ -123,7 +123,7 @@ build:
       - dist/
     expire_in: 1 month
 
-build_stable:
+pkg_python_stable:
   stage: release
   only:
     - /^\d+\.\d+\.\d+$/
@@ -145,7 +145,7 @@ build_stable:
       - dist/
     expire_in: 1 month
 
-build_beta:
+pkg_python_beta:
   stage: release
   only:
     - /^\d+\.\d+\.\d+b\d+$/
