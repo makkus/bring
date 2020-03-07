@@ -18,16 +18,16 @@ stages:
   - build
   - release
 
-#python36:
-#  image: python:3.6
-#  stage: test
-#  before_script:
-#    - curl -O https://bootstrap.pypa.io/get-pip.py
-#    - python get-pip.py
-#    - pip install -U setuptools
-#  script:
-#    - pip install tox
-#    - tox -e py36
+python36:
+  image: python:3.6
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e py36
 
 python37:
   image: python:3.7
