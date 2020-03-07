@@ -64,7 +64,7 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["info", "install", "update", "export"]
+        result = ["info", "install", "update", "export", "self"]
         if self._context is None:
             result.append("context")
             result.append("dev")
@@ -137,5 +137,11 @@ class BringCommandGroup(FrklBaseCommand):
                 command.short_help = f"export context '{self._context.name}'"
             else:
                 command.short_help = "export all contexts"
+
+        elif name == "self":
+
+            from frtls.cli.self_command_group import self_command
+
+            command = self_command
 
         return command

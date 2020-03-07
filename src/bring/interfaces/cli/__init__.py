@@ -8,9 +8,13 @@ from blessings import Terminal
 from bring.bring import Bring
 from bring.defaults import BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli.command_group import BringCommandGroup
+from frtls import APP_DETAILS
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.logging import logzero_option_async
 from frtls.tasks.task_watcher import TaskWatchManager
+
+
+APP_DETAILS.APP_NAME = "bring"
 
 
 click.anyio_backend = "asyncio"
