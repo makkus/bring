@@ -8,6 +8,12 @@
 
 *A package manager for files.*
 
+# Installation
+
+Download url
+
+ - dev: https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/linux-gnu/bring
+ - stable: TBD
 
 ## Description
 
