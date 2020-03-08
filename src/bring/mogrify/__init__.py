@@ -24,6 +24,7 @@ from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import Task, Tasks
 from frtls.templating import replace_strings_in_obj
+from frtls.types.typistry import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
 from tings.ting import SimpleTing
 
@@ -224,7 +225,7 @@ class Transmogrificator(Tasks):
             ] = self._bring.create_ting(  # type: ignore
                 prototing="bring.mogrify.plugins.merge_into",
                 ting_name=f"bring.mogrify.pipelines.{self._id}.merge_into_target_folder",
-            )
+            )  # type: ignore
             if self._result_mogrifier is None:
                 raise Exception("Could not create result mogrifier.")
             self._result_mogrifier.input.set_values(**self._target_spec)  # type: ignore
@@ -279,11 +280,21 @@ class Transmogritory(object):
     def __init__(self, bring: "Bring"):
 
         self._bring = bring
+        self._plugin_manager: Optional[TypistryPluginManager] = None
+
+    @property
+    def plugin_manager(self) -> TypistryPluginManager:
+
+        if self._plugin_manager is not None:
+            return self._plugin_manager
+
         self._plugin_manager = self._bring.get_plugin_manager(
             "bring.mogrify.Mogrifier", plugin_type="instance"
         )
         for k, v in self._plugin_manager._plugins.items():
             self._bring.register_prototing(f"bring.mogrify.plugins.{k}", v)
+
+        return self._plugin_manager
 
     def create_mogrifier_ting(
         self,
@@ -294,7 +305,7 @@ class Transmogritory(object):
         vars: Mapping[str, Any],
     ) -> Mogrifier:
 
-        plugin: Mogrifier = self._plugin_manager.get_plugin(mogrify_plugin)
+        plugin: Mogrifier = self.plugin_manager.get_plugin(mogrify_plugin)
         if not plugin:
             raise FrklException(
                 msg="Can't create transmogrifier.",

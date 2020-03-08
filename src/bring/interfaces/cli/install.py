@@ -72,9 +72,9 @@ class BringInstallGroup(FrklBaseCommand):
             },
         }
 
-    async def init_command_async(self, ctx):
-
-        await self._bring.init()
+    # async def init_command_async(self, ctx):
+    #
+    #     await self._bring.init()
 
     async def _list_commands(self, ctx):
 

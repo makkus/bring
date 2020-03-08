@@ -47,7 +47,7 @@ async def cli_bring(ctx, task_output: Iterable[str]):
             {"type": to, "base_topics": [BRING_TASKS_BASE_TOPIC], "terminal": terminal}
         )
 
-    await bring_obj.init()
+    # await bring_obj.init()
 
     if ctx.invoked_subcommand:
         return
