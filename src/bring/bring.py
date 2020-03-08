@@ -88,11 +88,13 @@ class Bring(Tingistry):
         if self._dynamic_context_maker is not None:
             return self._dynamic_context_maker
 
-        self._dynamic_context_maker: TextFileTingMaker = self.create_ting(  # type: ignore
+        self._dynamic_context_maker = self.create_ting(  # type: ignore
             "bring.types.config_file_context_maker", "bring.context_maker"
         )
-        self._dynamic_context_maker.add_base_paths(BRING_CONTEXTS_FOLDER)
-        return self._dynamic_context_maker
+        self._dynamic_context_maker.add_base_paths(  # type: ignore
+            BRING_CONTEXTS_FOLDER
+        )  # type: ignore
+        return self._dynamic_context_maker  # type: ignore
 
     def _init_sync(self):
         if self._initialized:
