@@ -27,10 +27,10 @@ from frtls.templating import replace_strings_in_obj
 from frtls.types.typistry import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
 from tings.ting import SimpleTing
+from tings.tingistry import Tingistry
 
 
 if TYPE_CHECKING:
-    from bring.bring import Bring
     from bring.mogrify.parallel_pkg_merge import ParallelPkgMergeMogrifier
 
 
@@ -158,7 +158,7 @@ class Transmogrificator(Tasks):
     def __init__(
         self,
         t_id: str,
-        bring: "Bring",
+        tingistry: "Tingistry",
         *transmogrifiers: Mogrifier,
         working_dir=None,
         is_root_transmogrifier: bool = True,
@@ -180,7 +180,7 @@ class Transmogrificator(Tasks):
             shutil.rmtree(self._working_dir, ignore_errors=True)
 
         atexit.register(delete_workspace)
-        self._bring = bring
+        self._tingistry = tingistry
 
         if target is None and self._is_root_transmogrifier:
             target = os.path.join(BRING_WORKSPACE_FOLDER, "results", self._id)
@@ -222,7 +222,7 @@ class Transmogrificator(Tasks):
 
             self._result_mogrifier: Optional[
                 Mogrifier
-            ] = self._bring.create_ting(  # type: ignore
+            ] = self._tingistry.create_ting(  # type: ignore
                 prototing="bring.mogrify.plugins.merge_into",
                 ting_name=f"bring.mogrify.pipelines.{self._id}.merge_into_target_folder",
             )  # type: ignore
@@ -277,9 +277,9 @@ class Transmogrificator(Tasks):
 
 
 class Transmogritory(object):
-    def __init__(self, bring: "Bring"):
+    def __init__(self, tingistry: "Tingistry"):
 
-        self._bring = bring
+        self._tingistry: Tingistry = tingistry
         self._plugin_manager: Optional[TypistryPluginManager] = None
 
     @property
@@ -288,11 +288,11 @@ class Transmogritory(object):
         if self._plugin_manager is not None:
             return self._plugin_manager
 
-        self._plugin_manager = self._bring.get_plugin_manager(
+        self._plugin_manager = self._tingistry.typistry.get_plugin_manager(
             "bring.mogrify.Mogrifier", plugin_type="instance"
         )
         for k, v in self._plugin_manager._plugins.items():
-            self._bring.register_prototing(f"bring.mogrify.plugins.{k}", v)
+            self._tingistry.register_prototing(f"bring.mogrify.plugins.{k}", v)
 
         return self._plugin_manager
 
@@ -312,7 +312,7 @@ class Transmogritory(object):
                 reason=f"No mogrify plugin '{mogrify_plugin}' available.",
             )
 
-        ting: Mogrifier = self._bring.create_ting(  # type: ignore
+        ting: Mogrifier = self._tingistry.create_ting(  # type: ignore
             prototing=f"bring.mogrify.plugins.{mogrify_plugin}",
             ting_name=f"bring.mogrify.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
         )
@@ -343,7 +343,7 @@ class Transmogritory(object):
         mogrifier_list = assemble_mogrifiers(mogrifier_list=data, vars=vars, args=args)
 
         transmogrificator = Transmogrificator(
-            pipeline_id, self._bring, task_desc=task_desc, target=target, **kwargs
+            pipeline_id, self._tingistry, task_desc=task_desc, target=target, **kwargs
         )
 
         for index, _mog in enumerate(mogrifier_list):
@@ -410,7 +410,7 @@ class Transmogritory(object):
 
                     tm = Transmogrificator(
                         f"{pipeline_id}_{index}_{j}",
-                        self._bring,
+                        self._tingistry,
                         *tings,
                         task_desc=td,
                         working_dir=tm_working_dir,

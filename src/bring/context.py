@@ -113,10 +113,20 @@ class BringContextTing(InheriTing, SimpleTing):
 
         pass
 
-    async def get_pkg(self, name: str) -> Optional[PkgTing]:
+    async def get_pkg(self, name: str) -> PkgTing:
 
         pkgs = await self.get_pkgs()
-        return pkgs.get(name, None)
+        pkg = pkgs.get(name, None)
+
+        if pkg is None:
+            pkg_names = await self.pkg_names
+            raise FrklException(
+                msg=f"Can't retrieve package '{name}' from context '{self.name}'.",
+                reason="No package with that name available.",
+                solution=f"Make sure the package name is correct, available packages: {', '.join(pkg_names)}.",
+            )
+
+        return pkg
 
     @property
     async def pkg_names(self) -> Iterable[str]:

@@ -72,6 +72,7 @@ BRINGISTRY_CONFIG = {
     ],
     "classes": [
         "bring.pkg_resolvers.PkgResolver",
+        "bring.mogrify.Mogrifier",
         "frtls.tasks.task_watcher.TaskWatcher",
     ],
 }

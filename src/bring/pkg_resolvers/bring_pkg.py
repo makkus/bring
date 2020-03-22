@@ -65,10 +65,10 @@ class BringPkgResolver(SimplePkgResolver):
 
         ting_name = f"{pkg_context}.pkgs.{pkg_name}"
 
-        ting = self._bringistry.get_ting(ting_name)
+        ting = self._bringistry._tingistry_obj.get_ting(ting_name)
         if ting is None:
             pkg_list = []
-            for tn in self._bringistry.ting_names:
+            for tn in self._bringistry._tingistry_obj.ting_names:
                 # if '.pkgs.' in tn:
                 pkg_list.append(tn)
             pkg_list_string = "\n  - ".join(pkg_list)

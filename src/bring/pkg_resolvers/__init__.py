@@ -86,7 +86,7 @@ class PkgResolver(metaclass=ABCMeta):
         Args:
             - *metadata*: the metadata
             - *source_details*: source details of the package
-            - *bring_context*: the current bring context
+            - *freckops_bring_context*: the current bring context
             - *config*: the resolver config, containing the 'metadata_max_age' key
         """
 

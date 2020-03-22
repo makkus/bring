@@ -16,11 +16,13 @@ from bring.defaults import (
 )
 from bring.mogrify import Transmogritory
 from bring.utils import BringTaskDesc
+from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import FlattenParallelTasksAsync
 from tings.makers.file import TextFileTingMaker
+from tings.ting import SimpleTing
 from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
@@ -33,13 +35,8 @@ DEFAULT_TRANSFORM_PROFILES = {
 }
 
 
-class Bring(Tingistry):
-    def __init__(self, name: str = None, meta: Dict[str, Any] = None):
-
-        if name is None:
-            name = "bring"
-
-        ensure_folder(BRING_WORKSPACE_FOLDER)
+class Bring(SimpleTing):
+    def __init__(self, name: str = None, meta: Optional[Mapping[str, Any]] = None):
 
         prototings: Iterable[Mapping] = BRINGISTRY_CONFIG["prototings"]  # type: ignore
         tings: Iterable[Mapping] = BRINGISTRY_CONFIG["tings"]  # type: ignore
@@ -48,14 +45,30 @@ class Bring(Tingistry):
             "classes"
         ]
 
-        super().__init__(
-            name,
-            prototings=prototings,
-            tings=tings,
-            modules=modules,
-            classes=classes,
-            meta=meta,
-        )
+        if name is None:
+            name = "bring"
+
+        ensure_folder(BRING_WORKSPACE_FOLDER)
+
+        if meta is None:
+            raise Exception(
+                "Can't create 'bring' object: 'meta' argument not provided, this is a bug"
+            )
+
+        self._tingistry_obj: Tingistry = meta["tingistry"]
+
+        self._tingistry_obj.add_module_paths(*modules)
+        self._tingistry_obj.add_classes(*classes)
+
+        if prototings:
+            for pt in prototings:
+                self._tingistry_obj.register_prototing(**pt)
+
+        if tings:
+            for t in tings:
+                self._tingistry_obj.create_ting(**t)
+
+        super().__init__(name=name, meta=meta)
 
         config: MutableMapping[str, Any] = {}
         for k, v in os.environ.items():
@@ -68,7 +81,7 @@ class Bring(Tingistry):
 
         self.typistry.get_plugin_manager("pkg_resolver", plugin_config=config)
 
-        self._transmogritory = Transmogritory(self)
+        self._transmogritory = Transmogritory(self._tingistry_obj)
 
         self._dynamic_context_maker: Optional[TextFileTingMaker] = None
 
@@ -83,12 +96,29 @@ class Bring(Tingistry):
         # self._task_watcher = PrintLineRunWatcher(base_topic=BRING_TASKS_BASE_TOPIC)
 
     @property
+    def typistry(self):
+
+        return self._tingistry_obj.typistry
+
+    # @property
+    # def tingistry(self):
+    #     print("xx")
+    #     import pp
+    #     pp(self.__dict__)
+    #     return self._tingistry
+
+    @property
+    def arg_hive(self) -> ArgHive:
+
+        return self._tingistry_obj.arg_hive
+
+    @property
     def dynamic_context_maker(self) -> TextFileTingMaker:
 
         if self._dynamic_context_maker is not None:
             return self._dynamic_context_maker
 
-        self._dynamic_context_maker = self.create_ting(  # type: ignore
+        self._dynamic_context_maker = self._tingistry_obj.create_ting(  # type: ignore
             "bring.types.config_file_context_maker", "bring.context_maker"
         )
         self._dynamic_context_maker.add_base_paths(  # type: ignore
@@ -101,6 +131,18 @@ class Bring(Tingistry):
             return
 
         wrap_async_task(self._init, _raise_exception=True)
+
+    def provides(self) -> Mapping[str, str]:
+
+        return {}
+
+    def requires(self) -> Mapping[str, str]:
+
+        return {}
+
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        return {}
 
     async def _init(self):
 
@@ -126,7 +168,7 @@ class Bring(Tingistry):
                     )
 
                 json_content: Mapping[str, Any] = json.loads(content)
-                ctx: BringStaticContextTing = self.create_ting(  # type: ignore
+                ctx: BringStaticContextTing = self._tingistry_obj.create_ting(  # type: ignore
                     "bring.types.contexts.default_context",
                     f"bring.contexts.default.{context_name}",
                 )
@@ -135,7 +177,7 @@ class Bring(Tingistry):
 
                 await ctx.get_values("config")
 
-            contexts: SubscripTings = self.get_ting(  # type: ignore
+            contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
                 "bring.contexts.dynamic"
             )
             dynamic: Dict[str, BringContextTing] = {  # type: ignore
@@ -163,7 +205,7 @@ class Bring(Tingistry):
 
         self._init_sync()
 
-        contexts: SubscripTings = self.get_ting(  # type: ignore
+        contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
             "bring.contexts.dynamic"
         )
         result: Dict[str, BringContextTing] = {  # type: ignore
@@ -176,9 +218,17 @@ class Bring(Tingistry):
 
         return result
 
-    def get_context(self, context_name: str) -> Optional[BringContextTing]:
+    def get_context(self, context_name: str) -> BringContextTing:
 
-        return self.contexts.get(context_name)
+        ctx = self.contexts.get(context_name, None)
+        if ctx is None:
+            raise FrklException(
+                msg=f"Can't access bring context '{context_name}'.",
+                reason=f"No context with that name.",
+                solution=f"Create context, or choose one of the existing ones: {', '.join(self.contexts.keys())}",
+            )
+
+        return ctx
 
     async def update(self):
 

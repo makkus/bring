@@ -14,6 +14,7 @@ from frtls.tasks import TaskDesc
 from frtls.types.typistry import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
+from tings.tingistry import Tingistry
 
 
 if TYPE_CHECKING:
@@ -36,7 +37,8 @@ DEFAULT_ARG_DICT = {
 class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
-        self._tingistry_obj: Bring = meta["tingistry"]
+        self._tingistry_obj: Tingistry = meta["tingistry"]
+        self._bring: Bring = self._tingistry_obj.get_ting("bring.mgmt")  # type: ignore
         # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
         self._context: Optional["BringContextTing"] = None
@@ -197,7 +199,9 @@ class PkgTing(SimpleTing):
         # import pp
         # pp(metadata['pkg_vars'].keys())
 
-        transmogritory: Transmogritory = self._tingistry_obj._transmogritory
+        if self._bring is None:
+            raise Exception("'bring' attribute not set yet, this is a bug")
+        transmogritory: Transmogritory = self._bring._transmogritory
 
         task_desc = BringTaskDesc(
             name=f"{self.name}", msg=f"installing pkg {self.name}"
