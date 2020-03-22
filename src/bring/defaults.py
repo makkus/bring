@@ -30,6 +30,14 @@ BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace"
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
 DEFAULT_INSTALL_PROFILE_NAME = "all_files"
 
+BRINGISTRY_PRELOAD_MODULES = [
+    "bring.bring",
+    "bring.pkg",
+    "bring.pkgs",
+    "bring.pkg_resolvers.*",
+    "bring.mogrify.*",
+    "bring.context",
+]
 BRINGISTRY_CONFIG = {
     "prototings": [
         {"prototing_name": "bring.types.dynamic_pkg", "ting_class": "dynamic_pkg_ting"},
@@ -62,14 +70,7 @@ BRINGISTRY_CONFIG = {
         # }
     ],
     "tings": [],
-    "modules": [
-        "bring.bring",
-        "bring.pkg",
-        "bring.pkgs",
-        "bring.pkg_resolvers.*",
-        "bring.mogrify.*",
-        "bring.context",
-    ],
+    "modules": BRINGISTRY_PRELOAD_MODULES,
     "classes": [
         "bring.pkg_resolvers.PkgResolver",
         "bring.mogrify.Mogrifier",
