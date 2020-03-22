@@ -116,7 +116,7 @@ release_binary_linux:
   environment:
     name: dev
   script:
-  - /root/.local/bin/aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+  - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
 #  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/freckles
 
 pkg_python_dev:
