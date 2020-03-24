@@ -90,13 +90,13 @@ class Pkgs(SubscripTings):
 
         result = {}
 
-        async def get_value(pkg):
-            vals = await pkg.get_values(*value_names)
+        async def get_value(pkg, vn):
+            vals = await pkg.get_values(*vn)
             result[pkg.name] = vals
 
         async with create_task_group() as tg:
             for pkg in self.pkgs.values():
-                await tg.spawn(get_value, pkg)
+                await tg.spawn(get_value, pkg, value_names)
                 # break
 
         return result

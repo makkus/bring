@@ -204,7 +204,7 @@ class PkgTing(SimpleTing):
         transmogritory: Transmogritory = self._bring._transmogritory
 
         task_desc = BringTaskDesc(
-            name=f"{self.name}", msg=f"installing pkg {self.name}"
+            name=f"install pkg '{self.name}'", msg=f"installing pkg {self.name}"
         )
 
         tm = transmogritory.create_transmogrificator(

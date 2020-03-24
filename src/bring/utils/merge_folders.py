@@ -45,10 +45,10 @@ class FolderMerge(object):
         exclude_dirs = self._merge_strategy.get("exclude_dirs", DEFAULT_EXCLUDE_DIRS)
 
         strategy_type = self._merge_strategy["type"]
-        if not hasattr(self, f"merge_{strategy_type}"):
+        if not hasattr(self, f"_merge_{strategy_type}"):
             raise Exception(f"No '{strategy_type}' merge strategy implemented.")
 
-        func = getattr(self, f"merge_{strategy_type}")
+        func = getattr(self, f"_merge_{strategy_type}")
 
         for root, dirnames, filenames in os.walk(source, topdown=True):
 
@@ -62,7 +62,7 @@ class FolderMerge(object):
 
                 func(source, rel_path)
 
-    def merge_default(self, source_base: str, rel_path: str):
+    def _merge_default(self, source_base: str, rel_path: str):
 
         target = os.path.join(self._target, rel_path)
         if os.path.exists(target):
@@ -76,7 +76,7 @@ class FolderMerge(object):
         ensure_folder(os.path.dirname(target))
         shutil.move(source, target)
 
-    def merge_overwrite(self, source_base: str, rel_path: str):
+    def _merge_overwrite(self, source_base: str, rel_path: str):
 
         target = os.path.join(self._target, rel_path)
         if os.path.exists(target):

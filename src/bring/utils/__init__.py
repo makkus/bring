@@ -76,7 +76,10 @@ def replace_var_aliases(
 
     vars_final: Dict[str, Any] = {}
     for k, v in relevant_vars.items():
-        vars_final[k] = aliases.get(k, {}).get(v, v)
+        if not isinstance(v, str):
+            vars_final[k] = v
+        else:
+            vars_final[k] = aliases.get(k, {}).get(v, v)
 
     return vars_final
 

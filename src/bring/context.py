@@ -200,6 +200,7 @@ class BringStaticContextTing(BringContextTing):
                     f"{self.full_name}.pkgs.{pkg_name}",  # type: ignore
                 )
                 ting.bring_context = self
+
                 ting.input.set_values(**pkg_data)
                 # ting._set_result(data)
                 self._pkgs[pkg_name] = ting

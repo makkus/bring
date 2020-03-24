@@ -45,10 +45,13 @@ async def cli_bring(ctx, task_output: Iterable[str]):
     ctx.obj["bring"] = bring_obj
     if not task_output:
         task_output = ["terminal"]
+
     watchers: List[Union[str, Mapping[str, Any]]] = []
     for to in task_output:
-        watchers.append
-        ({"type": to, "base_topics": [BRING_TASKS_BASE_TOPIC], "terminal": terminal})
+        watchers.append(
+            {"type": to, "base_topics": [BRING_TASKS_BASE_TOPIC], "terminal": terminal}
+        )
+
     watch_mgmt = TaskWatchManager(typistry=bring_obj.typistry, watchers=watchers)
 
     ctx.obj["watch_mgmt"] = watch_mgmt
