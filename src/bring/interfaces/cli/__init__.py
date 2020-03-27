@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import sys
 from typing import Any, Iterable, List, Mapping, Union
 
@@ -15,6 +16,12 @@ from frtls.types.utils import load_modules
 from tings.tingistry import Tingistries
 
 
+# # monkey-patch HelpFormatter
+# from asyncclick import core
+#
+# core.HelpFormatter = BringHelpFormatter
+
+
 click.anyio_backend = "asyncio"
 
 uvloop.install()
@@ -27,8 +34,20 @@ tingistry = Tingistries.create("bring")
 bring_obj: Bring = tingistry.create_singleting("bring.mgmt", Bring)
 terminal = Terminal()
 
+CONTEXT_SETTINGS = dict(
+    # default_map={},
+    max_content_width=terminal.width,
+    help_option_names=["-h", "--help"],
+)
 
-@click.command(name="bring", cls=BringCommandGroup, bring=bring_obj, terminal=terminal)
+
+@click.command(
+    name="bring",
+    cls=BringCommandGroup,
+    bring=bring_obj,
+    terminal=terminal,
+    context_settings=CONTEXT_SETTINGS,
+)
 @click.option(
     "--task-output",
     multiple=True,

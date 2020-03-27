@@ -28,7 +28,7 @@ BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_chec
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
-DEFAULT_INSTALL_PROFILE_NAME = "all_files"
+DEFAULT_CONTEXT_NAME = "binaries"
 
 BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring",
@@ -38,6 +38,9 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.mogrify.*",
     "bring.context",
 ]
+
+DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE = "bring.contexts.dynamic"
+
 BRINGISTRY_CONFIG = {
     "prototings": [
         {"prototing_name": "bring.types.dynamic_pkg", "ting_class": "dynamic_pkg_ting"},
@@ -48,14 +51,14 @@ BRINGISTRY_CONFIG = {
             "prototing_factory": "singleting",
             "prototing": "bring_dynamic_context_ting",
             "subscription_namespace": "bring.contexts.dynamic",
-            "ting_name": "bring.contexts.dynamic",
+            "ting_name": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
         },
         {
             "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
             "prototing": "bring_dynamic_context_ting",
             "ting_name_strategy": "basename_no_ext",
-            "ting_target_namespace": "bring.contexts.dynamic",
+            "ting_target_namespace": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
             "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
         },
         {

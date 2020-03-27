@@ -44,8 +44,10 @@ class PkgTing(SimpleTing):
         self._context: Optional["BringContextTing"] = None
 
     @property
-    def bring_context(self):
+    def bring_context(self) -> "BringContextTing":
 
+        if self._context is None:
+            raise Exception(f"Context not (yet) set for PkgTing '{self.full_name}'.")
         return self._context
 
     @bring_context.setter
@@ -300,7 +302,7 @@ class StaticPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self.bring_context:
+        if not self._context:
             raise FrklException(
                 msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
                 reason="Context not set yet.",
@@ -398,7 +400,7 @@ class DynamicPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self.bring_context:
+        if not self._context:
             raise FrklException(
                 msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
                 reason="Context not set yet.",

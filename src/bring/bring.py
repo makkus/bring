@@ -4,7 +4,18 @@
 import json
 import os
 import threading
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
+from pathlib import Path
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Type,
+    Union,
+)
 
 from anyio import aopen, create_task_group
 from bring.context import BringContextTing, BringStaticContextTing
@@ -13,13 +24,16 @@ from bring.defaults import (
     BRING_CONTEXTS_FOLDER,
     BRING_DEFAULT_CONTEXTS_FOLDER,
     BRING_WORKSPACE_FOLDER,
+    DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
 )
 from bring.mogrify import Transmogritory
+from bring.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
+from frtls.formats.input_formats import INPUT_FILE_TYPE, determine_input_file_type
 from frtls.tasks import FlattenParallelTasksAsync
 from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing
@@ -100,13 +114,6 @@ class Bring(SimpleTing):
 
         return self._tingistry_obj.typistry
 
-    # @property
-    # def tingistry(self):
-    #     print("xx")
-    #     import pp
-    #     pp(self.__dict__)
-    #     return self._tingistry
-
     @property
     def arg_hive(self) -> ArgHive:
 
@@ -178,7 +185,7 @@ class Bring(SimpleTing):
                 await ctx.get_values("config")
 
             contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
-                "bring.contexts.dynamic"
+                DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE
             )
             dynamic: Dict[str, BringContextTing] = {  # type: ignore
                 x.split(".")[-1]: ctx
@@ -200,13 +207,55 @@ class Bring(SimpleTing):
 
         self._extra_contexts[context_name] = context
 
+    def add_context_from_folder(
+        self, path: Union[Path, str], alias: str = None
+    ) -> BringContextTing:
+
+        input_type = determine_input_file_type(path)
+
+        # if input_type == INPUT_FILE_TYPE.git_repo:
+        #     git_url = expand_git_url(path, DEFAULT_URL_ABBREVIATIONS_GIT_REPO)
+        #     _path = await ensure_repo_cloned(git_url)
+        if input_type == INPUT_FILE_TYPE.local_dir:
+            if isinstance(path, Path):
+                _path: str = os.path.realpath(path.resolve().as_posix())
+            else:
+                _path = os.path.realpath(os.path.expanduser(path))
+        else:
+            raise FrklException(
+                msg=f"Can't add context for: {path}.",
+                reason=f"Invalid input file type {input_type}.",
+            )
+
+        if alias is None:
+            _alias: str = _path
+        else:
+            _alias = alias
+
+        ting_rel_name = _alias.replace(os.path.sep, ".")[1:]
+        ting_rel_name = ting_rel_name.replace("..", ".")
+
+        ctx: BringContextTing = self._tingistry_obj.create_ting(  # type: ignore
+            "bring_dynamic_context_ting", f"bring.context.extra.{ting_rel_name}"
+        )
+        indexes = [path]
+        ctx.input.set_values(  # type: ignore
+            ting_dict={"indexes": indexes}
+        )
+
+        # await ctx.get_values("config")
+        wrap_async_task(ctx.get_values, "config")
+        self.add_context(_alias, ctx)
+
+        return ctx
+
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
         self._init_sync()
 
         contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
-            "bring.contexts.dynamic"
+            DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE
         )
         result: Dict[str, BringContextTing] = {  # type: ignore
             x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
@@ -243,6 +292,100 @@ class Bring(SimpleTing):
             tasks.add_task(t)
 
         await tasks.run_async()
+
+    async def get_all_pkgs(
+        self, contexts: Optional[Iterable[str]] = None
+    ) -> Iterable[PkgTing]:
+
+        if contexts is None:
+            ctxs: Iterable[BringContextTing] = self.contexts.values()
+        else:
+            ctxs = []
+            for c in contexts:
+                ctx = self.get_context(c)
+                ctxs.append(ctx)
+
+        result = []
+
+        async def get_pkgs(_context: BringContextTing):
+
+            pkgs = await _context.get_pkgs()
+            for pkg in pkgs.values():
+                result.append(pkg)
+
+        async with create_task_group() as tg:
+
+            for context in ctxs:
+                await tg.spawn(get_pkgs, context)
+
+            return result
+
+    async def find_pkg(
+        self, pkg_name: str, contexts: Optional[Iterable[str]] = None
+    ) -> PkgTing:
+        """Finds one pkg with the specified name in all the available/specified contexts.
+
+        If more than one package is found, and if 'contexts' are provided, those are looked up in the order provided
+        to find the first match. If not contexts are provided, first the default contexts are searched, then the
+        extra ones. In this case, the result is not 100% predictable, as the order of those contexts might vary
+        from invocation to invocation.
+
+        Args:
+            - *pkg_name*: the package name
+            - *contexts*: the contexts to look in (or all available ones, if set to 'None')
+
+        """
+
+        pkgs = await self.find_pkgs(pkg_name=pkg_name, contexts=contexts)
+
+        if len(pkgs) == 1:
+            return pkgs[0]
+
+        if contexts is None:
+            _contexts: List[BringContextTing] = []
+            _contexts.extend(self._default_contexts.values())
+            _contexts.extend(self._extra_contexts.values())
+        else:
+            _contexts = []
+            for c in contexts:
+                _contexts.append(self.get_context(c))
+
+        for ctx in _contexts:
+
+            for pkg in pkgs:
+                if pkg.bring_context == ctx:
+                    return pkg
+
+        raise FrklException(
+            msg=f"Can't find pkg '{pkg_name}' in the available/specified contexts."
+        )
+
+    async def find_pkgs(
+        self, pkg_name: str, contexts: Optional[Iterable[str]] = None
+    ) -> List[PkgTing]:
+
+        pkgs: List[PkgTing] = []
+
+        async def find_pkg(_context: BringContextTing, _pkg_name: str):
+
+            _pkgs = await _context.get_pkgs()
+            _pkg = _pkgs.get(_pkg_name, None)
+            if _pkg is not None:
+                pkgs.append(_pkg)
+
+        async with create_task_group() as tg:
+            if contexts is None:
+                ctxs: Iterable[BringContextTing] = self.contexts.values()
+            else:
+                ctxs = []
+                for c in contexts:
+                    ctx = self.get_context(c)
+                    ctxs.append(ctx)
+
+            for context in ctxs:
+                await tg.spawn(find_pkg, context, pkg_name)
+
+        return pkgs
 
     def install(self, pkgs):
         pass
