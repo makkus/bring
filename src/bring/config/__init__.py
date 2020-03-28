@@ -2,11 +2,12 @@
 import threading
 from typing import Any, Dict, Mapping, Optional
 
-from frtls.async_helpers import wrap_async_task
-from frtls.dicts import dict_merge
+from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.exceptions import FrklException
 from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
+from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
 
@@ -79,6 +80,8 @@ class FolderConfigProfilesTing(SimpleTing):
     def __init__(
         self,
         name: str,
+        config_path: str,
+        default_config: Mapping[str, Any],
         config_file_ext: str = "config",
         meta: Optional[Mapping[str, Any]] = None,
     ):
@@ -89,57 +92,78 @@ class FolderConfigProfilesTing(SimpleTing):
             )
         self._tingistry_obj: Tingistry = meta["tingistry"]
 
+        self._default_config = default_config
+        self._config_path = config_path
+        self._config_file_ext = config_file_ext
+
         super().__init__(name=name, meta=meta)
 
-        self._maker_prototing_config = {
-            "ting_class": "text_file_ting_maker",
-            "prototing": "config_ting",
-            "ting_name_strategy": "basename_no_ext",
-            "ting_target_namespace": f"{self.full_name}.configs",
-            "file_matchers": [
-                {"type": "extension", "regex": f".*\\.{config_file_ext}"}
+        self._dynamic_config_maker: TextFileTingMaker = self._tingistry_obj.create_singleting(  # type: ignore
+            name=f"{self.full_name}.maker",
+            ting_class="text_file_ting_maker",
+            prototing="config_ting",
+            ting_name_strategy="basename_no_ext",
+            ting_target_namespace=f"{self.full_name}.configs",
+            file_matchers=[
+                {"type": "extension", "regex": f".*\\.{self._config_file_ext}"}
             ],
-        }
+        )
+        self._dynamic_config_maker.add_base_paths(self._config_path)
 
-        self._dynamic_config_maker: Optional[TextFileTingMaker] = None
-        self._configs: Dict[str, ConfigTing] = {}
+        self._profiles: Optional[SubscripTings] = None
 
         self._initialized = False
         self._init_lock = threading.Lock()
 
     @property
-    def dynamic_config_maker(self) -> TextFileTingMaker:
+    def default_config(self):
 
-        if self._dynamic_config_maker is not None:
-            return self._dynamic_config_maker
+        return self._default_config
 
-        dcm: TextFileTingMaker = self._tingistry_obj.create_singleting(  # type: ignore
-            f"{self.full_name}.maker",
-            prototing_name="internal.singletings.context_list",
-            ting_class="subscrip_tings",
-            prototing_factory="singleting",
-            prototing="bring_dynamic_context_ting",
-            subscription_namespace="bring.contexts.dynamic",
-            ting_name=f"{self.full_name}.configs",
-        )
-        self._dynamic_config_maker = dcm
-        return self._dynamic_config_maker
+    def requires(self) -> Mapping[str, str]:
 
-    def _init_sync(self):
-        if self._initialized:
-            return
+        return {"profile_name": "string", "update": "boolean?"}
 
-        wrap_async_task(self._init, _raise_exception=True)
+    def provides(self) -> Mapping[str, str]:
 
-    async def _init(self):
+        return {"config": "dict"}
 
-        with self._init_lock:
-            if self._initialized:
-                return
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-            await self.dynamic_config_maker.sync()
+        profile = requirements["profile_name"]
+        update = requirements.get("update", False)
 
-            async def add_config(_cfg_name: str):
-                pass
+        profiles: Mapping[
+            str, ConfigTing
+        ] = await self.get_config_profiles(  # type: ignore
+            update=update
+        )  # type: ignore
+        if profile not in profiles.keys():
+            raise FrklException(msg=f"No config profile '{profile}'")
 
-            configs = SubscripTings = self._tingistry_obj.get_ting()
+        config = await profiles[profile].get_value("config")
+
+        result = get_seeded_dict(self._default_config, config, merge_strategy="merge")
+
+        return {"config": result}
+
+    async def get_config_profiles(
+        self, update: bool = False
+    ) -> Mapping[str, Mapping[str, Any]]:
+
+        if self._profiles is None:
+
+            self._profiles = self._tingistry_obj.create_singleting(  # type: ignore
+                name=f"{self.full_name}.configs",
+                ting_class="subscrip_tings",
+                subscription_namespace=f"{self.full_name}.configs",
+                prototing="config_ting",
+            )
+            await self._dynamic_config_maker.sync()
+        else:
+            if update:
+                await self._dynamic_config_maker.sync()
+
+        return {
+            k.split(".")[-1]: v for k, v in self._profiles.childs.items()
+        }  # type: ignore

@@ -105,6 +105,11 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = dev
 
+        elif name == "config":
+            from bring.interfaces.cli.config import config
+
+            command = config
+
         elif name == "export":
 
             command = BringExportContextCommand(

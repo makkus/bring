@@ -18,6 +18,7 @@ from typing import (
 )
 
 from anyio import aopen, create_task_group
+from bring.config import FolderConfigProfilesTing
 from bring.context import BringContextTing, BringStaticContextTing
 from bring.defaults import (
     BRINGISTRY_CONFIG,
@@ -84,30 +85,51 @@ class Bring(SimpleTing):
 
         super().__init__(name=name, meta=meta)
 
-        config: MutableMapping[str, Any] = {}
+        env_conf: MutableMapping[str, Any] = {}
         for k, v in os.environ.items():
             k = k.lower()
             if not k.startswith("bring_"):
                 continue
-            config[k[6:]] = v
+            env_conf[k[6:]] = v
 
-        config["bringistry"] = self
-
-        self.typistry.get_plugin_manager("pkg_resolver", plugin_config=config)
+        env_conf["bringistry"] = self
+        self.typistry.get_plugin_manager("pkg_resolver", plugin_config=env_conf)
 
         self._transmogritory = Transmogritory(self._tingistry_obj)
+        self._init_lock = threading.Lock()
 
+        self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
+            "bring.config_profiles"
+        )
         self._dynamic_context_maker: Optional[TextFileTingMaker] = None
 
-        self._default_contexts: Dict[str, BringStaticContextTing] = {}
+        # config & other mutable attributes
+        self._config = "test"
 
+        self._context_configs: List[Mapping[str, Any]] = []
+        self._contexts: Dict[str, BringContextTing] = {}
+
+        self._default_contexts: Dict[str, BringStaticContextTing] = {}
         self._extra_contexts: Dict[str, BringContextTing] = {}
         self._initialized = False
 
-        self._init_lock = threading.Lock()
+    def set_config(self, config_profile: str):
 
-        # self._task_watcher = TerminalRunWatcher(base_topic=BRING_TASKS_BASE_TOPIC)
-        # self._task_watcher = PrintLineRunWatcher(base_topic=BRING_TASKS_BASE_TOPIC)
+        self._config = config_profile
+        self.invalidate()
+
+    def _invalidate(self):
+
+        self._contexts = None
+        self._default_contexts: Dict[str, BringStaticContextTing] = {}
+        self._extra_contexts: Dict[str, BringContextTing] = {}
+        self._initialized = False
+
+    async def get_config_dict(self) -> Mapping[str, Any]:
+
+        self._config_profiles.input.set_values(profile_name=self._config)
+        config: Mapping[str, Any] = await self._config_profiles.get_value("config")
+        return config
 
     @property
     def typistry(self):
@@ -161,13 +183,13 @@ class Bring(SimpleTing):
 
             await self.dynamic_context_maker.sync()
 
-            async def add_default_context(fn: str):
+            async def add_default_context(_file_name: str):
 
-                path = os.path.join(BRING_DEFAULT_CONTEXTS_FOLDER, fn)
+                path = os.path.join(BRING_DEFAULT_CONTEXTS_FOLDER, _file_name)
                 async with await aopen(path) as f:
                     content = await f.read()
 
-                context_name = fn.split(".")[0]
+                context_name = _file_name.split(".")[0]
                 if context_name in self._default_contexts:
                     raise FrklException(
                         msg=f"Can't add context '{context_name}'.",

@@ -37,21 +37,33 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.pkg_resolvers.*",
     "bring.mogrify.*",
     "bring.context",
+    "bring.config",
 ]
 
 DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE = "bring.contexts.dynamic"
+
+BRING_DEFAULT_CONFIG = {"use_": True}
 
 BRINGISTRY_CONFIG = {
     "prototings": [
         {"prototing_name": "bring.types.dynamic_pkg", "ting_class": "dynamic_pkg_ting"},
         {"prototing_name": "bring.types.static_pkg", "ting_class": "static_pkg_ting"},
         {
+            "ting_name": "bring.config_profiles",
+            "prototing_name": "internal.singletings.config_profiles",
+            "ting_class": "folder_config_profiles_ting",
+            "prototing_factory": "singleting",
+            "default_config": BRING_DEFAULT_CONFIG,
+            "config_path": BRING_APP_DIRS.user_config_dir,
+            "config_file_ext": "config",
+        },
+        {
+            "ting_name": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
             "prototing_name": "internal.singletings.context_list",
             "ting_class": "subscrip_tings",
             "prototing_factory": "singleting",
             "prototing": "bring_dynamic_context_ting",
             "subscription_namespace": "bring.contexts.dynamic",
-            "ting_name": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
         },
         {
             "prototing_name": "bring.types.config_file_context_maker",
