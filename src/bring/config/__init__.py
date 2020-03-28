@@ -165,5 +165,6 @@ class FolderConfigProfilesTing(SimpleTing):
                 await self._dynamic_config_maker.sync()
 
         return {
-            k.split(".")[-1]: v for k, v in self._profiles.childs.items()
+            k.split(".")[-1]: v
+            for k, v in self._profiles.childs.items()  # type: ignore
         }  # type: ignore
