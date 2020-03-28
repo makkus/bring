@@ -156,7 +156,7 @@ class BringInstallGroup(FrklBaseCommand):
         strategy = self._group_params.get("strategy")
         # merge = self._group_params.get("merge")
 
-        write_metadata = self._group_params.get("write_metadata")
+        # write_metadata = self._group_params.get("write_metadata")
 
         load_details = not ctx.obj.get("list_install_commands", False)
 
