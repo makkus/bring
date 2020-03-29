@@ -4,7 +4,7 @@ click-aliases>=1.0.1
 cruft
 flake8
 formic2
-httpx==0.11.1
+httpx==0.12.1
 ipython
 isort
 livereload
