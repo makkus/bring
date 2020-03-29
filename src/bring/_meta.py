@@ -10,7 +10,7 @@ app_name = "bring"
 _hi = load_modules(BRINGISTRY_PRELOAD_MODULES)  # type: ignore
 
 pyinstaller = {"hiddenimports": [x.__name__ for x in _hi]}
-if os.name != "nt":
+if os.name == "nt":
     import pkgutil
     import jinxed.terminfo
 
