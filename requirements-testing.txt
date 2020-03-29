@@ -16,11 +16,14 @@ pipdeptree
 portray
 pp-ez
 pre-commit
+prompt-toolkit==3.0.3
 pydriller==1.10.1
 pytest
 pytest-cov
 setuptools-scm
 tings
 tox
+treelib==1.6.1
+uvloop==0.14.0
 watchdog
 wheel
