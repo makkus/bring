@@ -277,10 +277,12 @@ class Transmogrificator(Tasks):
 
 
 class Transmogritory(object):
-    def __init__(self, tingistry: "Tingistry"):
+    def __init__(self, tingistry: "Tingistry", _load_plugins_at_init: bool = True):
 
         self._tingistry: Tingistry = tingistry
         self._plugin_manager: Optional[TypistryPluginManager] = None
+        if _load_plugins_at_init:
+            self.plugin_manager  # noqa
 
     @property
     def plugin_manager(self) -> TypistryPluginManager:

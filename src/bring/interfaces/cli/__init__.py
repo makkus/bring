@@ -49,6 +49,9 @@ CONTEXT_SETTINGS = dict(
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option(
+    "--config", "-c", help="the config profile to use", type=str, default="default"
+)
+@click.option(
     "--task-output",
     multiple=True,
     required=False,
@@ -58,7 +61,10 @@ CONTEXT_SETTINGS = dict(
 @logzero_option_async()
 @click.pass_context
 @handle_exc_async
-async def cli_bring(ctx, task_output: Iterable[str]):
+async def cli_bring(ctx, task_output: Iterable[str], config: str):
+
+    if config != "default":
+        bring_obj.set_config(config)
 
     ctx.obj = {}
     ctx.obj["bring"] = bring_obj

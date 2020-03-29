@@ -100,7 +100,8 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        context = self._bring.contexts.get(name, None)
+        context = self._bring.get_context(name, raise_exception=False)
+
         if context is None:
 
             if is_url_or_abbrev(name, DEFAULT_URL_ABBREVIATIONS_GIT_REPO):

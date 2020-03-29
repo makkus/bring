@@ -22,16 +22,24 @@ def config(ctx):
 @config.command()
 @click.pass_context
 @handle_exc_async
+async def list(ctx):
+    """List all available config profiles."""
+
+    bring: Bring = ctx.obj["bring"]
+
+    profiles = await bring._config_profiles.get_config_dicts()
+
+    print(profiles)
+
+
+@config.command()
+@click.pass_context
+@handle_exc_async
 async def show(ctx):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
     bring: Bring = ctx.obj["bring"]
 
-    config = await bring.get_config_dict()
-
-    print(config)
-
-    bring.set_config("test2")
     config = await bring.get_config_dict()
 
     print(config)

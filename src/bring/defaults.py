@@ -40,9 +40,18 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.config",
 ]
 
-DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE = "bring.contexts.dynamic"
+BRING_CONTEXT_NAMESPACE = "bring.contexts"
 
-BRING_DEFAULT_CONFIG = {"use_": True}
+BRING_DEFAULT_CONFIG = {
+    "contexts": [
+        {
+            "name": "binaries",
+            "type": "index",
+            "index_file": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bring-ctx",
+        }
+    ],
+    "default_context": "binaries",
+}
 
 BRINGISTRY_CONFIG = {
     "prototings": [
@@ -57,20 +66,20 @@ BRINGISTRY_CONFIG = {
             "config_path": BRING_APP_DIRS.user_config_dir,
             "config_file_ext": "config",
         },
-        {
-            "ting_name": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
-            "prototing_name": "internal.singletings.context_list",
-            "ting_class": "subscrip_tings",
-            "prototing_factory": "singleting",
-            "prototing": "bring_dynamic_context_ting",
-            "subscription_namespace": "bring.contexts.dynamic",
-        },
+        # {
+        #     "ting_name": BRING_CONTEXT_NAMESPACE,
+        #     "prototing_name": "internal.singletings.context_list",
+        #     "ting_class": "subscrip_tings",
+        #     "prototing_factory": "singleting",
+        #     "prototing": "bring_dynamic_context_ting",
+        #     "subscription_namespace": "bring.contexts.dynamic",
+        # },
         {
             "prototing_name": "bring.types.config_file_context_maker",
             "ting_class": "text_file_ting_maker",
             "prototing": "bring_dynamic_context_ting",
             "ting_name_strategy": "basename_no_ext",
-            "ting_target_namespace": DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
+            "ting_target_namespace": BRING_CONTEXT_NAMESPACE,
             "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
         },
         {

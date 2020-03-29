@@ -3,7 +3,6 @@ import os
 from typing import Dict, Union
 
 from bring.bring import Bring
-from bring.defaults import DEFAULT_CONTEXT_NAME
 from bring.interfaces.cli.pkg_command import PkgInstallTingCommand
 from bring.utils.git import ensure_repo_cloned
 from frtls.args.arg import Arg
@@ -76,7 +75,6 @@ class BringInstallGroup(FrklBaseCommand):
             "context": {
                 "doc": "The context that contains the package.",
                 "type": "string",
-                "default": DEFAULT_CONTEXT_NAME,
                 # "multiple": False,
                 "required": False,
             },
@@ -127,8 +125,9 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        context_name = self._group_params.get("context")
-        context = self._bring.contexts.get(context_name, None)
+        context_name = self._group_params.get("context", None)
+
+        context = self._bring.get_context(context_name, raise_exception=False)
 
         if context is None:
 

@@ -2,7 +2,8 @@
 import threading
 from typing import Any, Dict, Mapping, Optional
 
-from frtls.dicts import dict_merge, get_seeded_dict
+from anyio import create_task_group
+from frtls.dicts import dict_merge
 from frtls.exceptions import FrklException
 from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing
@@ -138,18 +139,22 @@ class FolderConfigProfilesTing(SimpleTing):
         ] = await self.get_config_profiles(  # type: ignore
             update=update
         )  # type: ignore
+
         if profile not in profiles.keys():
-            raise FrklException(msg=f"No config profile '{profile}'")
+            if profile == "default":
+                return {"config": self._default_config}
+            else:
+                raise FrklException(msg=f"No config profile '{profile}'")
 
         config = await profiles[profile].get_value("config")
 
-        result = get_seeded_dict(self._default_config, config, merge_strategy="merge")
+        # result = get_seeded_dict(self._default_config, config, merge_strategy="merge")
 
-        return {"config": result}
+        return {"config": config}
 
     async def get_config_profiles(
         self, update: bool = False
-    ) -> Mapping[str, Mapping[str, Any]]:
+    ) -> Mapping[str, ConfigTing]:
 
         if self._profiles is None:
 
@@ -164,7 +169,30 @@ class FolderConfigProfilesTing(SimpleTing):
             if update:
                 await self._dynamic_config_maker.sync()
 
-        return {
+        profiles: Mapping[str, ConfigTing] = {
             k.split(".")[-1]: v  # type: ignore
             for k, v in self._profiles.childs.items()  # type: ignore
         }  # type: ignore
+
+        return profiles
+
+    async def get_config_dicts(
+        self, update: bool = False
+    ) -> Mapping[str, Mapping[str, Any]]:
+
+        profiles = await self.get_config_profiles(update=update)
+
+        result: Dict[str, Any] = {}
+
+        async def get_config_dict(_p_name: str, _c_ting: ConfigTing):
+            _dict = await _c_ting.get_value("config")
+            result[_p_name] = _dict
+
+        async with create_task_group() as tg:
+            for profile_name, config_ting in profiles.items():
+                await tg.spawn(get_config_dict, profile_name, config_ting)
+
+        if "default" not in result.keys():
+            result["default"] = self._default_config
+
+        return result

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
-import json
 import os
 import threading
 from pathlib import Path
@@ -17,28 +16,29 @@ from typing import (
     Union,
 )
 
-from anyio import aopen, create_task_group
+from anyio import create_task_group
 from bring.config import FolderConfigProfilesTing
-from bring.context import BringContextTing, BringStaticContextTing
+from bring.context import (
+    BringContextTing,
+    BringDynamicContextTing,
+    BringStaticContextTing,
+)
 from bring.defaults import (
     BRINGISTRY_CONFIG,
-    BRING_CONTEXTS_FOLDER,
-    BRING_DEFAULT_CONTEXTS_FOLDER,
+    BRING_CONTEXT_NAMESPACE,
     BRING_WORKSPACE_FOLDER,
-    DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE,
 )
 from bring.mogrify import Transmogritory
 from bring.pkg import PkgTing
 from bring.utils import BringTaskDesc
+from bring.utils.contexts import validate_context_name
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.formats.input_formats import INPUT_FILE_TYPE, determine_input_file_type
-from frtls.tasks import FlattenParallelTasksAsync
-from tings.makers.file import TextFileTingMaker
+from frtls.tasks import SerialTasksAsync
 from tings.ting import SimpleTing
-from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
 
@@ -101,35 +101,59 @@ class Bring(SimpleTing):
         self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
             "bring.config_profiles"
         )
-        self._dynamic_context_maker: Optional[TextFileTingMaker] = None
+        # self._dynamic_context_maker: Optional[TextFileTingMaker] = None
 
         # config & other mutable attributes
-        self._config = "test"
+        self._config = "default"
+        self._config_dict: Optional[Mapping[str, Any]] = None
 
-        self._context_configs: List[Mapping[str, Any]] = []
+        self._context_configs: Optional[List[Mapping[str, Any]]] = None
         self._contexts: Dict[str, BringContextTing] = {}
+        self._default_context: Optional[str] = None
 
-        self._default_contexts: Dict[str, BringStaticContextTing] = {}
-        self._extra_contexts: Dict[str, BringContextTing] = {}
-        self._initialized = False
+        # self._default_contexts: Dict[str, BringStaticContextTing] = {}
+        # self._extra_contexts: Dict[str, BringContextTing] = {}
+        self._all_contexts_created: bool = False
 
     def set_config(self, config_profile: str):
 
         self._config = config_profile
+        self._contexts = {}
+        self._config_dict = None
         self.invalidate()
-
-    def _invalidate(self):
-
-        self._contexts = None
-        self._default_contexts: Dict[str, BringStaticContextTing] = {}
-        self._extra_contexts: Dict[str, BringContextTing] = {}
-        self._initialized = False
 
     async def get_config_dict(self) -> Mapping[str, Any]:
 
+        if self._config_dict is not None:
+            return self._config_dict
+
         self._config_profiles.input.set_values(profile_name=self._config)
-        config: Mapping[str, Any] = await self._config_profiles.get_value("config")
-        return config
+        self._config_dict = await self._config_profiles.get_value(  # type: ignore
+            "config"
+        )
+
+        return self._config_dict
+
+    async def get_context_configs(self) -> Iterable[Mapping[str, Any]]:
+
+        if self._context_configs is not None:
+            return self._context_configs
+
+        config = await self.get_config_dict()
+        self._context_configs = config["contexts"]
+        self._default_context = config.get("default_context", None)
+        if self._default_context is None:
+            self._default_context = self._context_configs[0]["name"]
+
+        return self._context_configs
+
+    @property
+    def default_context_name(self) -> str:
+
+        if self._default_context is None:
+            wrap_async_task(self.get_context_configs)  # noqa
+
+        return self._default_context  # type: ignore
 
     @property
     def typistry(self):
@@ -141,25 +165,19 @@ class Bring(SimpleTing):
 
         return self._tingistry_obj.arg_hive
 
-    @property
-    def dynamic_context_maker(self) -> TextFileTingMaker:
-
-        if self._dynamic_context_maker is not None:
-            return self._dynamic_context_maker
-
-        self._dynamic_context_maker = self._tingistry_obj.create_ting(  # type: ignore
-            "bring.types.config_file_context_maker", "bring.context_maker"
-        )
-        self._dynamic_context_maker.add_base_paths(  # type: ignore
-            BRING_CONTEXTS_FOLDER
-        )  # type: ignore
-        return self._dynamic_context_maker  # type: ignore
-
-    def _init_sync(self):
-        if self._initialized:
-            return
-
-        wrap_async_task(self._init, _raise_exception=True)
+    # @property
+    # def dynamic_context_maker(self) -> TextFileTingMaker:
+    #
+    #     if self._dynamic_context_maker is not None:
+    #         return self._dynamic_context_maker
+    #
+    #     self._dynamic_context_maker = self._tingistry_obj.create_ting(  # type: ignore
+    #         "bring.types.config_file_context_maker", "bring.context_maker"
+    #     )
+    #     self._dynamic_context_maker.add_base_paths(  # type: ignore
+    #         BRING_CONTEXTS_FOLDER
+    #     )  # type: ignore
+    #     return self._dynamic_context_maker  # type: ignore
 
     def provides(self) -> Mapping[str, str]:
 
@@ -173,145 +191,198 @@ class Bring(SimpleTing):
 
         return {}
 
-    async def _init(self):
+    def _create_all_contexts_sync(self):
+        if self._all_contexts_created:
+            return
+
+        wrap_async_task(self._create_all_contexts, _raise_exception=True)
+
+    async def _create_all_contexts(self):
 
         with self._init_lock:
-            if self._initialized:
+            if self._all_contexts_created:
                 return
 
-            self._transmogritory.plugin_manager
-
-            await self.dynamic_context_maker.sync()
-
-            async def add_default_context(_file_name: str):
-
-                path = os.path.join(BRING_DEFAULT_CONTEXTS_FOLDER, _file_name)
-                async with await aopen(path) as f:
-                    content = await f.read()
-
-                context_name = _file_name.split(".")[0]
-                if context_name in self._default_contexts:
-                    raise FrklException(
-                        msg=f"Can't add context '{context_name}'.",
-                        reason="Default context with that name already exists.",
-                    )
-
-                json_content: Mapping[str, Any] = json.loads(content)
-                ctx: BringStaticContextTing = self._tingistry_obj.create_ting(  # type: ignore
-                    "bring.types.contexts.default_context",
-                    f"bring.contexts.default.{context_name}",
-                )
-                ctx.input.set_values(ting_dict=json_content)
-                self._default_contexts[context_name] = ctx
-
-                await ctx.get_values("config")
-
-            contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
-                DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE
-            )
-            dynamic: Dict[str, BringContextTing] = {  # type: ignore
-                x.split(".")[-1]: ctx
-                for x, ctx in contexts.childs.items()  # type: ignore
-            }
+            async def create_context(config: Mapping[str, Any]):
+                ctx = await self.create_context(**config)
+                self._contexts[config["name"]] = ctx
 
             async with create_task_group() as tg:
-                for file_name in os.listdir(BRING_DEFAULT_CONTEXTS_FOLDER):
-                    if not file_name.endswith(".context"):
-                        continue
-                    await tg.spawn(add_default_context, file_name)
+                for c in await self.get_context_configs():
 
-                for context in dynamic.values():
-                    await tg.spawn(context.get_values, "config")
+                    if c["name"] not in self._contexts.keys():
+                        await tg.spawn(create_context, c)
 
-            self._initialized = True
+            self._all_contexts_created = True
 
-    def add_context(self, context_name: str, context: BringContextTing):
+    async def create_context(self, name: str, **config: Any) -> BringContextTing:
 
-        self._extra_contexts[context_name] = context
+        context_type = config.pop("type", "auto")
 
-    def add_context_from_folder(
-        self, path: Union[Path, str], alias: str = None
-    ) -> BringContextTing:
+        if context_type == "auto":
+            raise NotImplementedError()
 
-        input_type = determine_input_file_type(path)
+        if context_type == "folder":
+            folder = config.get("folder", None)
+            if folder is None:
+                raise FrklException(
+                    msg=f"Can't create bring context '{name}' from folder.",
+                    reason="'folder' config value missing.",
+                )
+
+            ctx: BringContextTing = await self.create_context_from_folder(
+                context_name=name, folder=folder
+            )
+
+        elif context_type == "index":
+
+            index_file = config.get("index_file", None)
+            if index_file is None:
+                raise FrklException(
+                    msg=f"Can't create bring context '{name}' from index.",
+                    reason="'index_file' config value missing.",
+                )
+
+            ctx = await self.create_context_from_index(
+                context_name=name, index_file=index_file
+            )
+
+        else:
+            raise FrklException(
+                msg=f"Can't create bring context '{name}'.",
+                reason=f"Context type '{context_type}' not supported.",
+            )
+
+        return ctx
+
+    async def create_context_from_index(
+        self, context_name: str, index_file: Union[str, Path]
+    ) -> BringStaticContextTing:
+
+        if self._contexts.get(context_name, None) is not None:
+            raise FrklException(
+                msg=f"Can't add context '{context_name}'.",
+                reason="Default context with that name already exists.",
+            )
+
+        ctx: BringStaticContextTing = self._tingistry_obj.create_ting(  # type: ignore
+            "bring.types.contexts.default_context",
+            f"{BRING_CONTEXT_NAMESPACE}.{context_name}",
+        )
+
+        ctx.input.set_values(ting_dict={"indexes": [index_file]})
+        await ctx.get_values("config")
+
+        return ctx
+
+    async def create_context_from_folder(
+        self, context_name: str, folder: Union[str, Path]
+    ) -> BringDynamicContextTing:
+
+        if self._contexts.get(context_name, None) is not None:
+            raise FrklException(
+                msg=f"Can't add context '{context_name}'.",
+                reason="Default context with that name already exists.",
+            )
+
+        input_type = determine_input_file_type(folder)
 
         # if input_type == INPUT_FILE_TYPE.git_repo:
         #     git_url = expand_git_url(path, DEFAULT_URL_ABBREVIATIONS_GIT_REPO)
         #     _path = await ensure_repo_cloned(git_url)
         if input_type == INPUT_FILE_TYPE.local_dir:
-            if isinstance(path, Path):
-                _path: str = os.path.realpath(path.resolve().as_posix())
+            if isinstance(folder, Path):
+                _path: str = os.path.realpath(folder.resolve().as_posix())
             else:
-                _path = os.path.realpath(os.path.expanduser(path))
+                _path = os.path.realpath(os.path.expanduser(folder))
         else:
             raise FrklException(
-                msg=f"Can't add context for: {path}.",
+                msg=f"Can't add context for: {folder}.",
                 reason=f"Invalid input file type {input_type}.",
             )
 
-        if alias is None:
-            _alias: str = _path
-        else:
-            _alias = alias
+        validate_context_name(context_name)
 
-        ting_rel_name = _alias.replace(os.path.sep, ".")[1:]
-        ting_rel_name = ting_rel_name.replace("..", ".")
-
-        ctx: BringContextTing = self._tingistry_obj.create_ting(  # type: ignore
-            "bring_dynamic_context_ting", f"bring.context.extra.{ting_rel_name}"
+        ctx: BringDynamicContextTing = self._tingistry_obj.create_ting(  # type: ignore
+            "bring_dynamic_context_ting", f"{BRING_CONTEXT_NAMESPACE}.{context_name}"
         )
-        indexes = [path]
+        indexes = [folder]
         ctx.input.set_values(  # type: ignore
             ting_dict={"indexes": indexes}
         )
 
-        # await ctx.get_values("config")
-        wrap_async_task(ctx.get_values, "config")
-        self.add_context(_alias, ctx)
+        await ctx.get_values("config")
 
         return ctx
 
     @property
     def contexts(self) -> Mapping[str, BringContextTing]:
 
-        self._init_sync()
+        self._create_all_contexts_sync()
+        return self._contexts
 
-        contexts: SubscripTings = self._tingistry_obj.get_ting(  # type: ignore
-            DYNAMIC_CONTEXT_SUBSCRIPTION_NAMESPACE
-        )
-        result: Dict[str, BringContextTing] = {  # type: ignore
-            x.split(".")[-1]: ctx for x, ctx in contexts.childs.items()  # type: ignore
-        }
+    async def _get_context_config(
+        self, context_name: str
+    ) -> Optional[Mapping[str, Any]]:
 
-        result.update(self._extra_contexts)
+        cc = await self.get_context_configs()
+        for c in cc:
+            if c["name"] == context_name:
+                return c
 
-        result.update(self._default_contexts)
+        return None
 
-        return result
+    def get_context(
+        self, context_name: Optional[str] = None, raise_exception=True
+    ) -> Optional[BringContextTing]:
 
-    def get_context(self, context_name: str) -> BringContextTing:
+        if context_name is None:
+            context_name = self.default_context_name
 
-        ctx = self.contexts.get(context_name, None)
-        if ctx is None:
-            raise FrklException(
-                msg=f"Can't access bring context '{context_name}'.",
-                reason=f"No context with that name.",
-                solution=f"Create context, or choose one of the existing ones: {', '.join(self.contexts.keys())}",
-            )
+        ctx = self._contexts.get(context_name, None)
+
+        if ctx is not None:
+            return ctx
+
+        context_config = wrap_async_task(self._get_context_config, context_name)
+
+        if context_config is None:
+
+            if raise_exception:
+                raise FrklException(
+                    msg=f"Can't access bring context '{context_name}'.",
+                    reason=f"No context with that name.",
+                    solution=f"Create context, or choose one of the existing ones: {', '.join(self.contexts.keys())}",
+                )
+            else:
+                return None
+
+        ctx = wrap_async_task(self.create_context, **context_config)
+        self._contexts[context_name] = ctx
 
         return ctx
 
-    async def update(self):
+    async def update(self, context_names: Optional[Iterable[str]] = None):
 
-        await self._init()
+        if context_names is None:
+            context_names = self.contexts.keys()
 
         td = BringTaskDesc(
             name="update metadata", msg="updating metadata for all contexts"
         )
-        tasks = FlattenParallelTasksAsync(desc=td)
-        for context in self.contexts.values():
-            t = await context._create_update_tasks()
-            tasks.add_task(t)
+        # tasks = ParallelTasksAsync(task_desc=td)
+        tasks = SerialTasksAsync(task_desc=td)
+        for context_name in context_names:
+            context = self.get_context(context_name)
+            if context is None:
+                raise FrklException(
+                    msg=f"Can't update context '{context_name}'.",
+                    reason="No context with that name registered.",
+                )
+            tsk = await context._create_update_tasks()
+
+            if tsk:
+                tasks.add_task(tsk)
 
         await tasks.run_async()
 
@@ -325,6 +396,11 @@ class Bring(SimpleTing):
             ctxs = []
             for c in contexts:
                 ctx = self.get_context(c)
+                if ctx is None:
+                    raise FrklException(
+                        msg=f"Can't get packages for context '{c}.",
+                        reason="No such context found.",
+                    )
                 ctxs.append(ctx)
 
         result = []
@@ -365,12 +441,21 @@ class Bring(SimpleTing):
 
         if contexts is None:
             _contexts: List[BringContextTing] = []
-            _contexts.extend(self._default_contexts.values())
-            _contexts.extend(self._extra_contexts.values())
+            for cc in await self.get_context_configs():
+                n = cc["name"]
+                ctx = self.contexts[n]
+                _contexts.append(ctx)
         else:
             _contexts = []
+            # TODO: make this parallel
             for c in contexts:
-                _contexts.append(self.get_context(c))
+                ctx_2 = self.get_context(c)
+                if ctx_2 is None:
+                    raise FrklException(
+                        msg=f"Can't search for pkg '{pkg_name}'.",
+                        reason=f"Requested context '{c}' not available.",
+                    )
+                _contexts.append(ctx_2)
 
         for ctx in _contexts:
 
@@ -402,6 +487,11 @@ class Bring(SimpleTing):
                 ctxs = []
                 for c in contexts:
                     ctx = self.get_context(c)
+                    if ctx is None:
+                        raise FrklException(
+                            msg=f"Can't find pkgs with name '{pkg_name}'.",
+                            reason=f"Requested context '{c}' not available.",
+                        )
                     ctxs.append(ctx)
 
             for context in ctxs:

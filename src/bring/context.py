@@ -12,7 +12,7 @@ from bring.utils import BringTaskDesc
 from frtls.dicts import dict_merge
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
-from frtls.tasks import FlattenParallelTasksAsync, SingleTaskAsync, Tasks
+from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
@@ -135,8 +135,8 @@ class BringContextTing(InheriTing, SimpleTing):
         return pkgs.keys()
 
     @abstractmethod
-    async def _create_update_tasks(self) -> Tasks:
-        pass
+    async def _create_update_tasks(self) -> Optional[Task]:
+        raise NotImplementedError()
 
     async def update(self, in_background: bool = False) -> None:
         """Updates pkg metadata."""
@@ -145,8 +145,32 @@ class BringContextTing(InheriTing, SimpleTing):
             raise NotImplementedError()
 
         tasks = await self._create_update_tasks()
+        if tasks is not None:
+            await tasks.run_async()
 
-        await tasks.run_async()
+    async def get_all_pkg_values(self, *value_names) -> Dict[str, Dict]:
+
+        result = {}
+
+        async def get_value(pkg, vn):
+            vals = await pkg.get_values(*vn)
+            result[pkg.name] = vals
+
+        async with create_task_group() as tg:
+            pkgs = await self.get_pkgs()
+            for pkg in pkgs.values():
+                await tg.spawn(get_value, pkg, value_names)
+                # break
+
+        return result
+
+    async def export_context(self) -> Mapping[str, Any]:
+
+        all_values = await self.get_all_pkg_values(
+            "source", "metadata", "aliases", "info", "labels", "tags"
+        )
+
+        return all_values
 
 
 class BringStaticContextTing(BringContextTing):
@@ -217,9 +241,9 @@ class BringStaticContextTing(BringContextTing):
 
         return self._pkgs
 
-    async def _create_update_tasks(self) -> Tasks:
+    async def _create_update_tasks(self) -> Optional[Task]:
 
-        raise NotImplementedError()
+        return None
 
     async def init(self, config: Mapping[str, Any]) -> None:
 
@@ -237,7 +261,7 @@ class BringDynamicContextTing(BringContextTing):
 
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
-        self._pkg_namespace = f"bring.contexts.dynamic.{self.name}.pkgs"
+        self._pkg_namespace = f"bring.contexts.{self.name}.pkgs"
         self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(  # type: ignore
             name=self._pkg_namespace,
             ting_class="pkgs",
@@ -246,14 +270,6 @@ class BringDynamicContextTing(BringContextTing):
         )
         self._maker_config: Optional[Mapping[str, Any]] = None
         self._maker: Optional[TingMaker] = None
-
-    async def export_context(self) -> Mapping[str, Any]:
-
-        all_values = await self._pkg_list.get_all_pkg_values(
-            "source", "metadata", "aliases", "info", "labels", "tags"
-        )
-
-        return all_values
 
     async def init(self, config: Mapping[str, Any]) -> None:
 
@@ -264,19 +280,20 @@ class BringDynamicContextTing(BringContextTing):
 
         return self._pkg_list.pkgs
 
-    async def _create_update_tasks(self) -> Tasks:
+    async def _create_update_tasks(self) -> Optional[Task]:
 
         task_desc = BringTaskDesc(
             name=f"metadata update {self.name}",
             msg=f"updating metadata for context '{self.name}'",
         )
-        tasks = FlattenParallelTasksAsync(desc=task_desc)
+        tasks = ParallelTasksAsync(task_desc=task_desc)
         pkgs = await self.get_pkgs()
         for pkg_name, pkg in pkgs.items():
             td = BringTaskDesc(
-                name=pkg_name, msg=f"updating metadata for pkg '{pkg_name}'"
+                name=f"{pkg_name}",
+                msg=f"updating metadata for pkg '{pkg_name}' (context: {self.name})",
             )
-            t = SingleTaskAsync(pkg.update_metadata, task_desc=td)
+            t = SingleTaskAsync(pkg.update_metadata, task_desc=td, parent_task=tasks)
             tasks.add_task(t)
 
         return tasks

@@ -62,7 +62,7 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["info", "install", "update", "export", "self", "dev"]
+        result = ["info", "install", "update", "export-context", "self", "dev"]
 
         return result
 
@@ -110,7 +110,7 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = config
 
-        elif name == "export":
+        elif name == "export-context":
 
             command = BringExportContextCommand(
                 bring=self._bring, name="export", terminal=self._terminal
