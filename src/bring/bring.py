@@ -306,7 +306,7 @@ class Bring(SimpleTing):
         ctx: BringDynamicContextTing = self._tingistry_obj.create_ting(  # type: ignore
             "bring_dynamic_context_ting", f"{BRING_CONTEXT_NAMESPACE}.{context_name}"
         )
-        indexes = [folder]
+        indexes = [_path]
         ctx.input.set_values(  # type: ignore
             ting_dict={"indexes": indexes}
         )
