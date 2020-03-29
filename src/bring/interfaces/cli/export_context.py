@@ -7,7 +7,7 @@ from typing import Optional
 
 import asyncclick as click
 from asyncclick.core import Argument, Option
-from blessings import Terminal
+from blessed import Terminal
 from bring.bring import Bring
 from bring.context import BringContextTing
 

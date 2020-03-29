@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncclick as click
 from asyncclick import Argument
-from blessings import Terminal
+from blessed import Terminal
 from bring.bring import Bring
 
 

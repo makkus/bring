@@ -4,7 +4,7 @@ import sys
 from typing import Any, Iterable, List, Mapping, Union
 
 import asyncclick as click
-from blessings import Terminal
+from blessed import Terminal
 from bring.bring import Bring
 from bring.defaults import BRINGISTRY_CONFIG, BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli.command_group import BringCommandGroup

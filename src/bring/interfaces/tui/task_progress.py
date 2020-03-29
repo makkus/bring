@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # import asyncio
 #
-# from blessings import Terminal
+# from blessed import Terminal
 # from frtls.tasks import Task, Tasks
 # from prompt_toolkit.application import Application
 # from prompt_toolkit.layout import FormattedTextControl

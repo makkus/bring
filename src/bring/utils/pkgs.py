@@ -2,7 +2,7 @@
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from anyio import create_task_group
-from blessings import Terminal
+from blessed import Terminal
 from bring.pkg import PkgTing
 from frtls.formats.output_formats import create_two_column_table
 from sortedcontainers import SortedDict

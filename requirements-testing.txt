@@ -1,5 +1,5 @@
 black
-blessings==1.7
+blessed==1.17.4
 click-aliases>=1.0.1
 cruft
 flake8

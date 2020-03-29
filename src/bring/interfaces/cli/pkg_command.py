@@ -3,7 +3,7 @@ import logging
 
 import asyncclick as click
 from asyncclick.core import Command
-from blessings import Terminal
+from blessed import Terminal
 from bring.pkg import PkgTing
 from frtls.args.arg import RecordArg
 from frtls.async_helpers import wrap_async_task
