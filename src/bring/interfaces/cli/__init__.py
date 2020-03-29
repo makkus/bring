@@ -4,7 +4,6 @@ import sys
 from typing import Any, Iterable, List, Mapping, Union
 
 import asyncclick as click
-import uvloop
 from blessings import Terminal
 from bring.bring import Bring
 from bring.defaults import BRINGISTRY_CONFIG, BRING_TASKS_BASE_TOPIC
@@ -16,15 +15,15 @@ from frtls.types.utils import load_modules
 from tings.tingistry import Tingistries
 
 
-# # monkey-patch HelpFormatter
-# from asyncclick import core
-#
-# core.HelpFormatter = BringHelpFormatter
+try:
+    import uvloop
 
+    uvloop.install()
+except Exception:
+    pass
 
 click.anyio_backend = "asyncio"
 
-uvloop.install()
 
 modules: Iterable[str] = BRINGISTRY_CONFIG["modules"]  # type: ignore
 load_modules(*modules)
