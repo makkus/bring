@@ -7,9 +7,9 @@ from typing import Optional
 
 import asyncclick as click
 from asyncclick.core import Argument, Option
-from blessed import Terminal
 from bring.bring import Bring
 from bring.context import BringContextTing
+from frtls.cli.terminal import create_terminal
 
 
 log = logging.getLogger("bring")
@@ -20,7 +20,7 @@ class BringExportContextCommand(click.Command):
 
         self._bring: Bring = bring
         if terminal is None:
-            terminal = Terminal()
+            terminal = create_terminal()
         self._terminal = terminal
 
         params = [

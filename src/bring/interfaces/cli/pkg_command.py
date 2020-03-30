@@ -9,6 +9,7 @@ from blessed import Terminal
 from bring.pkg import PkgTing
 from frtls.args.arg import RecordArg
 from frtls.async_helpers import wrap_async_task
+from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import serialize
 
 
@@ -33,7 +34,7 @@ class PkgInstallTingCommand(Command):
         self._strategy = strategy
 
         if terminal is None:
-            terminal = Terminal()
+            terminal = create_terminal()
         self._terminal = terminal
 
         try:
@@ -88,7 +89,7 @@ class PkgInfoTingCommand(Command):
         self._pkg: PkgTing = pkg
 
         if terminal is None:
-            terminal = Terminal()
+            terminal = create_terminal()
 
         self._terminal = terminal
         try:

@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional
 from anyio import create_task_group
 from blessed import Terminal
 from bring.pkg import PkgTing
+from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import create_two_column_table
 from sortedcontainers import SortedDict
 
@@ -30,7 +31,7 @@ async def create_pkg_info_table_string(
 ) -> str:
 
     if terminal is None:
-        terminal = Terminal()
+        terminal = create_terminal()
 
     pkg_vals = await get_values_for_pkgs(pkgs, "info")
     data = SortedDict()

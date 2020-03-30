@@ -4,12 +4,12 @@ import sys
 from typing import Any, Iterable, List, Mapping, Union
 
 import asyncclick as click
-from blessed import Terminal
 from bring.bring import Bring
 from bring.defaults import BRINGISTRY_CONFIG, BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli.command_group import BringCommandGroup
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.logging import logzero_option_async
+from frtls.cli.terminal import create_terminal
 from frtls.tasks.task_watcher import TaskWatchManager
 from frtls.types.utils import load_modules
 from tings.tingistry import Tingistries
@@ -31,7 +31,7 @@ load_modules(*modules)
 tingistry = Tingistries.create("bring")
 
 bring_obj: Bring = tingistry.create_singleting("bring.mgmt", Bring)
-terminal = Terminal()
+terminal = create_terminal()
 
 CONTEXT_SETTINGS = dict(
     # default_map={},

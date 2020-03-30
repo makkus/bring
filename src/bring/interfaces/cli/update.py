@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import asyncclick as click
 from asyncclick import Argument
-from blessed import Terminal
 from bring.bring import Bring
+from frtls.cli.terminal import create_terminal
 
 
 class BringUpdateCommand(click.Command):
@@ -10,7 +10,7 @@ class BringUpdateCommand(click.Command):
 
         self._bring: Bring = bring
         if terminal is None:
-            terminal = Terminal()
+            terminal = create_terminal()
         self._terminal = terminal
 
         params = [Argument(["context"], required=False, nargs=1)]
