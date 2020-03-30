@@ -9,7 +9,6 @@ from frtls.args.arg import Arg
 from frtls.cli.group import FrklBaseCommand
 from frtls.defaults import DEFAULT_URL_ABBREVIATIONS_GIT_REPO
 from frtls.strings import expand_git_url, is_url_or_abbrev
-from sortedcontainers import SortedSet
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -106,22 +105,21 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        pkg_context = self._group_params.get("context")
-        if pkg_context is None:
-            return []
+        return []
 
-        ctx.obj["list_install_commands"] = True
-        if self._context is not None:
-            pkg_names = await self._context.pkg_names
-            return pkg_names
-        else:
-            pkgs = await self._bring.get_all_pkgs(contexts=[pkg_context])
-
-            result = SortedSet()
-            for pkg in pkgs:
-                result.add(pkg.name)
-
-            return result
+        # pkg_context = self._group_params.get("context")
+        # if pkg_context is None:
+        #     return []
+        #
+        # ctx.obj["list_install_commands"] = True
+        #
+        # pkgs = await self._bring.get_all_pkgs(contexts=[pkg_context])
+        #
+        # result = SortedSet()
+        # for pkg in pkgs:
+        #     result.add(pkg.name)
+        #
+        # return result
 
     async def _get_command(self, ctx, name):
 
@@ -166,7 +164,6 @@ class BringInstallGroup(FrklBaseCommand):
             pkg=pkg,
             target=target,
             strategy=strategy,
-            context=_ctx_name,
             terminal=self._terminal,
             load_details=load_details,
         )

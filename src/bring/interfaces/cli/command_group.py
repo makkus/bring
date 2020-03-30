@@ -62,7 +62,7 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["install", "update", "export-context", "self"]
+        result = ["install", "info", "list", "update", "export-context", "self"]
 
         return result
 
@@ -77,6 +77,7 @@ class BringCommandGroup(FrklBaseCommand):
                 bring=self._bring, name="info", terminal=self._terminal
             )
             command.short_help = "display information for packages"
+
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
 
@@ -84,13 +85,12 @@ class BringCommandGroup(FrklBaseCommand):
                 bring=self._bring, name="install", terminal=self._terminal
             )
             command.short_help = "install one or a list of packages"
-        # elif name == "context":
-        #     from bring.interfaces.cli.contexts import BringContextGroup
-        #
-        #     command = BringContextGroup(
-        #         bring=self._bring, name="context", terminal=self._terminal
-        #     )
-        #     command.short_help = "context-specific sub-command group"
+
+        elif name == "info":
+            from bring.interfaces.cli.info import BringInfoPkgsGroup
+
+            command = BringInfoPkgsGroup(bring=self._bring, name="info")
+            command.short_help = "context-specific sub-command group"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand

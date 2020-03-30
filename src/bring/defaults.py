@@ -47,7 +47,7 @@ BRING_DEFAULT_CONFIG = {
         {
             "name": "binaries",
             "type": "index",
-            "index_file": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bring-ctx",
+            "index_file": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx",
         }
     ],
     "default_context": "binaries",
