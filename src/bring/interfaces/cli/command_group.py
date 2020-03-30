@@ -62,7 +62,7 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["info", "install", "update", "export-context", "self", "dev"]
+        result = ["install", "update", "export-context", "self"]
 
         return result
 
@@ -100,10 +100,10 @@ class BringCommandGroup(FrklBaseCommand):
             )
             command.short_help = "update package metadata for all contexts"
 
-        elif name == "dev":
-            from bring.interfaces.cli.dev import dev
-
-            command = dev
+        # elif name == "dev":
+        #     from bring.interfaces.cli.dev import dev
+        #
+        #     command = dev
 
         elif name == "config":
             from bring.interfaces.cli.config import config
