@@ -152,19 +152,21 @@ class BringContextTing(InheriTing, SimpleTing):
 
         result = {}
 
-        async def get_value(pkg, vn):
-            vals = await pkg.get_values(*vn)
-            result[pkg.name] = vals
+        async def get_value(_pkg, _vn):
+            _vals = await _pkg.get_values(*_vn)
+            result[_pkg.name] = _vals
 
         async with create_task_group() as tg:
             pkgs = await self.get_pkgs()
             for pkg in pkgs.values():
                 await tg.spawn(get_value, pkg, value_names)
-                # break
 
         return result
 
-    async def export_context(self) -> Mapping[str, Any]:
+    async def export_context(self, update: bool = True) -> Mapping[str, Any]:
+
+        if update:
+            self.update()
 
         all_values = await self.get_all_pkg_values(
             "source", "metadata", "aliases", "info", "labels", "tags"

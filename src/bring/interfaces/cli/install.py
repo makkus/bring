@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-import os
 from typing import Dict, Union
 
 from bring.bring import Bring
 from bring.interfaces.cli.pkg_command import PkgInstallTingCommand
-from bring.utils.git import ensure_repo_cloned
+from bring.utils.contexts import ensure_context
 from frtls.args.arg import Arg
 from frtls.cli.group import FrklBaseCommand
-from frtls.defaults import DEFAULT_URL_ABBREVIATIONS_GIT_REPO
-from frtls.strings import expand_git_url, is_url_or_abbrev
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -125,29 +122,8 @@ class BringInstallGroup(FrklBaseCommand):
 
         context_name = self._group_params.get("context", None)
 
-        context = self._bring.get_context(context_name, raise_exception=False)
-
-        if context is None:
-
-            if is_url_or_abbrev(context_name, DEFAULT_URL_ABBREVIATIONS_GIT_REPO):
-
-                git_url = expand_git_url(
-                    context_name, DEFAULT_URL_ABBREVIATIONS_GIT_REPO
-                )
-                full_path = await ensure_repo_cloned(git_url, update=True)
-            else:
-                full_path = os.path.realpath(os.path.expanduser(context_name))
-
-            if not os.path.isdir(full_path):
-                return None
-
-            alias = full_path.replace(os.path.sep, ".")[1:]
-            alias = alias.replace("..", ".")
-            self._bring.add_context_from_folder(full_path, alias=alias)
-            _ctx_name = alias
-
-        else:
-            _ctx_name = context_name
+        _ctx_name = await ensure_context(self._bring, name=context_name)
+        self._bring.get_context(_ctx_name)
 
         target = self._group_params.get("target")
         strategy = self._group_params.get("strategy")

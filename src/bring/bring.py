@@ -108,6 +108,7 @@ class Bring(SimpleTing):
         self._config_dict: Optional[Mapping[str, Any]] = None
 
         self._context_configs: Optional[List[Mapping[str, Any]]] = None
+        self._extra_context_configs: List[Mapping[str, Any]] = []
         self._contexts: Dict[str, BringContextTing] = {}
         self._default_context: Optional[str] = None
 
@@ -121,6 +122,18 @@ class Bring(SimpleTing):
         self._contexts = {}
         self._config_dict = None
         self.invalidate()
+
+    async def add_extra_context(self, name: str, **config: Any):
+
+        cc = await self._get_context_config(name)
+        if cc is not None:
+            raise FrklException(
+                msg=f"Can't create context '{name}'.", reason="Name already registered"
+            )
+
+        c = dict(config)
+        c["name"] = name
+        self._extra_context_configs.append(c)
 
     async def get_config_dict(self) -> Mapping[str, Any]:
 
@@ -137,7 +150,7 @@ class Bring(SimpleTing):
     async def get_context_configs(self) -> Iterable[Mapping[str, Any]]:
 
         if self._context_configs is not None:
-            return self._context_configs
+            return self._context_configs + self._extra_context_configs
 
         config = await self.get_config_dict()
         self._context_configs = config["contexts"]
@@ -145,7 +158,7 @@ class Bring(SimpleTing):
         if self._default_context is None:
             self._default_context = self._context_configs[0]["name"]
 
-        return self._context_configs
+        return self._context_configs + self._extra_context_configs
 
     @property
     def default_context_name(self) -> str:
@@ -327,6 +340,10 @@ class Bring(SimpleTing):
 
         cc = await self.get_context_configs()
         for c in cc:
+            if c["name"] == context_name:
+                return c
+
+        for c in self._extra_context_configs:
             if c["name"] == context_name:
                 return c
 

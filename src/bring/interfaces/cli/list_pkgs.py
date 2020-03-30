@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-import os
 from typing import Iterable, MutableMapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
-from bring.utils.git import ensure_repo_cloned
+from bring.utils.contexts import ensure_context
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
-from frtls.defaults import DEFAULT_URL_ABBREVIATIONS_GIT_REPO
-from frtls.strings import expand_git_url, is_url_or_abbrev
 from sortedcontainers import SortedDict
 
 
@@ -100,25 +97,8 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        context = self._bring.get_context(name, raise_exception=False)
-
-        if context is None:
-
-            if is_url_or_abbrev(name, DEFAULT_URL_ABBREVIATIONS_GIT_REPO):
-
-                git_url = expand_git_url(name, DEFAULT_URL_ABBREVIATIONS_GIT_REPO)
-                full_path = await ensure_repo_cloned(git_url, update=True)
-            else:
-                full_path = os.path.realpath(os.path.expanduser(name))
-
-            if not os.path.isdir(full_path):
-                return None
-
-            context = self._bring.add_context_from_folder(full_path)
-            _ctx_name = context.full_name
-
-        else:
-            _ctx_name = name
+        _ctx_name = await ensure_context(self._bring, name=name)
+        context = self._bring.get_context(_ctx_name)
 
         @click.command(_ctx_name)
         @click.pass_context
