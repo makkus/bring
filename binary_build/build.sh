@@ -9,6 +9,26 @@ function command_exists {
    type "$1" > /dev/null 2>&1 ;
 }
 
+function realpath() {
+
+  if command exists realpath; then
+
+    realpath "$1"
+
+  else
+
+    local _X="$PWD"
+    local _LNK=$1
+    cd "$(dirname "$_LNK")"
+    if [ -h "$_LNK" ]; then
+        _LNK="$(readlink "$_LNK")"
+        cd "$(dirname "$_LNK")"
+    fi
+    echo "$PWD/$(basename "$_LNK")"
+    cd "$_X"
+
+  fi
+}
 
 function prepare () {
 
