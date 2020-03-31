@@ -165,6 +165,11 @@ function main () {
     local output_dir="${7}"
     local spec_file="${8}"
 
+    # activate pyenv if already installed
+    if [ -f "$HOME/.pyenv/.pyenvrc" ]; then
+      source "$HOME/.pyenv/.pyenvrc"
+    fi
+
     if [ -z "${DOCKER_BUILD}" ]; then
         DOCKER_BUILD=false
     fi
