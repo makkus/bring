@@ -35,6 +35,6 @@ async def details(ctx, pkg_name, context):
     pkg = await bring_context.get_pkg(pkg_name)
     vals = await pkg.get_values("metadata")
 
-    import pp
+    import pp  # type: ignore
 
     pp(vals)

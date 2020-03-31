@@ -154,10 +154,6 @@ class BringContextTing(InheriTing, SimpleTing):
 
         async def get_value(_pkg, _vn):
             _vals = await _pkg.get_values(*_vn)
-            if _pkg.name == "fd":
-                import pp
-
-                pp(_vals)
             result[_pkg.name] = _vals
 
         async with create_task_group() as tg:
