@@ -11,7 +11,7 @@ function command_exists {
 
 function realpath() {
 
-  if command exists realpath; then
+  if command_exists realpath; then
 
     realpath "$1"
 
