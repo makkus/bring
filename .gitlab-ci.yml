@@ -123,6 +123,22 @@ binary_windows:
       - dist/windows/bring.exe
     expire_in: 1 week
 
+binary_darwin:
+  stage: build
+  tags:
+    - darwin
+  script:
+    - ./binary_build/build.sh
+    - "security unlock-keychain -p ${KEYCHAIN_PASSWORD} /Users/freckles/Library/Keychains/code.keychain"
+    - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' dist/darwin15/bring"
+#    - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' binary/dist/darwin15/freckles.app"
+#    - "appdmg freckles.json binary/dist/darwin15/freckles.dmg"
+  artifacts:
+    paths:
+    - dist/darwin15/freckles
+#    - binary/dist/darwin15/freckles.dmg
+    expire_in: 1 week
+
 release_binaries:
   image: registry.gitlab.com/gitlab-org/cloud-deploy:latest
   stage: release
