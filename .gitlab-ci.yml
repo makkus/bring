@@ -211,3 +211,31 @@ pkg_python_beta:
     paths:
       - dist/
     expire_in: 1 month
+
+container_image_dev:
+   stage: release
+   image: docker:19
+   only:
+     - develop
+   environment:
+     name: dev
+   services:
+     - docker:19-dind
+   script:
+     - cp dist/linux-gnu/bring docker/bring
+     - cd docker
+     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+     - docker pull $CI_REGISTRY_IMAGE:dev || true
+
+     - >
+       docker build
+       --pull
+       --build-arg http_proxy=$http_proxy
+       --build-arg https_proxy=$https_proxy
+       --build-arg no_proxy=$no_proxy
+       --build-arg VCS_REF=$CI_COMMIT_SHA
+       --build-arg VCS_URL=$CI_PROJECT_URL
+       --cache-from $CI_REGISTRY_IMAGE:dev
+       --tag $CI_REGISTRY_IMAGE:dev
+       .
+     - docker push $CI_REGISTRY_IMAGE:dev
