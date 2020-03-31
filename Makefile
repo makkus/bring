@@ -84,11 +84,8 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-pre-commit:
-	pre-commit run --all-files
-
-flake: ## check style with flake8
-	flake8 src/bring tests
+binary: ## build a binary with pyinstaller
+	binary_build/build.sh --spec-file binary_build/onefile.spec
 
 requirements: ## create requirements.txt
 	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all --to requirements.txt
@@ -104,8 +101,17 @@ test-requirements: ## create requirements-testing.txt
 
 requirement-files: requirements dev-requirements test-requirements docs-requirements
 
+pre-commit:
+	pre-commit run --all-files
+
+flake: ## check style with flake8
+	flake8 src/bring tests
+
 black: ## run black
 	black --config pyproject.toml setup.py src/bring tests
+
+mypy: ## run mypy
+	mypy src/
 
 test: ## run tests quickly with the default Python
 	py.test
