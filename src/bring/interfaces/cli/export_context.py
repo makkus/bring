@@ -8,7 +8,7 @@ from typing import Optional
 import asyncclick as click
 from asyncclick.core import Argument, Option
 from bring.bring import Bring
-from bring.context import BringContextTing
+from bring.utils.contexts import ensure_context
 from frtls.cli.terminal import create_terminal
 
 
@@ -37,9 +37,11 @@ class BringExportContextCommand(click.Command):
 
         click.echo()
 
-        context_obj: BringContextTing = self._bring.get_context(
-            context_name=context, raise_exception=True
-        )  # type: ignore
+        if not context:
+            context_obj = self._bring.get_context()
+        else:
+            _ctx_name = await ensure_context(self._bring, name=context)
+            context_obj = self._bring.get_context(_ctx_name)
 
         all_values = await context_obj.export_context()
 

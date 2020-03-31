@@ -166,7 +166,7 @@ class BringContextTing(InheriTing, SimpleTing):
     async def export_context(self, update: bool = True) -> Mapping[str, Any]:
 
         if update:
-            self.update()
+            await self.update()
 
         all_values = await self.get_all_pkg_values(
             "source", "metadata", "aliases", "info", "labels", "tags"
