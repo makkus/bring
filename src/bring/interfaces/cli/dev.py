@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
-import shutil
 
 import asyncclick as click
-from bring.defaults import BRING_APP_DIRS
+from bring.bring import Bring
+from bring.context import BringContextTing
+from bring.utils.contexts import ensure_context
 
 
 log = logging.getLogger("bring")
@@ -20,8 +21,20 @@ def dev(ctx):
 
 
 @dev.command()
+@click.argument("pkg_name", nargs=1)
+@click.option("--context", "-c", help="the context of the package", required=False)
 @click.pass_context
-def clear_cache(ctx):
+async def details(ctx, pkg_name, context):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
-    shutil.rmtree(BRING_APP_DIRS.user_cache_dir, ignore_errors=True)
+    bring: Bring = ctx.obj["bring"]
+
+    _ctx_name = await ensure_context(bring, name=context)
+    bring_context: BringContextTing = bring.get_context(_ctx_name)
+
+    pkg = await bring_context.get_pkg(pkg_name)
+    vals = await pkg.get_values("metadata")
+
+    import pp
+
+    pp(vals)

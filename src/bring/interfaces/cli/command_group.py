@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+
 from bring.bring import Bring
 from bring.interfaces.cli.export_context import BringExportContextCommand
 from frtls.cli.group import FrklBaseCommand
@@ -64,6 +66,9 @@ class BringCommandGroup(FrklBaseCommand):
 
         result = ["install", "info", "list", "update", "export-context", "self"]
 
+        if "DEBUG" in os.environ.keys():
+            result.append("dev")
+
         return result
 
     async def _get_command(self, ctx, name):
@@ -100,10 +105,10 @@ class BringCommandGroup(FrklBaseCommand):
             )
             command.short_help = "update package metadata for all contexts"
 
-        # elif name == "dev":
-        #     from bring.interfaces.cli.dev import dev
-        #
-        #     command = dev
+        elif name == "dev":
+            from bring.interfaces.cli.dev import dev
+
+            command = dev
 
         elif name == "config":
             from bring.interfaces.cli.config import config
