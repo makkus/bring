@@ -96,7 +96,7 @@ commitlint:
 binary_linux:
   image:
     name: registry.gitlab.com/frkl/frkl-python-build:dev
-    entrypoint:
+    entrypoint: [""]
   stage: build
   variables:
     SRCDIR: $CI_PROJECT_DIR
