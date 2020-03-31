@@ -128,7 +128,7 @@ binary_darwin:
   tags:
     - darwin
   script:
-    - ./binary_build/build.sh
+    - ./binary_build/build.sh --spec-file binary_build/onefile.spec
     - "security unlock-keychain -p ${KEYCHAIN_PASSWORD} /Users/freckles/Library/Keychains/code.keychain"
     - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' dist/darwin15/bring"
 #    - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' binary/dist/darwin15/freckles.app"
@@ -149,6 +149,7 @@ release_binaries:
   script:
   - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
   - aws s3 cp --content-type binary/octet-stream dist/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
+  - aws s3 cp --content-type binary/octet-stream dist/darwin15/bring s3://dev.dl.frkl.io/darwin/bring
 #  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/freckles
 
 pkg_python_dev:
