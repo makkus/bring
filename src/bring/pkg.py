@@ -245,6 +245,10 @@ class PkgTing(SimpleTing):
         # if target is not None:
         #     extra_modifiers = [{"type": "merge_into", "target": target}]
 
+        if not target:
+            context_defaults = await self.bring_context.get_value("defaults")
+            target = context_defaults.get("target", None)
+
         tm = self.create_transmogrificator(
             vars=vars,
             metadata=metadata,

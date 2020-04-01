@@ -137,15 +137,15 @@ class PkgResolver(metaclass=ABCMeta):
         if not id:
             raise Exception("Unique source id can't be empty")
 
-        metadata = PkgResolver.metadata_cache.setdefault(self.__class__, {}).get(
+        all_metadata = PkgResolver.metadata_cache.setdefault(self.__class__, {}).get(
             id, None
         )
 
         # check whether we have the metadata in the global cache
         if self.check_pkg_metadata_valid(
-            metadata, source_details, bring_context=bring_context, config=config
+            all_metadata, source_details, bring_context=bring_context, config=config
         ):
-            return metadata["metadata"]
+            return all_metadata["metadata"]
 
         # check whether the metadata is cached within the PkgResolver
         metadata = await self._get_pkg_metadata(
@@ -255,8 +255,7 @@ class PkgResolver(metaclass=ABCMeta):
             config=config,
             cached_only=False,
         )
-
-        PkgResolver.metadata_cache[self.__class__][id] = {
+        PkgResolver.metadata_cache.setdefault(self.__class__, {})[id] = {
             "metadata": metadata,
             "source": source_details,
             "context": bring_context.full_name,
@@ -336,15 +335,16 @@ class SimplePkgResolver(PkgResolver):
         id = generate_valid_filename(id, sep="_")
         metadata_file = os.path.join(self._cache_dir, f"{id}.json")
 
-        metadata = await self.get_metadata(metadata_file)
+        all_metadata = await self.get_metadata_from_cache_file(metadata_file)
         if self.check_pkg_metadata_valid(
-            metadata, source_details, bring_context=bring_context, config=config
+            all_metadata, source_details, bring_context=bring_context, config=config
         ):
-            return metadata["metadata"]
+            return all_metadata["metadata"]
 
         if cached_only:
             return None
 
+        metadata = all_metadata.get("metadata", {})
         try:
             result: Mapping[str, Any] = await self._process_pkg_versions(
                 source_details=source_details, bring_context=bring_context
@@ -413,7 +413,6 @@ class SimplePkgResolver(PkgResolver):
         metadata["pkg_vars"] = pkg_vars
 
         metadata["metadata_check"] = str(arrow.Arrow.now())
-
         await self.write_metadata(
             metadata_file, metadata, source_details, bring_context
         )
@@ -516,7 +515,7 @@ class SimplePkgResolver(PkgResolver):
             "mogrify_vars": mogrify_vars,
         }
 
-    async def get_metadata(self, metadata_file: str):
+    async def get_metadata_from_cache_file(self, metadata_file: str):
 
         if not os.path.exists(metadata_file):
             return {}

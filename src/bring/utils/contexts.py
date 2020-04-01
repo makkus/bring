@@ -37,11 +37,11 @@ async def ensure_context(bring: "Bring", name: str) -> str:
         _ctx_name = generate_valid_identifier(full_path, sep="_")
         if os.path.isdir(full_path):
             await bring.add_extra_context(
-                name=_ctx_name, type="folder", folder=full_path
+                name=_ctx_name, type="folder", indexes=[full_path]
             )
         elif full_path.endswith(".bx"):
             await bring.add_extra_context(
-                name=_ctx_name, type="index", index_file=full_path
+                name=_ctx_name, type="index", indexes=[full_path]
             )
     else:
         _ctx_name = name

@@ -51,27 +51,31 @@ CONTEXT_SETTINGS = dict(
     "--config", "-c", help="the config profile to use", type=str, default="default"
 )
 @click.option(
-    "--task-output",
+    "--task-log",
     multiple=True,
     required=False,
     type=str,
-    help=f"output plugin(s) for running tasks. available: {', '.join(['simple', 'terminal'])}",
+    help=f"whether (and how) to log running tasks. available: {', '.join(['simple', 'terminal'])}",
 )
 @logzero_option_async()
 @click.pass_context
 @handle_exc_async
-async def cli_bring(ctx, task_output: Iterable[str], config: str):
+async def cli_bring(ctx, task_log: Iterable[str], config: str):
 
     if config != "default":
         bring_obj.set_config(config)
 
     ctx.obj = {}
     ctx.obj["bring"] = bring_obj
-    if not task_output:
-        task_output = ["terminal"]
+    if not task_log:
+        bring_config: Mapping[str, Any] = await bring_obj.get_config_dict()
+        task_log = bring_config.get("task_log", [])
+
+        if isinstance(task_log, str):
+            task_log = [task_log]
 
     watchers: List[Union[str, Mapping[str, Any]]] = []
-    for to in task_output:
+    for to in task_log:
         watchers.append(
             {"type": to, "base_topics": [BRING_TASKS_BASE_TOPIC], "terminal": terminal}
         )

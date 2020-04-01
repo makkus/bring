@@ -47,10 +47,14 @@ BRING_DEFAULT_CONFIG = {
         {
             "name": "binaries",
             "type": "index",
-            "index_file": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx",
+            "indexes": [
+                "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"
+            ],
+            "defaults": {"target": "~/.local/bring"},
         }
     ],
     "default_context": "binaries",
+    "task_log": "terminal",
 }
 
 BRINGISTRY_CONFIG = {

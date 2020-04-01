@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
+import collections
 import os
 import threading
 from pathlib import Path
@@ -236,29 +237,32 @@ class Bring(SimpleTing):
             raise NotImplementedError()
 
         if context_type == "folder":
-            folder = config.get("folder", None)
+            folder = config.get("indexes", None)
             if folder is None:
                 raise FrklException(
                     msg=f"Can't create bring context '{name}' from folder.",
                     reason="'folder' config value missing.",
                 )
+            if isinstance(folder, str):
+                folder = [folder]
+                config["indexes"] = folder
 
             ctx: BringContextTing = await self.create_context_from_folder(
-                context_name=name, folder=folder
+                context_name=name, **config
             )
 
         elif context_type == "index":
 
-            index_file = config.get("index_file", None)
-            if index_file is None:
+            index_files = config.get("indexes", None)
+            if index_files is None or not isinstance(index_files, collections.Iterable):
                 raise FrklException(
                     msg=f"Can't create bring context '{name}' from index.",
-                    reason="'index_file' config value missing.",
+                    reason="'index_file' config value missing or invalid.",
                 )
+            if isinstance(index_files, str):
+                config["indexes"] = [index_files]
 
-            ctx = await self.create_context_from_index(
-                context_name=name, index_file=index_file
-            )
+            ctx = await self.create_context_from_index(context_name=name, **config)
 
         else:
             raise FrklException(
@@ -269,7 +273,7 @@ class Bring(SimpleTing):
         return ctx
 
     async def create_context_from_index(
-        self, context_name: str, index_file: Union[str, Path]
+        self, context_name: str, indexes: Iterable[str], **config: Any
     ) -> BringStaticContextTing:
 
         if self._contexts.get(context_name, None) is not None:
@@ -283,13 +287,16 @@ class Bring(SimpleTing):
             f"{BRING_CONTEXT_NAMESPACE}.{context_name}",
         )
 
-        ctx.input.set_values(ting_dict={"indexes": [index_file]})
+        ctx_config = dict(config)
+        ctx_config["indexes"] = indexes
+
+        ctx.input.set_values(ting_dict=ctx_config)
         await ctx.get_values("config")
 
         return ctx
 
     async def create_context_from_folder(
-        self, context_name: str, folder: Union[str, Path]
+        self, context_name: str, indexes: Iterable[str], **config: Any
     ) -> BringDynamicContextTing:
 
         if self._contexts.get(context_name, None) is not None:
@@ -298,6 +305,11 @@ class Bring(SimpleTing):
                 reason="Default context with that name already exists.",
             )
 
+        indexes = list(indexes)
+        if len(indexes) != 1:
+            raise NotImplementedError()
+
+        folder = indexes[0]
         input_type = determine_input_file_type(folder)
 
         # if input_type == INPUT_FILE_TYPE.git_repo:
@@ -319,9 +331,11 @@ class Bring(SimpleTing):
         ctx: BringDynamicContextTing = self._tingistry_obj.create_ting(  # type: ignore
             "bring_dynamic_context_ting", f"{BRING_CONTEXT_NAMESPACE}.{context_name}"
         )
-        indexes = [_path]
+        _ind = [_path]
+        ctx_config = dict(config)
+        ctx_config["indexes"] = _ind
         ctx.input.set_values(  # type: ignore
-            ting_dict={"indexes": indexes}
+            ting_dict=ctx_config
         )
 
         await ctx.get_values("config")

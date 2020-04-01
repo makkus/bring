@@ -37,6 +37,7 @@ class BringContextTing(InheriTing, SimpleTing):
             "info": "dict",
             "pkgs": "dict",
             "config": "dict",
+            "defaults": "dict",
         }
 
     def requires(self) -> Dict[str, str]:
@@ -64,6 +65,9 @@ class BringContextTing(InheriTing, SimpleTing):
 
         if "config" in value_names:
             result["config"] = config
+
+        if "defaults" in value_names:
+            result["defaults"] = config.get("defaults", {})
 
         if "info" in value_names:
             result["info"] = config.get("info", {})
