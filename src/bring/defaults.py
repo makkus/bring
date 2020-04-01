@@ -53,7 +53,7 @@ BRING_DEFAULT_CONFIG = {
             "defaults": {"target": "~/.local/bring"},
         },
         {
-            "name": "install-manifests",
+            "name": "kube-install-manifests",
             "type": "index",
             "indexes": [
                 "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
