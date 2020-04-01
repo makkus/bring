@@ -23,7 +23,9 @@ async def get_values_for_pkgs(
 
     async def get_values(_pkg: PkgTing):
         try:
-            result[_pkg] = await _pkg.get_values(*value_names, raise_exception=True)
+            result[_pkg] = await _pkg.get_values(
+                *value_names, raise_exception=True
+            )  # type: ignore
         except TingTaskException as e:
             log.debug(
                 f"Can't retrieve values for pkg '{_pkg.name}': {e}", exc_info=True
@@ -53,7 +55,7 @@ async def create_pkg_info_table_string(
         if isinstance(p, TingTaskException):
             slug = f"{Fore.RED}{p}{Style.RESET_ALL}"
         else:
-            slug = pkg_vals[pkg]["info"].get("slug", "n/a")
+            slug = p["info"].get("slug", "n/a")
         data[pkg_name] = slug
 
     if header:

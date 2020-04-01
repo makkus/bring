@@ -51,7 +51,14 @@ BRING_DEFAULT_CONFIG = {
                 "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"
             ],
             "defaults": {"target": "~/.local/bring"},
-        }
+        },
+        {
+            "name": "install-manifests",
+            "type": "index",
+            "indexes": [
+                "https://gitlab.com/tingistries/install-manifests/-/raw/master/install-manifests.bx"
+            ],
+        },
     ],
     "default_context": "binaries",
     "task_log": "terminal",

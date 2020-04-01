@@ -38,8 +38,14 @@ class BringExportContextCommand(click.Command):
         click.echo()
 
         if not context:
+            auto_context = False
             context_obj = self._bring.get_context()
         else:
+            ctx_configs = await self._bring.get_context_configs()
+            if context in ctx_configs:
+                auto_context = False
+            else:
+                auto_context = True
             _ctx_name = await ensure_context(self._bring, name=context)
             context_obj = self._bring.get_context(_ctx_name)
 
@@ -50,7 +56,10 @@ class BringExportContextCommand(click.Command):
         json_bytes = json_data.encode("utf-8")
 
         if output_file is None:
-            _path = os.path.join(os.getcwd(), f"{context_obj.name}.bx")
+            if auto_context:
+                _path = os.path.join(os.getcwd(), f"{os.path.basename(os.getcwd())}.bx")
+            else:
+                _path = os.path.join(os.getcwd(), f"{context_obj.name}.bx")
         elif os.path.isdir(os.path.realpath(output_file)):
             _path = os.path.join(output_file, f"{context_obj.name}.bx")
         else:
