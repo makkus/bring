@@ -56,7 +56,7 @@ BRING_DEFAULT_CONFIG = {
             "name": "install-manifests",
             "type": "index",
             "indexes": [
-                "https://gitlab.com/tingistries/install-manifests/-/raw/master/install-manifests.bx"
+                "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
             ],
         },
     ],

@@ -7,5 +7,4 @@ then
  INDEX_NAME=$(basename ${PWD})
 fi
 
-bring self update
 bring export-context . -o "${INDEX_NAME}.bx"
