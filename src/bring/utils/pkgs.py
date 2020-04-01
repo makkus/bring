@@ -1,23 +1,35 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+import logging
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from blessed import Terminal
 from bring.pkg import PkgTing
+from colorama import Fore, Style
 from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import create_two_column_table
 from sortedcontainers import SortedDict
+from tings.exceptions import TingTaskException
+
+
+log = logging.getLogger("bring")
 
 
 async def get_values_for_pkgs(
-    pkgs: Iterable[PkgTing], *value_names: str
-) -> Mapping[PkgTing, Mapping[str, Any]]:
+    pkgs: Iterable[PkgTing], *value_names: str, skip_pkgs_with_error: bool = False
+) -> Mapping[PkgTing, Union[Mapping[str, Any], TingTaskException]]:
 
-    result: Dict[PkgTing, Mapping] = {}
+    result: Dict[PkgTing, Union[Mapping[str, Any], TingTaskException]] = {}
 
-    async def get_values(_pkg):
-
-        result[_pkg] = await _pkg.get_values(*value_names)
+    async def get_values(_pkg: PkgTing):
+        try:
+            result[_pkg] = await _pkg.get_values(*value_names, raise_exception=True)
+        except TingTaskException as e:
+            log.debug(
+                f"Can't retrieve values for pkg '{_pkg.name}': {e}", exc_info=True
+            )
+            if not skip_pkgs_with_error:
+                result[_pkg] = e
 
     async with create_task_group() as tg:
         for pkg in pkgs:
@@ -37,7 +49,11 @@ async def create_pkg_info_table_string(
     data = SortedDict()
     for pkg in sorted(pkg_vals.keys()):
         pkg_name = pkg.name
-        slug = pkg_vals[pkg]["info"].get("slug", "n/a")
+        p = pkg_vals[pkg]
+        if isinstance(p, TingTaskException):
+            slug = f"{Fore.RED}{p}{Style.RESET_ALL}"
+        else:
+            slug = pkg_vals[pkg]["info"].get("slug", "n/a")
         data[pkg_name] = slug
 
     if header:
