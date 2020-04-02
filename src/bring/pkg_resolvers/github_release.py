@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import logging
 import re
 import time
@@ -187,7 +188,8 @@ class GithubRelease(SimplePkgResolver):
             if version_data:
                 result.extend(version_data)
 
-        return {"versions": result, "aliases": aliases, "args": DEFAULT_ARGS_DICT}
+        args = copy.deepcopy(DEFAULT_ARGS_DICT)
+        return {"versions": result, "aliases": aliases, "args": args}
 
     def parse_release_data(
         self,

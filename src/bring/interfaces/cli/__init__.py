@@ -5,7 +5,7 @@ from typing import Any, Iterable, List, Mapping, Union
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.defaults import BRINGISTRY_CONFIG, BRING_TASKS_BASE_TOPIC
+from bring.defaults import BRINGISTRY_INIT, BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli.command_group import BringCommandGroup
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.logging import logzero_option_async
@@ -25,7 +25,7 @@ except Exception:
 click.anyio_backend = "asyncio"
 
 
-modules: Iterable[str] = BRINGISTRY_CONFIG["modules"]  # type: ignore
+modules: Iterable[str] = BRINGISTRY_INIT["modules"]  # type: ignore
 load_modules(*modules)
 
 tingistry = Tingistries.create("bring")

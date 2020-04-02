@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
+from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
@@ -77,10 +78,7 @@ class PkgTing(SimpleTing):
         metadata = await self.get_metadata()
         return self._get_aliases(metadata)
 
-    async def _calculate_args(self, metadata):
-
-        # print(metadata.keys())
-        # print(metadata["pkg_args"])
+    async def _calculate_args(self, metadata) -> RecordArg:
 
         pkg_args = metadata["pkg_vars"]["args"]
         arg = self._tingistry_obj.arg_hive.create_record_arg(childs=pkg_args)

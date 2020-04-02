@@ -41,6 +41,7 @@ BRINGISTRY_PRELOAD_MODULES = [
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.contexts"
+BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 
 BRING_DEFAULT_CONFIG = {
     "contexts": [
@@ -64,19 +65,20 @@ BRING_DEFAULT_CONFIG = {
     "task_log": "terminal",
 }
 
-BRINGISTRY_CONFIG = {
+BRING_DEFAULT_CONFIG_PROFILE = {
+    "ting_name": "bring.config_profiles",
+    "prototing_name": "internal.singletings.config_profiles",
+    "ting_class": "folder_config_profiles_ting",
+    "prototing_factory": "singleting",
+    "default_config": BRING_DEFAULT_CONFIG,
+    "config_path": BRING_APP_DIRS.user_config_dir,
+    "config_file_ext": "config",
+}
+
+BRINGISTRY_INIT = {
     "prototings": [
         {"prototing_name": "bring.types.dynamic_pkg", "ting_class": "dynamic_pkg_ting"},
         {"prototing_name": "bring.types.static_pkg", "ting_class": "static_pkg_ting"},
-        {
-            "ting_name": "bring.config_profiles",
-            "prototing_name": "internal.singletings.config_profiles",
-            "ting_class": "folder_config_profiles_ting",
-            "prototing_factory": "singleting",
-            "default_config": BRING_DEFAULT_CONFIG,
-            "config_path": BRING_APP_DIRS.user_config_dir,
-            "config_file_ext": "config",
-        },
         # {
         #     "ting_name": BRING_CONTEXT_NAMESPACE,
         #     "prototing_name": "internal.singletings.context_list",

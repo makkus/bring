@@ -25,8 +25,10 @@ from bring.context import (
     BringStaticContextTing,
 )
 from bring.defaults import (
-    BRINGISTRY_CONFIG,
+    BRINGISTRY_INIT,
+    BRING_CONFIG_PROFILES_NAME,
     BRING_CONTEXT_NAMESPACE,
+    BRING_DEFAULT_CONFIG_PROFILE,
     BRING_WORKSPACE_FOLDER,
 )
 from bring.mogrify import Transmogritory
@@ -54,10 +56,10 @@ DEFAULT_TRANSFORM_PROFILES = {
 class Bring(SimpleTing):
     def __init__(self, name: str = None, meta: Optional[Mapping[str, Any]] = None):
 
-        prototings: Iterable[Mapping] = BRINGISTRY_CONFIG["prototings"]  # type: ignore
-        tings: Iterable[Mapping] = BRINGISTRY_CONFIG["tings"]  # type: ignore
-        modules: Iterable[str] = BRINGISTRY_CONFIG["modules"]  # type: ignore
-        classes: Iterable[Union[Type, str]] = BRINGISTRY_CONFIG[  # type: ignore
+        prototings: Iterable[Mapping] = BRINGISTRY_INIT["prototings"]  # type: ignore
+        tings: Iterable[Mapping] = BRINGISTRY_INIT["tings"]  # type: ignore
+        modules: Iterable[str] = BRINGISTRY_INIT["modules"]  # type: ignore
+        classes: Iterable[Union[Type, str]] = BRINGISTRY_INIT[  # type: ignore
             "classes"
         ]
 
@@ -100,9 +102,17 @@ class Bring(SimpleTing):
         self._init_lock = threading.Lock()
 
         self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
-            "bring.config_profiles"
+            BRING_CONFIG_PROFILES_NAME, raise_exception=False
         )
-        # self._dynamic_context_maker: Optional[TextFileTingMaker] = None
+
+        if self._config_profiles is None:
+            # in case it wasn't created before, we use the default one
+            self._tingistry_obj.register_prototing(
+                **BRING_DEFAULT_CONFIG_PROFILE
+            )  # type: ignore
+            self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
+                BRING_CONFIG_PROFILES_NAME, raise_exception=True
+            )
 
         # config & other mutable attributes
         self._config = "default"
@@ -123,6 +133,14 @@ class Bring(SimpleTing):
         self._contexts = {}
         self._config_dict = None
         self.invalidate()
+
+    async def add_extra_contexts(
+        self, context_configs: Mapping[str, Mapping[str, Any]]
+    ):
+
+        for name, config in context_configs.items():
+
+            await self.add_extra_context(name=name, **config)
 
     async def add_extra_context(self, name: str, **config: Any):
 
