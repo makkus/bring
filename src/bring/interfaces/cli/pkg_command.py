@@ -69,8 +69,7 @@ class PkgInstallTingCommand(Command):
 
         super().__init__(name=name, callback=self.install, **kwargs)
 
-    @click.pass_context
-    async def install(ctx, self, **kwargs):
+    async def install(self, **kwargs):
 
         path = await self._pkg.create_version_folder(vars=kwargs, target=self._target)
         print(path)
