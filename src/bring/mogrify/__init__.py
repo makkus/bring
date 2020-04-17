@@ -179,7 +179,9 @@ class Transmogrificator(Tasks):
         def delete_workspace():
             shutil.rmtree(self._working_dir, ignore_errors=True)
 
-        atexit.register(delete_workspace)
+        debug = os.environ.get("DEBUG", "false")
+        if debug.lower() != "true":
+            atexit.register(delete_workspace)
         self._tingistry = tingistry
 
         if target is None and self._is_root_transmogrifier:

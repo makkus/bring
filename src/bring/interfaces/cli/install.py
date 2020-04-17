@@ -133,7 +133,9 @@ class BringInstallGroup(FrklBaseCommand):
 
         load_details = not ctx.obj.get("list_install_commands", False)
 
-        pkg = await self._bring.find_pkg(name, contexts=[_ctx_name])
+        pkg = await self._bring.get_pkg(
+            name, context_name=_ctx_name, raise_exception=True
+        )
 
         command = PkgInstallTingCommand(
             name,

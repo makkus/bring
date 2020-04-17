@@ -6,7 +6,6 @@ from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
-from frtls.files import ensure_folder
 
 
 log = logging.getLogger("bring")
@@ -36,7 +35,6 @@ class FlattenFolderMogrifier(SimpleMogrifier):
         target_path = self.create_temp_dir("flatten_")
 
         all_files = find_matches(path, output_absolute_paths=True)
-        ensure_folder(target_path)
         for f in all_files:
             target = os.path.join(target_path, os.path.basename(f))
             if os.path.exists(target):

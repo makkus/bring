@@ -30,8 +30,10 @@ class FileFilterMogrifier(SimpleMogrifier):
         include_patterns: Union[str, Iterable[str]] = requirements["include"]
 
         matches = find_matches(path=path, include_patterns=include_patterns)
+        matches = list(matches)
 
         result = self.create_temp_dir(prefix="file_filter_")
+
         if not matches:
             return {"folder_path": result}
 

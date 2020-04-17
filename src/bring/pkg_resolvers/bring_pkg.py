@@ -6,6 +6,7 @@ from bring.context import BringContextTing
 from bring.pkg import PkgTing
 from bring.pkg_resolvers import SimplePkgResolver
 from bring.utils import find_versions, replace_var_aliases
+from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
@@ -36,14 +37,14 @@ class BringPkgResolver(SimplePkgResolver):
         This is mostly used for the 'bring-pkg' type, in order to retrieve parent metadata.
         """
 
-        parent = self.get_parent_pkg(
+        parent = await self.get_parent_pkg(
             source_details=source_details, bring_context=bring_context
         )
         vals = await parent.get_values("info", "labels")
 
         return vals
 
-    def get_parent_pkg(
+    async def get_parent_pkg(
         self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> PkgTing:
 
@@ -51,7 +52,7 @@ class BringPkgResolver(SimplePkgResolver):
         pkg_context = source_details.get("context", None)
 
         if pkg_context is None:
-            pkg_context = bring_context.full_name
+            pkg_context = bring_context
 
         elif "." not in pkg_context:
 
@@ -61,11 +62,15 @@ class BringPkgResolver(SimplePkgResolver):
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
                     reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(self._bringistry.contexts.keys())}",
                 )
-            pkg_context = ctx.full_name
+            pkg_context = ctx
+        else:
+            raise NotImplementedError()
 
-        ting_name = f"{pkg_context}.pkgs.{pkg_name}"
+        # ting_name = f"{pkg_context.full_name}.pkgs.{pkg_name}"
 
-        ting = self._bringistry._tingistry_obj.get_ting(ting_name)
+        ting = await pkg_context.get_pkg(pkg_name)
+        ting_name = ting.full_name
+
         if ting is None:
             pkg_list = []
             for tn in self._bringistry._tingistry_obj.ting_names:
@@ -89,7 +94,7 @@ class BringPkgResolver(SimplePkgResolver):
         self, source_details: Mapping, bring_context: BringContextTing
     ) -> str:
 
-        pkg = self.get_parent_pkg(source_details, bring_context)
+        pkg = wrap_async_task(self.get_parent_pkg, source_details, bring_context)
 
         return pkg.full_name
 
@@ -97,7 +102,7 @@ class BringPkgResolver(SimplePkgResolver):
         self, source_details: Mapping, bring_context: BringContextTing
     ) -> Mapping[str, Any]:
 
-        pkg = self.get_parent_pkg(source_details, bring_context=bring_context)
+        pkg = await self.get_parent_pkg(source_details, bring_context=bring_context)
         values: Mapping[str, Any] = await pkg.get_values(  # type: ignore
             "metadata", resolve=True
         )

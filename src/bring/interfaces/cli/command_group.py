@@ -64,7 +64,15 @@ class BringCommandGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        result = ["install", "info", "list", "update", "export-context", "self"]
+        result = [
+            "install",
+            "info",
+            "list",
+            "update",
+            "export-context",
+            "self",
+            "differ",
+        ]
 
         if "DEBUG" in os.environ.keys():
             result.append("dev")
@@ -127,5 +135,10 @@ class BringCommandGroup(FrklBaseCommand):
             from frtls.cli.self_command_group import self_command
 
             command = self_command
+
+        elif name == "differ":
+            from bring.interfaces.cli.differ import differ
+
+            command = differ
 
         return command

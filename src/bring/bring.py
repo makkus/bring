@@ -99,7 +99,7 @@ class Bring(SimpleTing):
         self.typistry.get_plugin_manager("pkg_resolver", plugin_config=env_conf)
 
         self._transmogritory = Transmogritory(self._tingistry_obj)
-        self._init_lock = threading.Lock()
+        self._context_lock = threading.Lock()
 
         self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
             BRING_CONFIG_PROFILES_NAME, raise_exception=False
@@ -231,7 +231,7 @@ class Bring(SimpleTing):
 
     async def _create_all_contexts(self):
 
-        with self._init_lock:
+        with self._context_lock:
             if self._all_contexts_created:
                 return
 
@@ -388,28 +388,29 @@ class Bring(SimpleTing):
         if context_name is None:
             context_name = self.default_context_name
 
-        ctx = self._contexts.get(context_name, None)
+        with self._context_lock:
+            ctx = self._contexts.get(context_name, None)
 
-        if ctx is not None:
+            if ctx is not None:
+                return ctx
+
+            context_config = wrap_async_task(self._get_context_config, context_name)
+
+            if context_config is None:
+
+                if raise_exception:
+                    raise FrklException(
+                        msg=f"Can't access bring context '{context_name}'.",
+                        reason=f"No context with that name.",
+                        solution=f"Create context, or choose one of the existing ones: {', '.join(self.contexts.keys())}",
+                    )
+                else:
+                    return None
+
+            ctx = wrap_async_task(self.create_context, **context_config)
+            self._contexts[context_name] = ctx
+
             return ctx
-
-        context_config = wrap_async_task(self._get_context_config, context_name)
-
-        if context_config is None:
-
-            if raise_exception:
-                raise FrklException(
-                    msg=f"Can't access bring context '{context_name}'.",
-                    reason=f"No context with that name.",
-                    solution=f"Create context, or choose one of the existing ones: {', '.join(self.contexts.keys())}",
-                )
-            else:
-                return None
-
-        ctx = wrap_async_task(self.create_context, **context_config)
-        self._contexts[context_name] = ctx
-
-        return ctx
 
     async def update(self, context_names: Optional[Iterable[str]] = None):
 
@@ -435,9 +436,9 @@ class Bring(SimpleTing):
 
         await tasks.run_async()
 
-    async def get_all_pkgs(
+    async def get_pkg_map(
         self, contexts: Optional[Iterable[str]] = None
-    ) -> Iterable[PkgTing]:
+    ) -> Mapping[str, Mapping[str, PkgTing]]:
 
         if contexts is None:
             ctxs: Iterable[BringContextTing] = self.contexts.values()
@@ -452,20 +453,98 @@ class Bring(SimpleTing):
                     )
                 ctxs.append(ctx)
 
-        result = []
+        pkg_map: Dict[str, Dict[str, PkgTing]] = {}
 
         async def get_pkgs(_context: BringContextTing):
 
             pkgs = await _context.get_pkgs()
             for pkg in pkgs.values():
-                result.append(pkg)
+                pkg_map[_context.name][pkg.name] = pkg
+
+        for context in ctxs:
+
+            if context.name in pkg_map.keys():
+                raise FrklException(
+                    msg=f"Can't assemble packages for context '{context.name}'",
+                    reason="Duplicate context name.",
+                )
+            pkg_map[context.name] = {}
 
         async with create_task_group() as tg:
 
             for context in ctxs:
                 await tg.spawn(get_pkgs, context)
 
-            return result
+        return pkg_map
+
+    async def get_alias_pkg_map(
+        self, contexts: Optional[Iterable[str]] = None
+    ) -> Mapping[str, PkgTing]:
+
+        pkg_map = await self.get_pkg_map(contexts=contexts)
+
+        result: Dict[str, PkgTing] = {}
+        for context_name, context_map in pkg_map.items():
+
+            for pkg_name in sorted(context_map.keys()):
+                if pkg_name not in result.keys():
+                    result[pkg_name] = context_map[pkg_name]
+
+        for context_name in sorted(pkg_map.keys()):
+
+            context_map = pkg_map[context_name]
+            for pkg_name in sorted(context_map.keys()):
+                result[f"{context_name}.{pkg_name}"] = context_map[pkg_name]
+
+        return result
+
+    async def get_all_pkgs(
+        self, contexts: Optional[Iterable[str]] = None
+    ) -> Iterable[PkgTing]:
+
+        pkg_map = await self.get_pkg_map(contexts=contexts)
+
+        result = []
+        for context_map in pkg_map.values():
+            for pkg in context_map.values():
+                result.append(pkg)
+
+        return result
+
+    async def get_pkg(
+        self,
+        pkg_name: str,
+        context_name: Optional[str] = None,
+        raise_exception: bool = False,
+    ) -> Optional[PkgTing]:
+
+        if context_name and "." in pkg_name:
+            raise ValueError(
+                f"Can't get pkg '{pkg_name}' for context '{context_name}': either specify context name, or use namespaced pkg name, not both."
+            )
+
+        elif "." in pkg_name:
+            tokens = pkg_name.split(".")
+            if len(tokens) != 2:
+                raise ValueError(
+                    f"Invalid pkg name: {pkg_name}, needs to be format '[context_name.]pkg_name'"
+                )
+            _context_name: Optional[str] = tokens[0]
+            _pkg_name = tokens[1]
+        else:
+            _context_name = context_name
+            _pkg_name = pkg_name
+
+        if _context_name:
+            pkgs = await self.get_alias_pkg_map(contexts=[_context_name])
+        else:
+            pkgs = await self.get_alias_pkg_map()
+
+        pkg = pkgs.get(_pkg_name, None)
+        if pkg is None and raise_exception:
+            raise FrklException(msg=f"Can't retrieve pkg '{pkg_name}': no such package")
+
+        return pkg
 
     async def find_pkg(
         self, pkg_name: str, contexts: Optional[Iterable[str]] = None
