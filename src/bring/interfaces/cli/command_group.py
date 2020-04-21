@@ -27,9 +27,6 @@ class BringCommandGroup(FrklBaseCommand):
         kwargs["help"] = COMMAND_GROUP_HELP
 
         self.print_version_callback = print_version_callback
-        # self.params[:0] = self.get_common_options(
-        #     print_version_callback=self.print_version_callback
-        # )
 
         self._bring: Bring = bring
 
@@ -45,27 +42,11 @@ class BringCommandGroup(FrklBaseCommand):
             **kwargs,
         )
 
-    # # def init_command(self, ctx):
-    # #     await self._bring.init()
-    # @click.pass_context
-    # async def overview(ctx, self):
-    #
-    #     if ctx.invoked_subcommand:
-    #         return
-    #
-    #     print(await self._context.get_info())
-
-    # async def init_command_async(self, ctx):
-    #
-    # if ctx.obj is None:
-    #     ctx.obj = {}
-    #     ctx.obj["bring"] = self._bring
-    #     await self._bring.init()
-
     async def _list_commands(self, ctx):
 
         result = [
             "install",
+            "plugin",
             "info",
             "list",
             "update",
@@ -96,6 +77,13 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = BringInstallGroup(
                 bring=self._bring, name="install", terminal=self._terminal
+            )
+            command.short_help = "install one or a list of packages"
+        elif name == "plugin":
+            from bring.interfaces.cli.plugin import BringPluginGroup
+
+            command = BringPluginGroup(
+                bring=self._bring, name="process", terminal=self._terminal
             )
             command.short_help = "install one or a list of packages"
 

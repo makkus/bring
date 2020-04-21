@@ -28,6 +28,7 @@ BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_chec
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
+BRING_PLUGIN_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "plugins")
 DEFAULT_CONTEXT_NAME = "binaries"
 
 BRINGISTRY_PRELOAD_MODULES = [
@@ -36,6 +37,8 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.pkgs",
     "bring.pkg_resolvers.*",
     "bring.mogrify.*",
+    "bring.plugins.*",
+    "bring.plugins.templating.*",
     "bring.context",
     "bring.config",
 ]
@@ -54,6 +57,21 @@ BRING_DEFAULT_CONFIG = {
             "defaults": {"target": "~/.local/bring"},
         },
         {
+            "name": "scripts",
+            "type": "index",
+            "indexes": [
+                "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.bx"
+            ],
+            "defaults": {"target": "~/.local/bring"},
+        },
+        {
+            "name": "collections",
+            "type": "index",
+            "indexes": [
+                "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
+            ],
+        },
+        {
             "name": "kube-install-manifests",
             "type": "index",
             "indexes": [
@@ -62,7 +80,7 @@ BRING_DEFAULT_CONFIG = {
         },
     ],
     "default_context": "binaries",
-    "task_log": "terminal",
+    "task_log": "tree",
 }
 
 BRING_DEFAULT_CONFIG_PROFILE = {

@@ -55,7 +55,7 @@ CONTEXT_SETTINGS = dict(
     multiple=True,
     required=False,
     type=str,
-    help=f"whether (and how) to log running tasks. available: {', '.join(['simple', 'terminal'])}",
+    help=f"whether (and how) to log running tasks. available: {', '.join(['simple', 'tree'])}",
 )
 @logzero_option_async()
 @click.pass_context

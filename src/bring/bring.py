@@ -478,17 +478,20 @@ class Bring(SimpleTing):
         return pkg_map
 
     async def get_alias_pkg_map(
-        self, contexts: Optional[Iterable[str]] = None
+        self,
+        contexts: Optional[Iterable[str]] = None,
+        add_unique_pkg_names: bool = False,
     ) -> Mapping[str, PkgTing]:
 
         pkg_map = await self.get_pkg_map(contexts=contexts)
 
         result: Dict[str, PkgTing] = {}
-        for context_name, context_map in pkg_map.items():
+        if add_unique_pkg_names:
+            for context_name, context_map in pkg_map.items():
 
-            for pkg_name in sorted(context_map.keys()):
-                if pkg_name not in result.keys():
-                    result[pkg_name] = context_map[pkg_name]
+                for pkg_name in sorted(context_map.keys()):
+                    if pkg_name not in result.keys():
+                        result[pkg_name] = context_map[pkg_name]
 
         for context_name in sorted(pkg_map.keys()):
 
@@ -511,16 +514,25 @@ class Bring(SimpleTing):
 
         return result
 
+    # def create_pkg_plugin(self, plugin: str, pkg: PkgTing, pkg_include: Optional[Iterable[str]]=None, **pkg_vars: Any) -> BringPlugin:
+    #
+    #     if pkg_vars is None:
+    #         pkg_vars = {}
+    #
+    #     _plugin = TemplatePlugin(bring=self, pkg=pkg, pkg_include=pkg_include, **pkg_vars)
+    #
+    #     return _plugin
+
     async def get_pkg(
         self,
         pkg_name: str,
-        context_name: Optional[str] = None,
+        pkg_context: Optional[str] = None,
         raise_exception: bool = False,
     ) -> Optional[PkgTing]:
 
-        if context_name and "." in pkg_name:
+        if pkg_context and "." in pkg_name:
             raise ValueError(
-                f"Can't get pkg '{pkg_name}' for context '{context_name}': either specify context name, or use namespaced pkg name, not both."
+                f"Can't get pkg '{pkg_name}' for context '{pkg_context}': either specify context name, or use namespaced pkg name, not both."
             )
 
         elif "." in pkg_name:
@@ -530,21 +542,34 @@ class Bring(SimpleTing):
                     f"Invalid pkg name: {pkg_name}, needs to be format '[context_name.]pkg_name'"
                 )
             _context_name: Optional[str] = tokens[0]
-            _pkg_name = tokens[1]
-        else:
-            _context_name = context_name
             _pkg_name = pkg_name
+        else:
+            _context_name = pkg_context
+            if _context_name:
+                _pkg_name = f"{_context_name}.{pkg_name}"
+            else:
+                _pkg_name = pkg_name
 
         if _context_name:
-            pkgs = await self.get_alias_pkg_map(contexts=[_context_name])
+            pkgs = await self.get_alias_pkg_map(
+                contexts=[_context_name], add_unique_pkg_names=True
+            )
         else:
-            pkgs = await self.get_alias_pkg_map()
+            pkgs = await self.get_alias_pkg_map(add_unique_pkg_names=True)
 
         pkg = pkgs.get(_pkg_name, None)
         if pkg is None and raise_exception:
             raise FrklException(msg=f"Can't retrieve pkg '{pkg_name}': no such package")
 
         return pkg
+
+    async def pkg_exists(self, pkg_name: str, pkg_context: Optional[str] = None):
+
+        pkg = await self.get_pkg(
+            pkg_name=pkg_name, pkg_context=pkg_context, raise_exception=False
+        )
+
+        return pkg is not None
 
     async def find_pkg(
         self, pkg_name: str, contexts: Optional[Iterable[str]] = None

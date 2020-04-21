@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_resolvers import PkgResolver
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
+from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
@@ -220,11 +221,23 @@ class PkgTing(SimpleTing):
 
         return tm
 
+    def create_version_hash(self, **vars: Any):
+
+        if self._context is None:
+            raise Exception("Context not set yet, this is a bug")
+
+        _dict = {
+            "pkg_name": self.full_name,
+            "pkg_context": self._context.full_name,
+            "vars": vars,
+        }
+        hashes = DeepHash(_dict)
+        return hashes[_dict]
+
     async def create_version_folder(
         self,
         vars: Optional[Mapping[str, Any]] = None,
         target: Union[str, Path, Mapping[str, Any]] = None,
-        delete_result: bool = True,
         parent_task_desc: TaskDesc = None,
     ) -> str:
         """Create a folder that contains the version specified via the provided 'vars'.

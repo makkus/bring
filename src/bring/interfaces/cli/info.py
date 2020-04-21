@@ -53,7 +53,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 with formatter.section("Packages"):
                     formatter.write_dl(rows)
 
-    def get_common_options(self) -> Union[Arg, Dict]:
+    def get_group_options(self) -> Union[Arg, Dict]:
 
         return {
             "context": {
@@ -97,6 +97,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
+        ctx.obj["list_install_commands"] = True
         return []
 
     async def _get_command(self, ctx, name):
@@ -109,7 +110,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         load_details = not ctx.obj.get("list_install_commands", False)
 
         pkg = await self._bring.get_pkg(
-            name, context_name=_ctx_name, raise_exception=True
+            name, pkg_context=_ctx_name, raise_exception=True
         )
 
         command = PkgInfoTingCommand(

@@ -6,7 +6,7 @@ from typing import Any, Iterable, List, Mapping, Optional, Union
 
 from bring.context import BringContextTing
 from bring.pkg_resolvers import SimplePkgResolver
-from frtls.templating import replace_string
+from frtls.templating import process_string_template
 
 
 class TemplateUrlResolver(SimplePkgResolver):
@@ -35,7 +35,7 @@ class TemplateUrlResolver(SimplePkgResolver):
         versions = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
         for version in versions:
-            url = replace_string(source_details["url"], copy.copy(version))
+            url = process_string_template(source_details["url"], copy.copy(version))
             target_file_name = os.path.basename(url)
             version["_meta"] = {"url": url}
             version["_mogrify"] = [

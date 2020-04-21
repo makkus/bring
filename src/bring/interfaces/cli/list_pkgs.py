@@ -8,7 +8,6 @@ from bring.pkg import PkgTing
 from bring.utils.contexts import ensure_context
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
-from sortedcontainers import SortedDict
 
 
 class BringListPkgsGroup(FrklBaseCommand):
@@ -70,7 +69,7 @@ class BringListPkgsGroup(FrklBaseCommand):
 
         print()
         all: Iterable[PkgTing] = await self._bring.get_all_pkgs()
-        pkgs: MutableMapping[BringContextTing, PkgTing] = SortedDict()
+        pkgs: MutableMapping[BringContextTing, PkgTing] = {}
 
         for pkg in all:
             pkgs.setdefault(pkg.bring_context, []).append(pkg)
