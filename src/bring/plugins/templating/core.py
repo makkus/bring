@@ -88,9 +88,11 @@ class BringTemplate(object):
 
         if self._tempting_repo is None:
             version_folder = await self.get_version_folder()
-            self._tempting_repo = self._bring._tingistry_obj.create_singleting(
+            self._tempting_repo = self._bring._tingistry_obj.create_singleting(  # type: ignore
                 f"bring.plugins.template.{self._pkg_version_hash}", TemplaTingRepo
             )
+            if self._tempting_repo is None:
+                raise Exception("tempting repo not set, this is a bug")
             self._tempting_repo.add_repo_path(version_folder)
         return self._tempting_repo
 
