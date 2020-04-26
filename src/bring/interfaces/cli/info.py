@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, Union
-
 from bring.bring import Bring
 from bring.interfaces.cli.pkg_command import PkgInfoTingCommand
-from bring.utils.contexts import ensure_context
-from frtls.args.arg import Arg
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -53,16 +49,16 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 with formatter.section("Packages"):
                     formatter.write_dl(rows)
 
-    def get_group_options(self) -> Union[Arg, Dict]:
-
-        return {
-            "context": {
-                "doc": "The context that contains the package.",
-                "type": "string",
-                # "multiple": False,
-                "required": False,
-            }
-        }
+    # def get_group_options(self) -> Union[Arg, Dict]:
+    #
+    #     return {
+    #         "context": {
+    #             "doc": "The context that contains the package.",
+    #             "type": "string",
+    #             # "multiple": False,
+    #             "required": False,
+    #         }
+    #     }
 
     # @click.pass_context
     # async def all_info(ctx, self, *args, **kwargs):
@@ -97,21 +93,19 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        ctx.obj["list_install_commands"] = True
+        ctx.obj["list_info_commands"] = True
         return []
 
     async def _get_command(self, ctx, name):
 
-        context_name = self._group_params.get("context", None)
+        # context_name = self._group_params.get("context", None)
 
-        _ctx_name = await ensure_context(self._bring, name=context_name)
-        self._bring.get_context(_ctx_name)
+        # _ctx_name = await ensure_context(self._bring, name=context_name)
+        # await self._bring.get_context(_ctx_name)
 
-        load_details = not ctx.obj.get("list_install_commands", False)
+        load_details = not ctx.obj.get("list_info_commands", False)
 
-        pkg = await self._bring.get_pkg(
-            name, pkg_context=_ctx_name, raise_exception=True
-        )
+        pkg = await self._bring.get_pkg(name=name, raise_exception=True)
 
         command = PkgInfoTingCommand(
             name=name, pkg=pkg, load_details=load_details, terminal=self._terminal

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import shutil
 from typing import Any, Mapping
 
@@ -26,5 +27,6 @@ class FolderMogrifier(SimpleMogrifier):
         path: str = requirements["folder_path"]
 
         target_path = self.create_temp_dir(prefix="folder_")
-        shutil.copy2(path, target_path)
+        target_path = os.path.join(target_path, os.path.basename(path))
+        shutil.copytree(path, target_path)
         return {"folder_path": target_path}

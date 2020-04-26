@@ -2,7 +2,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Optional, Union
 
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.exceptions import FrklException
@@ -13,8 +13,11 @@ class FolderMerge(object):
     def __init__(
         self,
         target: Union[str, Path],
-        merge_strategy: Union[str, Mapping[str, Any]] = "default",
+        merge_strategy: Optional[Union[str, Mapping[str, Any]]] = None,
+        flatten: bool = False,
     ):
+        if merge_strategy is None:
+            merge_strategy = "default"
 
         if isinstance(target, str):
             _target = os.path.realpath(os.path.expanduser(target))
@@ -28,6 +31,8 @@ class FolderMerge(object):
         if isinstance(merge_strategy, str):
             merge_strategy = {"type": merge_strategy}
         self._merge_strategy: Mapping[str, Any] = merge_strategy
+
+        self._flatten: bool = flatten
 
     @property
     def target(self):
@@ -64,7 +69,11 @@ class FolderMerge(object):
 
     def _merge_default(self, source_base: str, rel_path: str):
 
-        target = os.path.join(self._target, rel_path)
+        if self._flatten:
+            target = os.path.join(self._target, os.path.basename(rel_path))
+        else:
+            target = os.path.join(self._target, rel_path)
+
         if os.path.exists(target):
             raise FrklException(
                 msg=f"Can't merge/copy file '{rel_path}'.",
@@ -78,7 +87,10 @@ class FolderMerge(object):
 
     def _merge_overwrite(self, source_base: str, rel_path: str):
 
-        target = os.path.join(self._target, rel_path)
+        if self._flatten:
+            target = os.path.join(self._target, os.path.basename(rel_path))
+        else:
+            target = os.path.join(self._target, rel_path)
         if os.path.exists(target):
             os.unlink(target)
 

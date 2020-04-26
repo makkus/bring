@@ -79,6 +79,16 @@ class BringContextTing(InheriTing, SimpleTing):
 
         return result
 
+    async def get_defaults(self) -> Mapping[str, Any]:
+
+        defaults = await self.get_value("defaults")
+        return defaults
+
+    async def get_default_vars(self) -> Mapping[str, Any]:
+
+        defaults = await self.get_defaults()
+        return defaults["vars"]
+
     async def get_config(self) -> Mapping[str, Any]:
 
         return await self.get_values("config", resolve=True)  # type: ignore
@@ -230,7 +240,6 @@ class BringStaticContextTing(BringContextTing):
             for pkg_name, pkg_data in data.items():
 
                 if pkg_name in pkgs.keys():
-                    print(pkgs)
                     raise FrklException(
                         msg=f"Can't add pkg '{pkg_name}'.",
                         reason=f"Package with that name already exists in context '{self.name}'.",
@@ -337,7 +346,7 @@ class BringDynamicContextTing(BringContextTing):
             prototing="bring.types.dynamic_pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
-            file_matchers=[{"type": "extension", "regex": ".*\\.bring$"}],
+            file_matchers=[{"type": "extension", "regex": ".*\\.pkg"}],
         )
 
         indexes = config.get("indexes", [])

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+import os
 from typing import Dict, Union
 
+import asyncclick as click
 from bring.bring import Bring
+from bring.bring_list import BringList
 from bring.interfaces.cli.pkg_command import PkgInstallTingCommand
-from bring.utils.contexts import ensure_context
 from frtls.args.arg import Arg
 from frtls.cli.group import FrklBaseCommand
 
@@ -68,12 +70,12 @@ class BringInstallGroup(FrklBaseCommand):
     def get_group_options(self) -> Union[Arg, Dict]:
 
         return {
-            "context": {
-                "doc": "The context that contains the package.",
-                "type": "string",
-                # "multiple": False,
-                "required": False,
-            },
+            # "context": {
+            #     "doc": "The context that contains the package.",
+            #     "type": "string",
+            #     # "multiple": False,
+            #     "required": False,
+            # },
             "target": {
                 "doc": "The target directory to install the files into.",
                 "type": "string",
@@ -120,10 +122,7 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        context_name = self._group_params.get("context", None)
-
-        _ctx_name = await ensure_context(self._bring, name=context_name)
-        self._bring.get_context(_ctx_name)
+        # context_name = self._group_params.get("context", None)
 
         target = self._group_params.get("target")
         strategy = self._group_params.get("strategy")
@@ -133,17 +132,29 @@ class BringInstallGroup(FrklBaseCommand):
 
         load_details = not ctx.obj.get("list_install_commands", False)
 
-        pkg = await self._bring.get_pkg(
-            name, pkg_context=_ctx_name, raise_exception=True
-        )
+        if os.path.isfile(name):
 
-        command = PkgInstallTingCommand(
-            name,
-            pkg=pkg,
-            target=target,
-            strategy=strategy,
-            terminal=self._terminal,
-            load_details=load_details,
-        )
+            bring_list = await BringList.from_file(name)
 
-        return command
+            @click.command()
+            @click.pass_context
+            async def command(ctx):
+
+                await bring_list.install(bring=self._bring)
+
+            return command
+
+        else:
+
+            pkg = await self._bring.get_pkg(name=name, raise_exception=True)
+
+            command = PkgInstallTingCommand(
+                name,
+                pkg=pkg,
+                target=target,
+                strategy=strategy,
+                terminal=self._terminal,
+                load_details=load_details,
+            )
+
+            return command

@@ -7,6 +7,7 @@ from bring.mogrify import assemble_mogrifiers
 from bring.pkg import PkgTing
 from bring.pkg_resolvers import SimplePkgResolver
 from bring.utils import find_version, replace_var_aliases
+from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
@@ -22,14 +23,14 @@ class BringPkgsResolver(SimplePkgResolver):
                 "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
             )
 
-        self._bringistry: Bring = config["bringistry"]
+        self._bring: Bring = config["bringistry"]
         super().__init__(config=config)
 
     def _supports(self) -> Iterable[str]:
 
         return ["bring-pkg"]
 
-    def get_child_pkgs(
+    async def get_child_pkgs(
         self, source_details: Mapping[str, Any], bring_context: BringContextTing
     ) -> Mapping[str, PkgTing]:
 
@@ -37,7 +38,7 @@ class BringPkgsResolver(SimplePkgResolver):
         result = {}
         for pkg in pkgs:
             context = pkg.get("context", None)
-            pkg_obj = self.get_pkg(
+            pkg_obj = await self.get_pkg(
                 pkg["name"], bring_context=bring_context, pkg_context=context
             )
             result[pkg_obj.full_name] = pkg_obj
@@ -53,9 +54,10 @@ class BringPkgsResolver(SimplePkgResolver):
         """
 
         childs = {}
-        for pkg in self.get_child_pkgs(
+        child_pkgs = await self.get_child_pkgs(
             source_details=source_details, bring_context=bring_context
-        ).values():
+        )
+        for pkg in child_pkgs.values():
             vals: Mapping[str, Any] = await pkg.get_values(  # type: ignore
                 "info", resolve=True
             )
@@ -64,7 +66,7 @@ class BringPkgsResolver(SimplePkgResolver):
 
         return {"info": {"desc": childs}}
 
-    def get_pkg(
+    async def get_pkg(
         self,
         pkg_name: str,
         bring_context: BringContextTing,
@@ -76,20 +78,21 @@ class BringPkgsResolver(SimplePkgResolver):
 
         elif "." not in pkg_context:
 
-            ctx = self._bringistry.get_context(pkg_context)
+            ctx = await self._bring.get_context(pkg_context)
             if ctx is None:
+                ctx_names = await self._bring.context_names
                 raise FrklException(
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
-                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(self._bringistry.contexts.keys())}",
+                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(ctx_names)}",
                 )
             pkg_context = ctx.full_name
 
         ting_name = f"{pkg_context}.pkgs.{pkg_name}"
 
-        ting = self._bringistry._tingistry_obj.get_ting(ting_name)
+        ting = self._bring._tingistry_obj.get_ting(ting_name)
         if ting is None:
             pkg_list = []
-            for tn in self._bringistry._tingistry_obj.ting_names:
+            for tn in self._bring._tingistry_obj.ting_names:
                 # if '.pkgs.' in tn:
                 pkg_list.append(tn)
             pkg_list_string = "\n  - ".join(pkg_list)
@@ -110,13 +113,14 @@ class BringPkgsResolver(SimplePkgResolver):
         self, source_details: Mapping, bring_context: BringContextTing
     ) -> str:
 
-        pkgs = sorted(
-            self.get_child_pkgs(
-                source_details=source_details, bring_context=bring_context
-            ).keys()
+        pkgs = wrap_async_task(
+            self.get_child_pkgs,
+            source_details=source_details,
+            bring_context=bring_context,
         )
+        pkg_names = sorted(pkgs.keys())
 
-        return "_".join(pkgs)
+        return "_".join(pkg_names)
 
     async def _process_pkg_versions(
         self, source_details: Mapping, bring_context: BringContextTing
@@ -130,7 +134,7 @@ class BringPkgsResolver(SimplePkgResolver):
             vars = pkg.get("vars", {})
             context = pkg.get("context", None)
 
-            pkg_obj = self.get_pkg(
+            pkg_obj = await self.get_pkg(
                 name, bring_context=bring_context, pkg_context=context
             )
             vals: Mapping[str, Any] = await pkg_obj.get_values(  # type: ignore

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
-import os
-import shutil
 from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
-from bring.utils.paths import find_matches
+from bring.utils.paths import flatten_folder
 
 
 log = logging.getLogger("bring")
@@ -34,17 +32,8 @@ class FlattenFolderMogrifier(SimpleMogrifier):
 
         target_path = self.create_temp_dir("flatten_")
 
-        all_files = find_matches(path, output_absolute_paths=True)
-        for f in all_files:
-            target = os.path.join(target_path, os.path.basename(f))
-            if os.path.exists(target):
-                if duplicate_strategy == "ignore":
-                    log.info(
-                        f"Duplicate file '{os.path.basename(target)}', ignoring..."
-                    )
-                    continue
-                else:
-                    raise NotImplementedError()
-            shutil.move(f, target)
+        flatten_folder(
+            src_path=path, target_path=target_path, strategy=duplicate_strategy
+        )
 
         return {"folder_path": target_path}

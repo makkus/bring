@@ -446,6 +446,7 @@ class SimplePkgResolver(PkgResolver):
 
         # calculate args to select version
         version_vars: MutableMapping[str, Mapping] = {}
+
         for version in versions:
             for k in version.keys():
                 if k == "_meta" or k == "_mogrify":

@@ -22,7 +22,7 @@ class BringPkgResolver(SimplePkgResolver):
                 "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
             )
 
-        self._bringistry: Bring = config["bringistry"]
+        self._bring: Bring = config["bringistry"]
         super().__init__(config=config)
 
     def _supports(self) -> Iterable[str]:
@@ -56,11 +56,12 @@ class BringPkgResolver(SimplePkgResolver):
 
         elif "." not in pkg_context:
 
-            ctx = self._bringistry.get_context(pkg_context)
+            ctx = await self._bring.get_context(pkg_context)
             if ctx is None:
+                ctx_names = await self._bring.context_names
                 raise FrklException(
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
-                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(self._bringistry.contexts.keys())}",
+                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(ctx_names)}",
                 )
             pkg_context = ctx
         else:
@@ -73,7 +74,7 @@ class BringPkgResolver(SimplePkgResolver):
 
         if ting is None:
             pkg_list = []
-            for tn in self._bringistry._tingistry_obj.ting_names:
+            for tn in self._bring._tingistry_obj.ting_names:
                 # if '.pkgs.' in tn:
                 pkg_list.append(tn)
             pkg_list_string = "\n  - ".join(pkg_list)

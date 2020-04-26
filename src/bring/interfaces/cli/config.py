@@ -3,7 +3,10 @@ import logging
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.config import BringConfig
 from frtls.cli.exceptions import handle_exc_async
+from frtls.formats.output_formats import serialize
+from tings.tingistry import Tingistries
 
 
 log = logging.getLogger("bring")
@@ -27,7 +30,7 @@ async def list(ctx):
 
     bring: Bring = ctx.obj["bring"]
 
-    profiles = await bring._config_profiles.get_config_dicts()
+    profiles = await bring.config.get_all_context_configs()
 
     print(profiles)
 
@@ -36,10 +39,18 @@ async def list(ctx):
 @click.pass_context
 @handle_exc_async
 async def show(ctx):
-    """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
+    """Clear the bring cache dir in the relevant location (e.g. '~/.cache/bring' on Linux)."""
 
-    bring: Bring = ctx.obj["bring"]
+    # bring: Bring = ctx.obj["bring"]
+    #
+    # config = await bring.get_config_dict()
+    #
+    # print(config)
+    tingistry_obj = Tingistries.create("bring")
 
-    config = await bring.get_config_dict()
+    bring_config = BringConfig(tingistry_obj)
 
-    print(config)
+    # pp(bring_config.__dict__)
+    c = await bring_config.get_config_dict()
+    print("---")
+    print(serialize(c, format="yaml"))

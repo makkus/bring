@@ -1,6 +1,19 @@
 # -*- coding: utf-8 -*-
 import collections
-from typing import Any, Iterable, Mapping, Union
+import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Union
+
+from anyio import create_task_group
+from bring.defaults import BRING_RESULTS_FOLDER
+from bring.pkg import PkgTing
+from bring.utils.merge_folders import FolderMerge
+from frtls.exceptions import FrklException
+from frtls.formats.input_formats import SmartInput
+
+
+if TYPE_CHECKING:
+    from bring.bring import Bring
 
 
 class BringItem(object):
@@ -22,13 +35,83 @@ class BringItem(object):
         except Exception as e:
             raise ValueError(f"Can't create bring item with input '{item}': {e}")
 
-    def __init__(self, name: str, context) -> None:
+    def __init__(
+        self,
+        name: str,
+        context: Optional[str] = None,
+        vars: Mapping[str, Any] = None,
+        mogrify: Iterable[Union[str, Mapping[str, Any]]] = None,
+    ) -> None:
 
-        self._name: str = name
-        self._context: str = context
+        if "." in name and context:
+            raise FrklException(
+                msg=f"Can't create item '{name}'.",
+                reason="Context provided, but name uses dotted notation.",
+                solution="Use either or.",
+            )
+
+        _context: Optional[str]
+        _name: str
+        if "." in name:
+            _context, _name = name.split(".", maxsplit=1)
+        else:
+            _context = context
+            _name = name
+
+        self._name: str = _name
+        self._context: Optional[str] = _context
+
+        if vars is None:
+            vars = {}
+        self._vars: Mapping[str, Any] = vars
+
+        if mogrify is None:
+            mogrify = []
+        self._mogrify: List[Mapping[str, Any]] = []
+        for m in mogrify:
+            if isinstance(m, str):
+                _m: Mapping[str, Any] = {"type": m}
+            else:
+                _m = m
+            self._mogrify.append(_m)
+
+    def to_dict(self) -> Mapping[str, Any]:
+
+        return {
+            "name": self.name,
+            "context": self.context,
+            "vars": self.vars,
+            "mogrifiers": self.mogrify,
+        }
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def context(self) -> Optional[str]:
+        return self._context
+
+    @property
+    def vars(self) -> Mapping[str, Any]:
+        return self._vars
+
+    @property
+    def mogrify(self) -> Iterable[Mapping[str, Any]]:
+
+        return self._mogrify
 
 
 class BringList(object):
+    @classmethod
+    async def from_file(cls, path: Union[str, Path]) -> "BringList":
+
+        si = SmartInput(path)
+
+        content = await si.content_async()
+
+        return cls.create(data=content["pkgs"])
+
     @classmethod
     def create(
         cls,
@@ -54,3 +137,53 @@ class BringList(object):
 
         self._items = items
         self._item_defaults = item_defaults
+
+    async def install(
+        self,
+        bring: "Bring",
+        target: Union[str, Path] = None,
+        strategy: Optional[Union[str, Mapping[str, Any]]] = None,
+        flatten: bool = False,
+    ) -> str:
+
+        item_list = []
+
+        async def retrieve_pkg(_item: BringItem):
+
+            pkg: Optional[PkgTing] = await bring.get_pkg(
+                name=_item.name, context=_item.context
+            )
+
+            if pkg is None:
+                if _item.context:
+                    _msg = f" from context ({_item.context})"
+                else:
+                    _msg = ""
+                raise FrklException(msg=f"Can't retrieve pkg '{_item.name}'{_msg}.")
+
+            data = {"pkg": pkg, "item": _item}
+
+            t = await pkg.create_version_folder(
+                target=None, vars=_item.vars, extra_mogrifiers=_item.mogrify
+            )
+            data["target"] = t
+            item_list.append(data)
+
+        async with create_task_group() as tg:
+            for i in self._items:
+                await tg.spawn(retrieve_pkg, i)
+
+        if target is None:
+            target = tempfile.mkdtemp(prefix="install_", dir=BRING_RESULTS_FOLDER)
+
+        if isinstance(strategy, str):
+            strategy = {"type": strategy}
+
+        merge_obj = FolderMerge(target=target, merge_strategy=strategy, flatten=flatten)
+        for pkg in item_list:
+            source: str = pkg["target"]  # type: ignore
+            merge_obj.merge_folder(source=source)
+
+        if isinstance(target, Path):
+            target = target.resolve().as_posix()
+        return target

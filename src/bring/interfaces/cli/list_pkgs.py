@@ -5,7 +5,6 @@ import asyncclick as click
 from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
-from bring.utils.contexts import ensure_context
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
 
@@ -74,13 +73,20 @@ class BringListPkgsGroup(FrklBaseCommand):
         for pkg in all:
             pkgs.setdefault(pkg.bring_context, []).append(pkg)
 
-        for c in self._bring.contexts.values():
+        all_contexts = await self._bring.contexts
+        for c in all_contexts.values():
             if c not in pkgs.keys():
                 pkgs[c] = []
 
+        default_context = await self._bring.config.get_default_context_name()
+
         for _context, _pkgs in pkgs.items():
+            if _context.name == default_context:
+                _default_marker = " (default context)"
+            else:
+                _default_marker = ""
             print(
-                f"{self._terminal.bold}context: {_context.name}{self._terminal.normal}"
+                f"{self._terminal.bold}context: {_context.name}{self._terminal.normal}{_default_marker}"
             )
             print()
             if not _pkgs:
@@ -92,12 +98,12 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        return sorted(self._bring.contexts.keys())
+        return sorted(await self._bring.context_names)
 
     async def _get_command(self, ctx, name):
 
-        _ctx_name = await ensure_context(self._bring, name=name)
-        context = self._bring.get_context(_ctx_name)
+        context = await self._bring.get_context(name)
+        _ctx_name = context.name
 
         @click.command(_ctx_name)
         @click.pass_context

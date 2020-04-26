@@ -26,6 +26,7 @@ BRING_CONTEXT_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "contexts")
 BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_checkouts")
 
 BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
+BRING_RESULTS_FOLDER = os.path.join(BRING_WORKSPACE_FOLDER, "results")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
 BRING_PLUGIN_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "plugins")
@@ -46,41 +47,41 @@ BRINGISTRY_PRELOAD_MODULES = [
 BRING_CONTEXT_NAMESPACE = "bring.contexts"
 BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 
+BRING_DEFAULT_CONTEXTS = {
+    "binaries": {
+        "type": "index",
+        "indexes": ["https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"],
+        "defaults": {"target": "~/.local/bring", "vars": {}},
+        "add_sysinfo_to_default_vars": True,
+    },
+    "scripts": {
+        "type": "index",
+        "indexes": ["https://gitlab.com/tingistries/scripts/-/raw/master/scripts.bx"],
+        "defaults": {"target": "~/.local/bring", "vars": {}},
+        "add_sysinfo_to_default_vars": True,
+    },
+    "collections": {
+        "type": "index",
+        "var_defaults": {},
+        "indexes": [
+            "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
+        ],
+    },
+    "kube-install-manifests": {
+        "type": "index",
+        "var_defaults": {},
+        "indexes": [
+            "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
+        ],
+    },
+}
+
 BRING_DEFAULT_CONFIG = {
-    "contexts": [
-        {
-            "name": "binaries",
-            "type": "index",
-            "indexes": [
-                "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"
-            ],
-            "defaults": {"target": "~/.local/bring"},
-        },
-        {
-            "name": "scripts",
-            "type": "index",
-            "indexes": [
-                "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.bx"
-            ],
-            "defaults": {"target": "~/.local/bring"},
-        },
-        {
-            "name": "collections",
-            "type": "index",
-            "indexes": [
-                "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
-            ],
-        },
-        {
-            "name": "kube-install-manifests",
-            "type": "index",
-            "indexes": [
-                "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
-            ],
-        },
-    ],
+    "contexts": ["binaries", "scripts", "collections", "kube-install-manifests"],
     "default_context": "binaries",
-    "task_log": "tree",
+    "task_log": ["tree"],
+    "defaults": {"vars": {}},
+    "add_sysinfo_to_default_vars": False,
 }
 
 BRING_DEFAULT_CONFIG_PROFILE = {

@@ -10,7 +10,7 @@ from bring.pkg_resolvers import PkgResolver
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
-from frtls.dicts import get_seeded_dict
+from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.typistry import TypistryPluginManager
@@ -194,7 +194,6 @@ class PkgTing(SimpleTing):
                 reason=f"Can't find version match for vars: {_vars}",
             )
         mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version["_mogrify"])
-
         if extra_mogrifiers:
             mogrify_list.extend(extra_mogrifiers)
         # import pp
@@ -238,6 +237,7 @@ class PkgTing(SimpleTing):
         self,
         vars: Optional[Mapping[str, Any]] = None,
         target: Union[str, Path, Mapping[str, Any]] = None,
+        extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
         parent_task_desc: TaskDesc = None,
     ) -> str:
         """Create a folder that contains the version specified via the provided 'vars'.
@@ -245,14 +245,11 @@ class PkgTing(SimpleTing):
         If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
         is provided, the path to a randomly named temp folder will be returned.
         """
-        if vars is None:
-            vars = {}
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "source", "metadata", resolve=True
         )
         metadata = vals["metadata"]
 
-        extra_modifiers = None
         # if target is not None:
         #     extra_modifiers = [{"type": "merge_into", "target": target}]
 
@@ -260,10 +257,19 @@ class PkgTing(SimpleTing):
             context_defaults = await self.bring_context.get_value("defaults")
             target = context_defaults.get("target", None)
 
+        if vars is None:
+            vars = {}
+
+        context_vars: Dict[str, Any] = dict(
+            await self.bring_context.get_default_vars()
+        )  # type: ignore
+
+        _vars = dict_merge(context_vars, vars, copy_dct=False)
+
         tm = self.create_transmogrificator(
-            vars=vars,
+            vars=_vars,
             metadata=metadata,
-            extra_mogrifiers=extra_modifiers,
+            extra_mogrifiers=extra_mogrifiers,
             target=target,
             parent_task_desc=parent_task_desc,
         )

@@ -11,7 +11,7 @@ class FileFilterMogrifier(SimpleMogrifier):
 
     def requires(self) -> Mapping[str, str]:
 
-        return {"folder_path": "string", "include": "list"}
+        return {"folder_path": "string", "include": "list", "flatten": "boolean?"}
 
     def get_msg(self) -> str:
 
@@ -24,11 +24,16 @@ class FileFilterMogrifier(SimpleMogrifier):
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
         path: str = requirements["folder_path"]
+        flatten: bool = requirements.get("flatten", False)
         include_patterns: Union[str, Iterable[str]] = requirements["include"]
 
         result = self.create_temp_dir(prefix="file_filter_")
         copy_filtered_files(
-            orig=path, include=include_patterns, target=result, move_files=True
+            orig=path,
+            include=include_patterns,
+            target=result,
+            move_files=True,
+            flatten=flatten,
         )
 
         return {"folder_path": result}
