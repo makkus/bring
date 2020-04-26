@@ -168,7 +168,7 @@ class Bring(SimpleTing):
                 if raise_exception:
                     raise FrklException(
                         msg=f"Can't access bring context '{context_name}'.",
-                        reason=f"No context with that name.",
+                        reason="No context with that name.",
                         solution=f"Create context, or choose one of the existing ones: {', '.join(await self.context_names)}",
                     )
                 else:

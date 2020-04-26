@@ -160,7 +160,7 @@ class GithubRelease(SimplePkgResolver):
                 if not self._github_username or not self._github_token:
                     solution: Optional[
                         str
-                    ] = f"Set both 'github_user' and 'github_access_token' configuration values to make authenticated requests to GitHub and get a higher quota."
+                    ] = "Set both 'github_user' and 'github_access_token' configuration values to make authenticated requests to GitHub and get a higher quota."
                 else:
                     solution = f"Wait until your limit is reset: {str(reset)}"
             else:

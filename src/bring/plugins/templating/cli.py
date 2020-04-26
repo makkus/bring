@@ -63,8 +63,8 @@ class TemplatePluginCommand(AbstractBringCommand):
 
         if not await self._bring.pkg_exists(templates_pkg):
             raise FrklException(
-                msg=f"Can't process template.",
-                reason=f"Templates pkg '{templates_pkg}' does not exist.",
+                msg=f"Can't process template '{templates_pkg}'",
+                reason="Pkg does not exist.",
             )
 
         bring_template = BringTemplate(
