@@ -74,7 +74,7 @@ class ConfigTing(InheriTing, SimpleTing):
         config_dict: Dict = dict(requirements["ting_dict"])
 
         parent = config_dict.pop(self._parent_key, None)
-        info = config_dict.pop(self._info_key, None)
+        info = config_dict.pop(self._info_key, {})
 
         result = {}
         if "config" in value_names:
@@ -224,7 +224,7 @@ class FolderConfigProfilesTing(SimpleTing):
                 if update:
                     await self._dynamic_config_maker.sync()
 
-            profiles: Mapping[str, ConfigTing] = {
+            profiles: MutableMapping[str, ConfigTing] = {
                 k.split(".")[-1]: v  # type: ignore
                 for k, v in self._profiles.childs.items()  # type: ignore
             }  # type: ignore
@@ -453,6 +453,10 @@ class BringConfig(object):
 
         if self._bring is not None:
             self._bring.invalidate()
+
+    async def get_config_profiles(self, update: bool = False):
+
+        return await self._config_profiles.get_config_profiles(update=update)
 
     @property
     def config_input(self) -> Iterable[Union[str, Mapping[str, Any]]]:

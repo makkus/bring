@@ -19,10 +19,19 @@ from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import serialize
 
 
+INFO_HELP = """Display information about a context or package.
+
+You can either provide a context or package name. If the specified value matches a context name, context information will
+be displayed. Otherwise all contexts will be looked up to find a matching package name. If you want to display information for a package from the default context, you may omit the 'context' part of the package name.
+"""
+
+
 class BringInfoPkgsGroup(FrklBaseCommand):
     def __init__(self, bring: Bring, name=None, **kwargs):
 
         self._bring: Bring = bring
+
+        kwargs["help"] = INFO_HELP
 
         super(BringInfoPkgsGroup, self).__init__(
             name=name,

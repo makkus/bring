@@ -85,6 +85,7 @@ BRING_DEFAULT_CONFIG = {
     "default_context": "binaries",
     "task_log": ["tree"],
     "defaults": {"vars": {}},
+    "output": "default",
     "add_sysinfo_to_default_vars": False,
 }
 

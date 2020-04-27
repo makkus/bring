@@ -6,6 +6,7 @@ from anyio import create_task_group
 from asyncclick import HelpFormatter
 from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
+from bring.config import BringConfig
 from bring.context import BringContextTing
 from frtls.async_helpers import wrap_async_task
 
@@ -18,6 +19,18 @@ class BringHelpFormatter(HelpFormatter):
 
         # ignore width/max_width
         super().__init__(width=10, max_width=10)
+
+
+async def create_config_list_for_help(
+    bring_config: BringConfig
+) -> List[Tuple[str, str]]:
+
+    pass
+
+
+async def print_config_list_for_help(bring_config: BringConfig, formatter):
+
+    pass
 
 
 async def create_context_list_for_help(bring: Bring) -> List[Tuple[str, str]]:

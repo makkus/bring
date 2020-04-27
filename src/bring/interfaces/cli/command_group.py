@@ -63,11 +63,20 @@ class BringCommandGroup(FrklBaseCommand):
             required=False,
             type=str,
         )
+
+        # output_option = Option(
+        #     param_decls=["--output", "-o"],
+        #     help="output format for sub-commands that offer an option",
+        #     multiple=False,
+        #     required=False,
+        #     # type=Choice(["default", "json", "yaml"])
+        # )
         kwargs["params"] = [
             logzero_option,
             task_log_option,
             context_option,
             profile_option,
+            # output_option
         ]
 
         self._tingistry_obj = Tingistries.create("bring")
@@ -98,18 +107,19 @@ class BringCommandGroup(FrklBaseCommand):
 
         result = [
             "install",
-            "plugin",
             "info",
             "list",
             "update",
             "export-context",
             "config",
+            "plugin",
             "self",
-            "differ",
+            # "differ",
         ]
 
-        if "DEBUG" in os.environ.keys():
-            result.append("dev")
+        if "DEVELOP" in os.environ.keys():
+            result.append("differ")
+            # result.append("dev")
 
         return result
 
@@ -119,14 +129,28 @@ class BringCommandGroup(FrklBaseCommand):
             name = ALIASES[name]
 
         is_list_command = ctx.obj.get("list_info_commands", False)
+        command = None
+
+        config_list = None
         if not is_list_command:
-
             profile_options = self._group_params["profile"]
-
             task_log = self._group_params["task_log"]
-            self.get_bring().config.config_input = list(profile_options) + [
-                {"task_log": task_log}
-            ]
+
+            config_list = list(profile_options) + [{"task_log": task_log}]
+
+        if name == "config":
+
+            from bring.interfaces.cli.config import BringConfigGroup
+
+            command = BringConfigGroup(
+                config_list=config_list, name=name, terminal=self._terminal
+            )
+
+            return command
+
+        elif not is_list_command:
+
+            self.get_bring().config.config_input = config_list
 
             contexts = self._group_params["context"]
 
@@ -138,7 +162,6 @@ class BringCommandGroup(FrklBaseCommand):
                 await self.get_bring().config.ensure_context(c, set_default=set_default)
                 set_default = False
 
-        command = None
         if name == "list":
 
             from bring.interfaces.cli.list_pkgs import BringListPkgsGroup
@@ -167,7 +190,7 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.info import BringInfoPkgsGroup
 
             command = BringInfoPkgsGroup(bring=self.get_bring(), name="info")
-            command.short_help = "context-specific sub-command group"
+            command.short_help = "display context or pkg information"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
@@ -181,11 +204,6 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.dev import dev
 
             command = dev
-
-        elif name == "config":
-            from bring.interfaces.cli.config import config
-
-            command = config
 
         elif name == "export-context":
 
