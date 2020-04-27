@@ -159,8 +159,8 @@ class Bring(SimpleTing):
             if ctx is not None:
                 return ctx
 
-            context_config: BringContextConfig = await self._bring_config.get_context_config(
-                context_name=context_name
+            context_config: BringContextConfig = await self._bring_config.get_context_config(  # type: ignore
+                context_name=context_name, raise_exception=raise_exception
             )
 
             if context_config is None:
@@ -206,6 +206,7 @@ class Bring(SimpleTing):
     async def get_pkg_map(
         self, contexts: Optional[Iterable[str]] = None
     ) -> Mapping[str, Mapping[str, PkgTing]]:
+        """Get all pkgs, per available (or requested) contexts."""
 
         if contexts is None:
             ctxs: Iterable[BringContextTing] = (await self.contexts).values()
@@ -267,6 +268,35 @@ class Bring(SimpleTing):
             context_map = pkg_map[context_name]
             for pkg_name in sorted(context_map.keys()):
                 result[f"{context_name}.{pkg_name}"] = context_map[pkg_name]
+
+        return result
+
+    async def get_pkg_property_map(
+        self,
+        *value_names: str,
+        contexts: Optional[Iterable[str]] = None,
+        pkg_filter: Union[str, Iterable[str]] = None,
+    ):
+
+        alias_pkg_map = await self.get_alias_pkg_map(contexts=contexts)
+
+        if isinstance(pkg_filter, str):
+            pkg_filter = [pkg_filter]
+
+        if pkg_filter:
+            raise NotImplementedError()
+
+        result = {}
+
+        async def add_pkg(_pkg_name: str, _pkg: PkgTing):
+
+            values = await _pkg.get_values(*value_names)
+            result[_pkg_name] = values
+
+        async with create_task_group() as tg:
+            for pkg_name, pkg in alias_pkg_map.items():
+
+                await tg.spawn(add_pkg, pkg_name, pkg)
 
         return result
 

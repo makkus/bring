@@ -3,11 +3,15 @@ import os
 from typing import Dict, Union
 
 import asyncclick as click
+from asyncclick import Command
 from bring.bring import Bring
 from bring.bring_list import BringList
-from bring.interfaces.cli.pkg_command import PkgInstallTingCommand
-from frtls.args.arg import Arg
+from bring.interfaces.cli.utils import log, print_pkg_list_help
+from bring.pkg import PkgTing
+from frtls.args.arg import Arg, RecordArg
+from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
+from frtls.cli.terminal import create_terminal
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -25,7 +29,7 @@ class BringInstallGroup(FrklBaseCommand):
         """Install"""
 
         # self.print_version_callback = print_version_callback
-        self._bring = bring
+        self._bring: Bring = bring
         kwargs["help"] = INSTALL_HELP
 
         super(BringInstallGroup, self).__init__(
@@ -36,36 +40,15 @@ class BringInstallGroup(FrklBaseCommand):
             result_callback=None,
             arg_hive=bring.arg_hive,
             subcommand_metavar="PKG",
-            **kwargs
+            **kwargs,
         )
 
     def format_commands(self, ctx, formatter):
         """Extra format methods for multi methods that adds all the commands
         after the options.
         """
-        commands = []
-        for subcommand in self.list_commands(ctx):
-            cmd = self.get_command(ctx, subcommand)
-            # What is this, the tool lied about a command.  Ignore it
-            if cmd is None:
-                continue
-            if cmd.hidden:
-                continue
 
-            commands.append((subcommand, cmd))
-
-        # allow for 3 times the default spacing
-        if len(commands):
-            limit = formatter.width - 6 - max(len(cmd[0]) for cmd in commands)
-
-            rows = []
-            for subcommand, cmd in commands:
-                help = cmd.get_short_help_str(limit)
-                rows.append((subcommand, help))
-
-            if rows:
-                with formatter.section("Packages"):
-                    formatter.write_dl(rows)
+        wrap_async_task(print_pkg_list_help, bring=self._bring, formatter=formatter)
 
     def get_group_options(self) -> Union[Arg, Dict]:
 
@@ -132,6 +115,9 @@ class BringInstallGroup(FrklBaseCommand):
 
         load_details = not ctx.obj.get("list_install_commands", False)
 
+        if not load_details:
+            return None
+
         if os.path.isfile(name):
 
             bring_list = await BringList.from_file(name)
@@ -158,3 +144,62 @@ class BringInstallGroup(FrklBaseCommand):
             )
 
             return command
+
+
+class PkgInstallTingCommand(Command):
+    def __init__(
+        self,
+        name: str,
+        pkg: PkgTing,
+        target: str,
+        strategy: str,
+        load_details: bool = False,
+        terminal=None,
+        **kwargs,
+    ):
+
+        self._pkg: PkgTing = pkg
+
+        self._target = target
+        self._strategy = strategy
+
+        if terminal is None:
+            terminal = create_terminal()
+        self._terminal = terminal
+
+        try:
+            if load_details:
+                val_names = ["info", "args"]
+            else:
+                val_names = ["info"]
+            vals = wrap_async_task(
+                self._pkg.get_values, *val_names, _raise_exception=True
+            )
+            info = vals["info"]
+            slug = info.get("slug", "n/a")
+            if slug.endswith("."):
+                slug = slug[0:-1]
+            short_help = f"{slug} (from: {self._pkg.bring_context.name})"
+
+            kwargs["short_help"] = short_help
+            desc = info.get("desc", None)
+            help = f"Install the '{self._pkg.name}' package."
+            if desc:
+                help = f"{help}\n\n{desc}"
+
+            if load_details:
+                args: RecordArg = vals["args"]
+                params = args.to_cli_options()
+                kwargs["params"] = params
+
+            kwargs["help"] = help
+        except (Exception) as e:
+            log.debug(f"Can't create PkgInstallTingCommand object: {e}", exc_info=True)
+            raise e
+
+        super().__init__(name=name, callback=self.install, **kwargs)
+
+    async def install(self, **kwargs):
+
+        path = await self._pkg.create_version_folder(vars=kwargs, target=self._target)
+        print(path)

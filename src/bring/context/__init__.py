@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 import zlib
 from abc import abstractmethod
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
-from anyio import Lock, create_task_group
+from anyio import Lock, aopen, create_task_group
 from bring.defaults import BRING_CONTEXT_FILES_CACHE
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
@@ -226,12 +227,18 @@ class BringStaticContextTing(BringContextTing):
         async def add_index(index_url: str):
 
             update = False
-            content = await download_cached_binary_file_async(
-                url=index_url,
-                update=update,
-                cache_base=BRING_CONTEXT_FILES_CACHE,
-                return_content=True,
-            )
+
+            if os.path.exists(index_url):
+                async with await aopen(index_url, "rb") as f:
+                    content = await f.read()
+            else:
+
+                content = await download_cached_binary_file_async(
+                    url=index_url,
+                    update=update,
+                    cache_base=BRING_CONTEXT_FILES_CACHE,
+                    return_content=True,
+                )
 
             json_string = zlib.decompress(content, 16 + zlib.MAX_WBITS)  # type: ignore
 

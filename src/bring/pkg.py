@@ -68,6 +68,7 @@ class PkgTing(SimpleTing):
             "info": "dict",
             "labels": "dict",
             "tags": "list",
+            "context_name": "string",
         }
 
     async def _get_aliases(self, metadata):
@@ -332,6 +333,9 @@ class StaticPkgTing(PkgTing):
         result: Dict[str, Any] = {}
 
         for vn in value_names:
+            if vn == "context_name":
+                result[vn] = self.bring_context.name
+                continue
             if vn == "args":
                 result[vn] = await self._calculate_args(requirements["metadata"])
             else:
@@ -437,6 +441,9 @@ class DynamicPkgTing(PkgTing):
         )
         if seed_data is None:
             seed_data = {}
+
+        if "context_name" in value_names:
+            result["context_name"] = self.bring_context.name
 
         if "source" in value_names:
             result["source"] = source

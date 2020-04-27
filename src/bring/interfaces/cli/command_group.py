@@ -53,7 +53,7 @@ class BringCommandGroup(FrklBaseCommand):
             multiple=True,
             required=False,
             type=str,
-            help="default context (first item), and additional contexts",
+            help="overwrite default profile context(s) to use",
         )
 
         profile_option = Option(
@@ -129,6 +129,9 @@ class BringCommandGroup(FrklBaseCommand):
             ]
 
             contexts = self._group_params["context"]
+
+            if contexts:
+                self._bring.config.use_config_contexts = False
 
             set_default = True
             for c in contexts:

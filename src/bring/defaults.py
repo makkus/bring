@@ -53,12 +53,14 @@ BRING_DEFAULT_CONTEXTS = {
         "indexes": ["https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"],
         "defaults": {"target": "~/.local/bring", "vars": {}},
         "add_sysinfo_to_default_vars": True,
+        "info": {"slug": "Single file, compiled applications."},
     },
     "scripts": {
         "type": "index",
         "indexes": ["https://gitlab.com/tingistries/scripts/-/raw/master/scripts.bx"],
         "defaults": {"target": "~/.local/bring", "vars": {}},
         "add_sysinfo_to_default_vars": True,
+        "info": {"slug": "Shell scripts."},
     },
     "collections": {
         "type": "index",
@@ -66,6 +68,7 @@ BRING_DEFAULT_CONTEXTS = {
         "indexes": [
             "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
         ],
+        "info": {"slug": "Miscellaneous collections of files."},
     },
     "kube-install-manifests": {
         "type": "index",
@@ -73,6 +76,7 @@ BRING_DEFAULT_CONTEXTS = {
         "indexes": [
             "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
         ],
+        "info": {"slug": "Install manifests for Kubernetes apps."},
     },
 }
 
