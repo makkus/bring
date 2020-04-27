@@ -37,7 +37,9 @@ class BringConfigGroup(FrklBaseCommand):
 
         if self._bring_config is None:
             self._tingistry_obj = Tingistries.create("bring")
-            self._bring_config = BringConfig(tingistry=self._tingistry_obj)
+            self._bring_config = BringConfig(
+                tingistry=self._tingistry_obj
+            )  # type: ignore
         return self._bring_config
 
     # def format_commands(self, ctx, formatter):
