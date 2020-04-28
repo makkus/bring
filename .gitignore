@@ -57,3 +57,4 @@ public
 .direnv
 repos/
 .mypy_cache
+site/

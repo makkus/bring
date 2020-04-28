@@ -25,16 +25,24 @@ exclude = '''
 
 [tool.portray]
 output_dir = "site"
-modules = [
-  "bring",
+extra_markdown_extensions = [
 ]
 
 [tool.portray.mkdocs.theme]
 name = "material"
+palette = {primary = "blue grey", accent = "pink"}
+
 
 [tool.portray.mkdocs]
 repo_url = "https://gitlab.com/frkl/bring"
 repo_name = "bring"
+plugins = [
+  "search",
+  "macros"
+]
+
+extra = {test = "one"}
+
 
 [tool.dephell.main]
 from = {format = "setuppy", path = "setup.py"}

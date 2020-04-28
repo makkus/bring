@@ -3,7 +3,7 @@ import os
 from collections import Iterable
 from typing import Optional
 
-from asyncclick import Option
+from asyncclick import Choice, Option
 from bring.bring import Bring
 from bring.defaults import BRINGISTRY_INIT
 from bring.interfaces.cli.export_context import BringExportContextCommand
@@ -46,37 +46,37 @@ class BringCommandGroup(FrklBaseCommand):
             multiple=True,
             required=False,
             type=str,
-            help=f"running tasks output plugin(s), available: {', '.join(['tree', 'simple'])} ",
+            help=f"task log output plugin(s), available: {', '.join(['tree', 'simple'])} ",
         )
         context_option = Option(
-            param_decls=["--context", "-c"],
+            param_decls=["--context", "-ctx", "-x"],
             multiple=True,
             required=False,
             type=str,
-            help="overwrite default profile context(s) to use",
+            help="one or several profile context(s), overwrites contexts in configuration",
         )
 
         profile_option = Option(
-            param_decls=["--profile", "-p"],
-            help="configuration profile or profile option",
+            param_decls=["--config", "-c"],
+            help="configuration option(s) and/or profile name(s)",
             multiple=True,
             required=False,
             type=str,
         )
 
-        # output_option = Option(
-        #     param_decls=["--output", "-o"],
-        #     help="output format for sub-commands that offer an option",
-        #     multiple=False,
-        #     required=False,
-        #     # type=Choice(["default", "json", "yaml"])
-        # )
+        output_option = Option(
+            param_decls=["--output", "-o"],
+            help="output format for sub-commands that offer an option",
+            multiple=False,
+            required=False,
+            type=Choice(["default", "json", "yaml"]),
+        )
         kwargs["params"] = [
             logzero_option,
             task_log_option,
             context_option,
             profile_option,
-            # output_option
+            output_option,
         ]
 
         self._tingistry_obj = Tingistries.create("bring")
@@ -133,10 +133,13 @@ class BringCommandGroup(FrklBaseCommand):
 
         config_list = None
         if not is_list_command:
-            profile_options = self._group_params["profile"]
+            profile_options = self._group_params["config"]
             task_log = self._group_params["task_log"]
+            output = self._group_params["output"]
 
-            config_list = list(profile_options) + [{"task_log": task_log}]
+            config_list = list(profile_options) + [
+                {"task_log": task_log, "output": output}
+            ]
 
         if name == "config":
 

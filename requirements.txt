@@ -2,12 +2,17 @@ black
 blessed==1.17.4
 click-aliases>=1.0.1
 cruft
+deepdiff==4.3.2
+dictdiffer==0.8.1
 flake8
 formic2
 httpx==0.12.1
 ipython
 isort
 livereload
+markdown-blockdiag
+markdown-include
+mkdocs-material
 mypy
 nuitka
 pathspec==0.7.0
@@ -18,6 +23,7 @@ pp-ez
 pre-commit
 prompt-toolkit==3.0.3
 pydriller==1.10.1
+pymdown-extensions
 pytest
 pytest-cov
 setuptools-scm
