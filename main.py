@@ -19,7 +19,7 @@ def define_env(env):
         stdout = result.decode()
 
         if print_command:
-            stdout = f"> {' '.join(command)}\n\n{stdout}"
+            stdout = f"> {' '.join(command)}\n{stdout}"
         if code_block:
             stdout = f"``` console\n{stdout}\n```\n"
 

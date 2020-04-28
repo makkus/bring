@@ -4,37 +4,26 @@
 [![Pipeline status](https://gitlab.com/frkl/bring/badges/develop/pipeline.svg)](https://gitlab.com/frkl/bring/pipelines)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-# bring
+# ``bring``
 
 *A package manager for files.*
 
-# Installation
-
-Download url
-
- - dev: https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/linux-gnu/bring
- - stable: TBD
-
 ## Description
 
-Documentation still to be done.
+`bring` is a package manager for generic files and file-sets. It's main use is to install, keep track of, and update single-binary applications and scripts, but it can easily be used to manage other file types, such as configuration files, kubernetes manifests, templates, etc.
 
-### Package source schema
+## Download/Install
 
-#### Github
+The easiest way to install `bring` is via pre-build single-file binaries. Currently, only development builds are available:
 
-```yaml
-source:
-  type: github-release
-  user_name: <github_user_or_org>
-  repo_name: <repo_name>
-  artefact_name: <optional_artefact_name>
-  url_regex:
-    - 'https://github.com/markelog/eclectica/releases/download/v(?P<version>.*)/ec_(?P<os>.*)_(?P<arch>.*)$'
-```
+ - [Linux](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/linux-gnu/bring)
+ - [Windows](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/windows/bring.exe)  (not tested at all)
+ - [Mac OS X](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/darwin/bring)  (not available yet)
 
-``artefact_name`` is only necessary when several packages use the same repo for different files
-``url_regex`` is a list of regexes, of which the first one that matches items will be used. Usually, only one is necessary.
+## Links
+
+ - [Documentation](https://bring.frkl.io)
+ - [Code](https://gitlab.com/frkl/bring)
 
 # Development
 

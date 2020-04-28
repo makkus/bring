@@ -27,7 +27,7 @@ export PRINT_HELP_PYSCRIPT
 define GEN_DOC_PYSCRIPT
 import portray
 
-portray.as_html(output_dir="public", overwrite=True)
+portray.as_html(output_dir="site", overwrite=True)
 endef
 export GEN_DOC_PYSCRIPT
 
@@ -37,16 +37,22 @@ import livereload
 import portray
 
 
-def render_as_html():
-    portray.as_html(output_dir="public", overwrite=True)
+def render_as_html(*args, **kwargs):
+    print("* rebuilding docs...")
+    portray.as_html(output_dir="site", overwrite=True)
+    print("* finished.")
 
 
 _server = livereload.Server()
-for filepath in FileSet(include="docs/**"):
+for filepath in FileSet(include="docs/**.md"):
     _server.watch(filepath, render_as_html)
-for filepath in FileSet(include="src/**"):
+for filepath in FileSet(include="docs/**/*.md"):
+    _server.watch(filepath, render_as_html)
+for filepath in FileSet(include="src/**/*.py"):
     _server.watch(filepath, render_as_html)
 _server.watch("README.md", render_as_html)
+
+render_as_html()
 _server.serve(root="site", port=8000, debug=True)
 endef
 export SERVE_HELP_PYSCRIPT

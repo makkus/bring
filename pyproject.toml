@@ -25,9 +25,14 @@ exclude = '''
 
 [tool.portray]
 output_dir = "site"
+modules = [
+"bring",
+"bring.context",
+"bring.context.utils"
+]
 extra_markdown_extensions = [
 ]
-
+include_reference_documentation = false
 [tool.portray.mkdocs.theme]
 name = "material"
 palette = {primary = "blue grey", accent = "pink"}
