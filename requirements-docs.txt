@@ -12,6 +12,7 @@ isort
 livereload
 markdown-blockdiag
 markdown-include
+mkdocs-macros-plugin
 mkdocs-material
 mypy
 nuitka
