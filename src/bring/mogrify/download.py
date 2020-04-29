@@ -24,7 +24,7 @@ class DownloadMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        result = f"downloading file"
+        result = "downloading file"
 
         url = self.get_input("url")
         if url:

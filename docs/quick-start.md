@@ -19,7 +19,7 @@ Before installing a `bring` package, it is useful to know which packages are ava
 
 You can limit the results to a single context by providing it's name:
 
-{{ cli("bring", "list", "collections") }}
+{{ cli("bring", "list", "kube-install-manifests") }}
 
 ## Display information about a context of package
 
