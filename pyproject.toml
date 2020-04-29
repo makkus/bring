@@ -31,6 +31,7 @@ modules = [
 "bring.context.utils"
 ]
 extra_markdown_extensions = [
+  "attr_list"
 ]
 include_reference_documentation = false
 [tool.portray.mkdocs.theme]

@@ -19,7 +19,10 @@ class FlattenFolderMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "flatten folder"
+        duplicate = self.input_values.get("duplicate", "ignore")
+        return (
+            f"flattening all files into root folder (duplicate strategy: {duplicate})"
+        )
 
     def provides(self) -> Mapping[str, str]:
 

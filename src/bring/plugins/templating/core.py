@@ -55,7 +55,9 @@ class BringTemplate(object):
 
         if self._pkg_version_hash is None:
             pkg = await self.get_templates_pkg()
-            self._pkg_version_hash = pkg.create_version_hash(**self._templates_pkg_vars)
+            self._pkg_version_hash = await pkg.create_version_hash(
+                **self._templates_pkg_vars
+            )
         return self._pkg_version_hash
 
     async def get_version_folder(self) -> str:
@@ -63,7 +65,7 @@ class BringTemplate(object):
         if self._version_folder is None:
 
             pkg = await self.get_templates_pkg()
-            version_hash = pkg.create_version_hash(vars=self._templates_pkg_vars)
+            version_hash = await pkg.create_version_hash(**self._templates_pkg_vars)
             self._version_folder = os.path.join(
                 BRING_PLUGIN_CACHE, self.__class__.__name__, str(version_hash)
             )

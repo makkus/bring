@@ -136,10 +136,19 @@ class BringCommandGroup(FrklBaseCommand):
             profile_options = self._group_params["config"]
             task_log = self._group_params["task_log"]
             output = self._group_params["output"]
+            contexts = self._group_params["context"]
 
-            config_list = list(profile_options) + [
-                {"task_log": task_log, "output": output}
-            ]
+            user_config = {}
+            if task_log:
+                user_config["task_log"] = task_log
+
+            if output:
+                user_config["output"] = output
+
+            if contexts:
+                user_config["contexts"] = contexts
+
+            config_list = list(profile_options) + [user_config]
 
         if name == "config":
 
@@ -154,16 +163,6 @@ class BringCommandGroup(FrklBaseCommand):
         elif not is_list_command:
 
             self.get_bring().config.config_input = config_list
-
-            contexts = self._group_params["context"]
-
-            if contexts:
-                self._bring.config.use_config_contexts = False
-
-            set_default = True
-            for c in contexts:
-                await self.get_bring().config.ensure_context(c, set_default=set_default)
-                set_default = False
 
         if name == "list":
 

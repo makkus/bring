@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from anyio import aopen
 from bring.mogrify import SimpleMogrifier
@@ -18,7 +18,7 @@ class TemplateMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "template"
 
-    def get_msg(self) -> Optional[str]:
+    def get_msg(self) -> str:
 
         return "processing template"
 

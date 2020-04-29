@@ -10,7 +10,7 @@ from bring.pkg_resolvers import PkgResolver
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
-from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.typistry import TypistryPluginManager
@@ -221,31 +221,79 @@ class PkgTing(SimpleTing):
 
         return tm
 
-    def create_version_hash(self, **vars: Any):
+    async def create_version_hash(self, **vars: Any):
 
+        full_vars = await self.calculate_full_vars(**vars)
         if self._context is None:
             raise Exception("Context not set yet, this is a bug")
 
         _dict = {
             "pkg_name": self.full_name,
             "pkg_context": self._context.full_name,
-            "vars": vars,
+            "vars": full_vars,
         }
         hashes = DeepHash(_dict)
         return hashes[_dict]
 
-    async def create_version_folder(
+    async def calculate_full_vars(self, **vars: Any) -> Mapping[str, Any]:
+
+        args: RecordArg = await self.get_value("args")  # type: ignore
+
+        pkg_defaults = args.get_defaults()
+        context_vars: Dict[str, Any] = dict(
+            await self.bring_context.get_default_vars()
+        )  # type: ignore
+
+        _vars = get_seeded_dict(
+            pkg_defaults, context_vars, vars, merge_strategy="update"
+        )
+
+        filtered = {}
+        for k, v in _vars.items():
+            if k in args.arg_names:
+                filtered[k] = v
+
+        return filtered
+
+    async def explain_full_vars(self, **vars: Any) -> Mapping[str, Mapping[str, Any]]:
+
+        args: RecordArg = await self.get_value("args")  # type: ignore
+
+        pkg_defaults = args.get_defaults()
+
+        context_vars: Dict[
+            str, Any
+        ] = await self.bring_context.get_default_vars()  # type: ignore
+
+        result = {}
+
+        for k, v in vars.items():
+            if k not in args.arg_names:
+                continue
+
+            result[k] = {"value": v, "source": "user"}
+
+        for k, v in context_vars.items():
+
+            if k in result.keys() or k not in args.arg_names:
+                continue
+            result[k] = {"value": v, "source": "context"}
+
+        for k, v in pkg_defaults.items():
+            if k in result.keys():
+                continue
+            result[k] = {"value": v, "source": "pkg"}
+
+        return result
+
+    async def create_version_folder_transmogrificator(
         self,
         vars: Optional[Mapping[str, Any]] = None,
         target: Union[str, Path, Mapping[str, Any]] = None,
         extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
         parent_task_desc: TaskDesc = None,
-    ) -> str:
-        """Create a folder that contains the version specified via the provided 'vars'.
+    ) -> Transmogrificator:
 
-        If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
-        is provided, the path to a randomly named temp folder will be returned.
-        """
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "source", "metadata", resolve=True
         )
@@ -261,17 +309,35 @@ class PkgTing(SimpleTing):
         if vars is None:
             vars = {}
 
-        context_vars: Dict[str, Any] = dict(
-            await self.bring_context.get_default_vars()
-        )  # type: ignore
-
-        _vars = dict_merge(context_vars, vars, copy_dct=False)
+        _vars = await self.calculate_full_vars(**vars)
 
         tm = self.create_transmogrificator(
             vars=_vars,
             metadata=metadata,
             extra_mogrifiers=extra_mogrifiers,
             target=target,
+            parent_task_desc=parent_task_desc,
+        )
+
+        return tm
+
+    async def create_version_folder(
+        self,
+        vars: Optional[Mapping[str, Any]] = None,
+        target: Union[str, Path, Mapping[str, Any]] = None,
+        extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
+        parent_task_desc: TaskDesc = None,
+    ) -> str:
+        """Create a folder that contains the version specified via the provided 'vars'.
+
+        If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
+        is provided, the path to a randomly named temp folder will be returned.
+        """
+
+        tm: Transmogrificator = await self.create_version_folder_transmogrificator(
+            vars=vars,
+            target=target,
+            extra_mogrifiers=extra_mogrifiers,
             parent_task_desc=parent_task_desc,
         )
 

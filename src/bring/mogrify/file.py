@@ -15,7 +15,7 @@ class FileMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "moving file"
+        return "moving file into new temporary folder"
 
     def provides(self) -> Mapping[str, str]:
 

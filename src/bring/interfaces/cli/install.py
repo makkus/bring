@@ -8,6 +8,7 @@ from bring.bring import Bring
 from bring.bring_list import BringList
 from bring.interfaces.cli.utils import log, print_pkg_list_help
 from bring.pkg import PkgTing
+from bring.utils.pkgs import explain_version
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
@@ -83,6 +84,12 @@ class BringInstallGroup(FrklBaseCommand):
                 "default": False,
                 "required": False,
             },
+            "dry_run": {
+                "doc": "Don't perform installation, only explain steps.",
+                "type": "boolean",
+                "default": False,
+                "required": False,
+            },
         }
 
     async def _list_commands(self, ctx):
@@ -110,6 +117,7 @@ class BringInstallGroup(FrklBaseCommand):
         target = self._group_params.get("target")
         strategy = self._group_params.get("strategy")
         # merge = self._group_params.get("merge")
+        dry_run = self._group_params.get("dry_run")
 
         # write_metadata = self._group_params.get("write_metadata")
 
@@ -139,6 +147,7 @@ class BringInstallGroup(FrklBaseCommand):
                 pkg=pkg,
                 target=target,
                 strategy=strategy,
+                dry_run=dry_run,
                 terminal=self._terminal,
                 load_details=load_details,
             )
@@ -153,6 +162,7 @@ class PkgInstallTingCommand(Command):
         pkg: PkgTing,
         target: str,
         strategy: str,
+        dry_run: bool = False,
         load_details: bool = False,
         terminal=None,
         **kwargs,
@@ -162,6 +172,8 @@ class PkgInstallTingCommand(Command):
 
         self._target = target
         self._strategy = strategy
+
+        self._dry_run: bool = dry_run
 
         if terminal is None:
             terminal = create_terminal()
@@ -189,7 +201,9 @@ class PkgInstallTingCommand(Command):
 
             if load_details:
                 args: RecordArg = vals["args"]
-                params = args.to_cli_options()
+                params = args.to_cli_options(
+                    add_defaults=False, remove_required_when_default=True
+                )
                 kwargs["params"] = params
 
             kwargs["help"] = help
@@ -201,5 +215,21 @@ class PkgInstallTingCommand(Command):
 
     async def install(self, **kwargs):
 
-        path = await self._pkg.create_version_folder(vars=kwargs, target=self._target)
-        print(path)
+        _vars = {}
+        for k, v in kwargs.items():
+            if v is not None:
+                _vars[k] = v
+
+        if self._dry_run:
+            click.echo()
+
+            explanation = await explain_version(
+                pkg=self._pkg, target=self._target, **_vars
+            )
+            click.echo(explanation)
+        else:
+
+            path = await self._pkg.create_version_folder(
+                vars=_vars, target=self._target
+            )
+            print(path)

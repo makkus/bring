@@ -94,7 +94,7 @@ BRING_DEFAULT_CONFIG_PROFILE = {
     "prototing_name": "internal.singletings.config_profiles",
     "ting_class": "folder_config_profiles_ting",
     "prototing_factory": "singleting",
-    "default_config": BRING_DEFAULT_CONFIG,
+    # "default_config": BRING_DEFAULT_CONFIG,
     "config_path": BRING_APP_DIRS.user_config_dir,
     "config_file_ext": "config",
 }

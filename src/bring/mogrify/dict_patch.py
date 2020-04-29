@@ -21,7 +21,7 @@ class YamlPatchMogrifier(SimpleMogrifier):
 
         super().__init__(name=name, meta=meta)
 
-    def get_msg(self) -> Optional[str]:
+    def get_msg(self) -> str:
 
         return "patching dict"
 

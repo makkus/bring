@@ -46,17 +46,20 @@ class PkgProcessor(metaclass=ABCMeta):
         self._args: Optional[RecordArg] = None
 
     @property
-    def pkg_version_hash(self) -> str:
+    async def pkg_version_hash(self) -> str:
 
         if self._pkg_version_hash is None:
-            self._pkg_version_hash = self.pkg.create_version_hash(**self._pkg_vars)
+            self._pkg_version_hash = await self.pkg.create_version_hash(
+                **self._pkg_vars
+            )
         return self._pkg_version_hash
 
     async def get_version_folder(self) -> str:
 
         if self._version_folder is None:
 
-            version_hash = self.pkg.create_version_hash(
+            raise Exception("Check create_version_hash arguments")
+            version_hash = await self.pkg.create_version_hash(
                 vars=self._pkg_vars, include_map=self._pkg_include
             )
             self._version_folder = os.path.join(
@@ -184,9 +187,9 @@ class TemplaTingProcessor(PkgProcessor):
     async def process(self, **vars: Any) -> Mapping[str, Any]:
 
         version_folder = await self.get_version_folder()
-
+        pkg_version_hash = await self.pkg_version_hash
         tempting_repo: TemplaTingRepo = self._tingistry_obj.create_singleting(  # type: ignore
-            f"bring.processors.template.{self.pkg_version_hash}", TemplaTingRepo
+            f"bring.processors.template.{pkg_version_hash}", TemplaTingRepo
         )
         tempting_repo.add_repo_path(version_folder)
         temptings = await tempting_repo.get_value("temptings")

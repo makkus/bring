@@ -17,7 +17,16 @@ class ArchiveMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "extracting archive"
+        vals = self.input_values
+
+        result = "extracting archive"
+
+        if vals.get("file_path", None):
+            result = result + f" '{vals['file_path']}'"
+
+        if vals.get("remove_root", None):
+            result = result + " (disregarding root folder, only using contents of it)"
+        return result
 
     def requires(self) -> Mapping[str, str]:
 

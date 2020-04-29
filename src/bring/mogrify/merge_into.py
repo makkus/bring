@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 from bring.mogrify import SimpleMogrifier
 from bring.utils.merge_folders import FolderMerge
@@ -21,17 +21,31 @@ class MergeIntoMogrifier(SimpleMogrifier):
 
         return {"folder_path": "string", "target": "string", "merge_strategy": "dict?"}
 
-    def get_msg(self) -> Optional[str]:
+    def get_msg(self) -> str:
 
-        return "merging folders"
+        vals = self.input_values
+        target = vals.get("target", "[dynamic]")
+        strategy = self.explode_strategy(vals.get("merge_strategy", None))
+
+        result = f"merging everything into: {target} (strategy: {strategy['type']})"
+        return result
+
+    def explode_strategy(
+        self, strategy: Optional[Union[str, Mapping[str, Any]]] = None
+    ):
+
+        if strategy is None:
+            strategy = {"type": "default"}
+
+        if isinstance(strategy, str):
+            strategy = {"type": strategy}
+
+        return strategy
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        strategy: Mapping[str, Any] = requirements.get(
-            "merge_strategy", {"type": "default"}
-        )
-        if isinstance(strategy, str):
-            strategy = {"type": strategy}
+        strategy = requirements.get("merge_strategy", None)
+        strategy = self.explode_strategy(strategy)
 
         source = requirements["folder_path"]
         if not source:

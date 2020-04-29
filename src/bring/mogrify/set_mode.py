@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import stat
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
@@ -21,7 +21,7 @@ class SetModeMogrifier(SimpleMogrifier):
             "include": "list?",
         }
 
-    def get_msg(self) -> Optional[str]:
+    def get_msg(self) -> str:
 
         return "setting file mode"
 

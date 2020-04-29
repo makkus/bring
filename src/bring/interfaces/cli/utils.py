@@ -6,7 +6,7 @@ from anyio import create_task_group
 from asyncclick import HelpFormatter
 from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
-from bring.config import BringConfig
+from bring.config.bring_config import BringConfig
 from bring.context import BringContextTing
 from frtls.async_helpers import wrap_async_task
 

@@ -13,7 +13,9 @@ By default, `bring` comes with a set of default *contexts* which are deemed of i
 
 Before installing a `bring` package, it is useful to know which packages are available. For this, use the ``list`` sub-command:
 
-{{ cli("bring", "list") }}
+<div class="code-max-height">
+{{ cli("bring", "list", max_height=400) }}
+</div>
 
 You can limit the results to a single context by providing it's name:
 
@@ -29,7 +31,7 @@ This is how to get metadata for the ``binaries`` context:
 
 And this is how to get the details for the ``fd`` package that is a contained in that context:
 
-{{ cli("bring", "info", "binaries.fd") }}
+{{ cli("bring", "info", "binaries.fd", max_height=400) }}
 
 Note: since the ``fd`` package lives in the default context, it is allowed to omit the context name: ``bring info fd``).
 

@@ -15,7 +15,16 @@ class FileFilterMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "filtering files"
+        result = "filtering files"
+        vals = self.input_values
+
+        if vals.get("include", None):
+            result = result + f" matching: {', '.join(vals['include'])}"
+
+        if vals.get("flatten", None):
+            result = result + ", then flatten all files into a single folder"
+
+        return result
 
     def provides(self) -> Mapping[str, str]:
 

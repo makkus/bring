@@ -3,7 +3,7 @@ import logging
 from typing import Iterable, Optional
 
 import asyncclick as click
-from bring.config import BringConfig
+from bring.config.bring_config import BringConfig
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 from frtls.formats.output_formats import create_multi_column_table, serialize

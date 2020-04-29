@@ -26,6 +26,7 @@ from frtls.tasks import Task, Tasks
 from frtls.templating import replace_strings_in_obj
 from frtls.types.typistry import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
+from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing
 from tings.tingistry import Tingistry
 
@@ -135,9 +136,13 @@ class Mogrifier(Task, SimpleTing):
         return self._mogrify_result
 
     @abstractmethod
-    def get_msg(self) -> Optional[str]:
+    def get_msg(self) -> str:
 
         pass
+
+    def explain(self) -> str:
+
+        return self.get_msg()
 
 
 class SimpleMogrifier(Mogrifier):
@@ -152,6 +157,20 @@ class SimpleMogrifier(Mogrifier):
         result = await self._func(raise_exception=True)
 
         return result
+
+    @property
+    def input_values(self):
+
+        result = {}
+        for k, v in self.input._values.items():
+            if v != NO_VALUE_MARKER:
+                result[k] = v
+
+        return result
+
+    def get_input(self, key, default=None):
+
+        return self.input_values.get(key, default)
 
 
 class Transmogrificator(Tasks):
@@ -277,6 +296,17 @@ class Transmogrificator(Tasks):
         for child in self._children.values():
             await child.run_async()
 
+    def explain_steps(self) -> Iterable[str]:
+
+        result = []
+
+        for mogrifier in self._children.values():
+            result.append(mogrifier.explain())  # type: ignore
+
+        result.append(self._result_mogrifier.explain())  # type: ignore
+
+        return result
+
 
 class Transmogritory(object):
     def __init__(self, tingistry: "Tingistry", _load_plugins_at_init: bool = True):
@@ -349,7 +379,6 @@ class Transmogritory(object):
         transmogrificator = Transmogrificator(
             pipeline_id, self._tingistry, task_desc=task_desc, target=target, **kwargs
         )
-
         for index, _mog in enumerate(mogrifier_list):
 
             if isinstance(_mog, collections.Mapping):

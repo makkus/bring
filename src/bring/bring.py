@@ -6,7 +6,7 @@ import threading
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from anyio import create_task_group
-from bring.config import BringConfig, BringContextConfig
+from bring.config.bring_config import BringConfig, BringContextConfig
 from bring.context import BringContextTing
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory

@@ -17,7 +17,15 @@ class GitCloneMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "cloning git repository"
+        vals = self.input_values
+        url = vals.get("url", "[dynamic url]")
+        version = vals.get("version", None)
+
+        result = f"cloning git repository '{url}'"
+        if version is not None:
+            result = result + f" (version: {version})"
+
+        return result
 
     def provides(self) -> Mapping[str, str]:
 
