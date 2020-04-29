@@ -37,7 +37,9 @@ Note: since the ``fd`` package lives in the default context, it is allowed to om
 
 ## Install a package
 
-Installing a package looks similar to using the ``info`` command. Packages are specified the same way (use the ``[context_name].[package_name]`` format, or just ``[package]`` for packages of the default context):
+Installing a package looks similar to using the ``info`` command. Packages are specified the same way (use the ``[context_name].[package_name]`` format, or just ``[package]`` for packages of the default context).
+
+### Install
 
 {{ cli("bring", "install", "--target", "/tmp/bin", "binaries.fd") }}
 
@@ -50,3 +52,9 @@ Some context (like the ``binaries`` one) have a default target (check with ``bri
 If you don't specify the ``--target`` parameter, and the context does not have a default target set, the files will be copied into a temporary directory somewhere under `~/.local/share/bring/workspace/results/`:
 
 {{ cli("bring", "install", "kube-install-manifests.cert-manager") }}
+
+### Dry run
+
+In case you are wondering what the install command actually does, you can use the ``--dry-run`` flag to get some information about the variables used, and the tasks that compose the install process:
+
+{{ cli("bring", "install", "--dry-run", "binaries.fd") }}

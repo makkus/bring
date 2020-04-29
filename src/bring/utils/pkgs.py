@@ -102,6 +102,10 @@ async def explain_version(pkg: PkgTing, target: Optional[str] = None, **vars) ->
         if "alias" in v.keys():
             result = result + f"    from alias: {v['alias']}\n"
 
+    result = result + "\nsteps:\n"
+    for step in data["steps"]:
+        result = result + f"  - {step}\n"
+
     return result
 
 
