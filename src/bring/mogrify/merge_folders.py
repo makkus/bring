@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Mapping
+from typing import Any, Mapping, MutableMapping
 
+from bring.merging import FolderMerge
 from bring.mogrify import SimpleMogrifier
-from bring.utils.merge_folders import FolderMerge
 
 
 class MergeFolderMogrifier(SimpleMogrifier):
@@ -23,11 +23,14 @@ class MergeFolderMogrifier(SimpleMogrifier):
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        strategy: Mapping[str, Any] = requirements.get(
-            "merge_strategy", {"type": "default"}
+        strategy: MutableMapping[str, Any] = requirements.get(
+            "merge_strategy", {"type": "default", "move_method": "move"}
         )
         if isinstance(strategy, str):
-            strategy = {"type": strategy}
+            strategy = {"type": strategy, "move_method": "move"}
+
+        if "move_method" not in strategy.keys():
+            strategy["move_method"] = "move"
 
         folder_paths = requirements["folder_paths"]
         if not folder_paths:
@@ -35,10 +38,12 @@ class MergeFolderMogrifier(SimpleMogrifier):
 
         target_path = self.create_temp_dir("merge_")
 
-        merge_obj = FolderMerge(target=target_path, merge_strategy=strategy)
+        merge_obj = FolderMerge(
+            typistry=self._tingistry_obj.typistry,
+            target=target_path,
+            merge_strategy=strategy,
+        )
 
-        for source in folder_paths:
-
-            merge_obj.merge_folder(source=source)
+        merge_obj.merge_folders(*folder_paths)
 
         return {"folder_path": target_path}

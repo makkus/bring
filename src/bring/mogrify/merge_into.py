@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, MutableMapping, Optional, Union
 
+from bring.merging import FolderMerge
 from bring.mogrify import SimpleMogrifier
-from bring.utils.merge_folders import FolderMerge
 
 
 log = logging.getLogger("bring")
@@ -31,14 +31,17 @@ class MergeIntoMogrifier(SimpleMogrifier):
         return result
 
     def explode_strategy(
-        self, strategy: Optional[Union[str, Mapping[str, Any]]] = None
+        self, strategy: Optional[Union[str, MutableMapping[str, Any]]] = None
     ):
 
         if strategy is None:
-            strategy = {"type": "default"}
+            strategy = {"type": "default", "move_method": "move"}
 
         if isinstance(strategy, str):
-            strategy = {"type": strategy}
+            strategy = {"type": strategy, "move_method": "move"}
+
+        if "move_method" not in strategy.keys():
+            strategy["move_method"] = "move"
 
         return strategy
 
@@ -55,8 +58,12 @@ class MergeIntoMogrifier(SimpleMogrifier):
         if target_path is None:
             target_path = self.create_temp_dir("merge_into_")
 
-        merge_obj = FolderMerge(target=target_path, merge_strategy=strategy)
+        merge_obj = FolderMerge(
+            typistry=self._tingistry_obj.typistry,
+            target=target_path,
+            merge_strategy=strategy,
+        )
 
-        merge_obj.merge_folder(source=source)
+        merge_obj.merge_folders(source)
 
         return {"folder_path": target_path}

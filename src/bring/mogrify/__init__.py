@@ -97,6 +97,8 @@ class Mogrifier(Task, SimpleTing):
 
         self._mogrify_result: Optional[Mapping[str, Any]] = None
 
+        self._tingistry_obj: Tingistry = meta["tingistry"]  # type: ignore
+
         self._working_dir: Optional[str] = None
         SimpleTing.__init__(self, name=name, meta=meta)
         Task.__init__(self, **kwargs)

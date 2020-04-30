@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from bring.defaults import BRING_RESULTS_FOLDER
+from bring.merging import FolderMerge, MergeStrategy
 from bring.pkg import PkgTing
-from bring.utils.merge_folders import FolderMerge
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import SmartInput
 
@@ -142,7 +142,7 @@ class BringList(object):
         self,
         bring: "Bring",
         target: Union[str, Path] = None,
-        strategy: Optional[Union[str, Mapping[str, Any]]] = None,
+        strategy: Optional[Union[str, Mapping[str, Any], MergeStrategy]] = None,
         flatten: bool = False,
     ) -> str:
 
@@ -176,13 +176,18 @@ class BringList(object):
         if target is None:
             target = tempfile.mkdtemp(prefix="install_", dir=BRING_RESULTS_FOLDER)
 
-        if isinstance(strategy, str):
-            strategy = {"type": strategy}
-
-        merge_obj = FolderMerge(target=target, merge_strategy=strategy, flatten=flatten)
+        merge_obj = FolderMerge(
+            typistry=bring.typistry,
+            target=target,
+            merge_strategy=strategy,
+            flatten=flatten,
+        )
+        sources = []
         for pkg in item_list:
             source: str = pkg["target"]  # type: ignore
-            merge_obj.merge_folder(source=source)
+            sources.append(source)
+
+        merge_obj.merge_folders(*sources)
 
         if isinstance(target, Path):
             target = target.resolve().as_posix()

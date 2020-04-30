@@ -9,7 +9,7 @@ In short, a *package* is a specific file or file-set, usually versioned in some 
 
 By default, `bring` comes with a set of default *contexts* which are deemed of interest for a general audience. Even though this is not covered in this quick-start guide, it is easily possible to create and share your own *contexts*. Check out the [usage documentation](/docs/usage) for more details.
 
-## List available contexts and packages
+## List contexts and packages
 
 Before installing a `bring` package, it is useful to know which packages are available. For this, use the ``list`` sub-command:
 
@@ -21,13 +21,17 @@ You can limit the results to a single context by providing it's name:
 
 {{ cli("bring", "list", "kube-install-manifests") }}
 
-## Display information about a context of package
+## Display information
 
 In order to get more information about a context of package, you can use the ``info`` sub-command. It takes one string as argument, if the string matches the name of a context, it'll display information about it, otherwise it will search all packages for a match. Packages are usually specified in the form of ``[context_name].[package_name]``, which means that there should not be any overlap in namespaces between contexts and packages.
+
+### Context metadata
 
 This is how to get metadata for the ``binaries`` context:
 
 {{ cli("bring", "info", "binaries") }}
+
+### Package metadata
 
 And this is how to get the details for the ``fd`` package that is a contained in that context:
 
