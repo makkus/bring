@@ -71,7 +71,7 @@ class Bring(SimpleTing):
             env_conf[k[6:]] = v
 
         env_conf["bringistry"] = self
-        self.typistry.get_plugin_manager("pkg_resolver", plugin_config=env_conf)
+        self.typistry.get_plugin_manager("pkg_type", plugin_config=env_conf)
 
         self._transmogritory = Transmogritory(self._tingistry_obj)
         self._context_lock = threading.Lock()

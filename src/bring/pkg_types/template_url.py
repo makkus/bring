@@ -2,19 +2,19 @@
 import copy
 import itertools
 import os
-from typing import Any, Iterable, List, Mapping, Optional, Union
+from typing import Any, Iterable, List, Mapping, Union
 
 from bring.context import BringContextTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from frtls.templating import process_string_template
 
 
-class TemplateUrlResolver(SimplePkgResolver):
+class TemplateUrlResolver(SimplePkgType):
 
     _plugin_name: str = "template_url"
 
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
-        super().__init__(config=config)
+    def __init__(self, **config: Any):
+        super().__init__(**config)
 
     def _name(self):
 
@@ -23,6 +23,21 @@ class TemplateUrlResolver(SimplePkgResolver):
     def _supports(self) -> List[str]:
 
         return ["template-url"]
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        return {
+            "template_vars": {
+                "type": "dict",
+                "required": True,
+                "doc": "A map with the possible template var names as keys, and all allowed values for each key as value.",
+            },
+            "url": {
+                "type": "string",
+                "required": True,
+                "doc": "The templated url string, using '{{' and '}}' as template markers.",
+            },
+        }
 
     async def _process_pkg_versions(
         self, source_details: Mapping[str, Any], bring_context: BringContextTing
@@ -57,7 +72,7 @@ class TemplateUrlResolver(SimplePkgResolver):
                 break
 
         if match:
-            return {"type": "archive"}
+            return {"type": "extract"}
         else:
             return {"type": "file"}
 

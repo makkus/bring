@@ -27,6 +27,9 @@ log = logging.getLogger("bring")
 
 
 class BringContextConfig(metaclass=ABCMeta):
+
+    _plugin_type = "instance"
+
     @classmethod
     def auto_parse_config_string(
         cls, config_string: str, context_name: Optional[str] = None
@@ -92,9 +95,7 @@ class BringContextConfig(metaclass=ABCMeta):
             )
 
         config_type = init_data["type"]
-        pm = tingistry_obj.typistry.get_plugin_manager(
-            BringContextConfig, plugin_type="instance"
-        )
+        pm = tingistry_obj.typistry.get_plugin_manager(BringContextConfig)
 
         config_type_cls = pm.get_plugin(config_type)
 

@@ -112,6 +112,7 @@ class BringCommandGroup(FrklBaseCommand):
             "update",
             "export-context",
             "config",
+            "doc",
             "plugin",
             "self",
             # "differ",
@@ -201,6 +202,13 @@ class BringCommandGroup(FrklBaseCommand):
                 bring=self.get_bring(), name="update", terminal=self._terminal
             )
             command.short_help = "update package metadata for all contexts"
+
+        elif name == "doc":
+            from bring.interfaces.cli.doc import BringDocGroup
+
+            command = BringDocGroup(
+                tingistry=self._bring._tingistry_obj, terminal=self._terminal
+            )
 
         elif name == "dev":
             from bring.interfaces.cli.dev import dev

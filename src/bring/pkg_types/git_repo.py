@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
-from typing import Any, Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Iterable, Mapping, MutableMapping
 
 import git
 from bring.context import BringContextTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from bring.utils.git import ensure_repo_cloned
 from pydriller import Commit, GitRepository
 
 
-class GitRepo(SimplePkgResolver):
+class GitRepo(SimplePkgType):
 
     _plugin_name: str = "git"
 
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+    def __init__(self, **config: Any):
 
-        super().__init__(config=config)
+        super().__init__(**config)
 
     def _name(self):
 
@@ -23,6 +23,10 @@ class GitRepo(SimplePkgResolver):
 
     def _supports(self) -> Iterable[str]:
         return ["git"]
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        return {"url": {"type": "string", "required": True, "doc": "The git repo url."}}
 
     def get_unique_source_id(
         self, source_details: Mapping, bring_context: BringContextTing

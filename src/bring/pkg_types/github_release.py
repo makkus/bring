@@ -18,7 +18,7 @@ from typing import (
 import arrow
 import httpx
 from bring.context import BringContextTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from frtls.exceptions import FrklException
 from httpx import Headers
 
@@ -38,7 +38,7 @@ DEFAULT_ARGS_DICT = {
 }
 
 
-class GithubRelease(SimplePkgResolver):
+class GithubRelease(SimplePkgType):
 
     last_github_limit_details: Optional[Mapping] = None
 
@@ -75,15 +75,14 @@ class GithubRelease(SimplePkgResolver):
         secs = delta.total_seconds()
         return secs
 
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+    def __init__(self, **config: Any):
 
         self._github_username = None
         self._github_token = None
-        if config:
-            self._github_username = config.get("github_username", None)
-            self._github_token = config.get("github_access_token", None)
+        self._github_username = config.get("github_username", None)
+        self._github_token = config.get("github_access_token", None)
 
-        super().__init__(config=config)
+        super().__init__(**config)
 
     def _supports(self) -> Iterable[str]:
 
@@ -119,6 +118,26 @@ class GithubRelease(SimplePkgResolver):
             return {"type": "archive"}
         else:
             return {"type": "file"}
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        return {
+            "user_name": {
+                "type": "string",
+                "required": True,
+                "doc": "The github user name.",
+            },
+            "repo_name": {
+                "type": "string",
+                "required": True,
+                "doc": "The github repo name.",
+            },
+            "url_regex": {
+                "type": "string",
+                "required": True,
+                "doc": "The url regex to parse the release urls.",
+            },
+        }
 
     async def _process_pkg_versions(
         self, source_details: Mapping[str, Any], bring_context: BringContextTing

@@ -36,7 +36,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring",
     "bring.pkg",
     "bring.pkgs",
-    "bring.pkg_resolvers.*",
+    "bring.pkg_types.*",
     "bring.mogrify.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
@@ -133,7 +133,7 @@ BRINGISTRY_INIT = {
     "tings": [],
     "modules": BRINGISTRY_PRELOAD_MODULES,
     "classes": [
-        "bring.pkg_resolvers.PkgResolver",
+        "bring.pkg_types.PkgType",
         "bring.mogrify.Mogrifier",
         "frtls.tasks.task_watcher.TaskWatcher",
     ],

@@ -1,23 +1,33 @@
 # -*- coding: utf-8 -*-
 import os
-from typing import Any, Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Iterable, Mapping, MutableMapping
 
 from bring.context import BringContextTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from pydriller import GitRepository
 
 
-class Folder(SimplePkgResolver):
+class Folder(SimplePkgType):
 
     _plugin_name: str = "folder"
 
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+    def __init__(self, **config: Any):
 
-        super().__init__(config=config)
+        super().__init__(**config)
 
     def _name(self):
 
         return "folder"
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        return {
+            "path": {
+                "type": "string",
+                "required": True,
+                "doc": "The path to the local folder that represents the package.",
+            }
+        }
 
     def _supports(self) -> Iterable[str]:
         return ["folder"]

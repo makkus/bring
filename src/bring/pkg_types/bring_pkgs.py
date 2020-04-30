@@ -5,30 +5,33 @@ from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.mogrify import assemble_mogrifiers
 from bring.pkg import PkgTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from bring.utils import find_version, replace_var_aliases
 from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
 
-class BringPkgsResolver(SimplePkgResolver):
+class BringPkgsResolver(SimplePkgType):
 
     _plugin_name: str = "bring_pkgs"
 
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
-
-        if config is None:
-            raise TypeError(
-                "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
-            )
+    def __init__(self, **config: Any):
 
         self._bring: Bring = config["bringistry"]
-        super().__init__(config=config)
+        super().__init__(**config)
 
     def _supports(self) -> Iterable[str]:
 
         return ["bring-pkg"]
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        arg_dict = {
+            "pkgs": {"type": "list", "required": True, "doc": "A list of packages."}
+        }
+
+        return arg_dict
 
     async def get_child_pkgs(
         self, source_details: Mapping[str, Any], bring_context: BringContextTing

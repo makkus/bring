@@ -1,29 +1,42 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping
 
 from bring.bring import Bring
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
-from bring.pkg_resolvers import SimplePkgResolver
+from bring.pkg_types import SimplePkgType
 from bring.utils import find_versions, replace_var_aliases
 from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 
 
-class BringPkgResolver(SimplePkgResolver):
+class BringPkgResolver(SimplePkgType):
+    """A package that inherits from another, lower-level package.
+
+    If no 'context_name' property is specified, it is assumed the package to use lives in the same context. Otherwise, the
+    context must be valid in the configuration profile that is currently used.
+    """
 
     _plugin_name: str = "bring_pkg"
 
-    def __init__(self, config: Optional[Mapping[str, Any]]):
-
-        if config is None:
-            raise TypeError(
-                "Can't create bring pkgs object. Invalid constructor arguments, need config map to access bringistry value."
-            )
+    def __init__(self, **config: Any):
 
         self._bring: Bring = config["bringistry"]
-        super().__init__(config=config)
+        super().__init__(**config)
+
+    def get_args(self) -> Mapping[str, Any]:
+
+        arg_dict = {
+            "name": {"type": "string", "required": True, "doc": "The package name."},
+            "context": {
+                "type": "string",
+                "required": False,
+                "doc": "The package context.",
+            },
+        }
+
+        return arg_dict
 
     def _supports(self) -> Iterable[str]:
 

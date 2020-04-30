@@ -21,7 +21,7 @@ def get_cli_plugins(
 ) -> List["BringCliPlugin"]:
 
     typistry: Typistry = bring.typistry
-    plugin_manager = typistry.get_plugin_manager(BringCliPlugin, plugin_type="instance")
+    plugin_manager = typistry.get_plugin_manager(BringCliPlugin)
 
     result = []
     for pn in plugin_manager.plugin_names:
@@ -33,6 +33,9 @@ def get_cli_plugins(
 
 
 class BringCliPlugin(metaclass=ABCMeta):
+
+    _plugin_type = "instance"
+
     def __init__(self, bring: "Bring", terminal: Optional[Terminal] = None):
 
         self._bring: "Bring" = bring

@@ -31,11 +31,11 @@ if TYPE_CHECKING:
 log = logging.getLogger("bring")
 
 
-class PkgResolver(metaclass=ABCMeta):
+class PkgType(metaclass=ABCMeta):
     """Abstract base class which acts as an adapter to retrieve package information using the 'source' key in bring pkg metadata.
-
-
     """
+
+    _plugin_type = "singleton"
 
     metadata_cache: Dict[Type, MutableMapping] = {}
 
@@ -137,7 +137,7 @@ class PkgResolver(metaclass=ABCMeta):
         if not id:
             raise Exception("Unique source id can't be empty")
 
-        all_metadata = PkgResolver.metadata_cache.setdefault(self.__class__, {}).get(
+        all_metadata = PkgType.metadata_cache.setdefault(self.__class__, {}).get(
             id, None
         )
 
@@ -155,7 +155,7 @@ class PkgResolver(metaclass=ABCMeta):
             cached_only=True,
         )
         if metadata is not None:
-            PkgResolver.metadata_cache[self.__class__][id] = {
+            PkgType.metadata_cache[self.__class__][id] = {
                 "metadata": metadata,
                 "source": source_details,
                 "context": bring_context.full_name,
@@ -255,7 +255,7 @@ class PkgResolver(metaclass=ABCMeta):
             config=config,
             cached_only=False,
         )
-        PkgResolver.metadata_cache.setdefault(self.__class__, {})[id] = {
+        PkgType.metadata_cache.setdefault(self.__class__, {})[id] = {
             "metadata": metadata,
             "source": source_details,
             "context": bring_context.full_name,
@@ -281,8 +281,8 @@ class PkgResolver(metaclass=ABCMeta):
         pass
 
 
-class SimplePkgResolver(PkgResolver):
-    def __init__(self, config: Optional[Mapping[str, Any]] = None):
+class SimplePkgType(PkgType):
+    def __init__(self, **config: Any):
 
         self._cache_dir = os.path.join(
             BRING_PKG_CACHE, "resolvers", from_camel_case(self.__class__.__name__)
@@ -377,6 +377,9 @@ class SimplePkgResolver(PkgResolver):
 
             sam = source_details.get("artefact", None)
             if sam:
+                if isinstance(sam, str):
+                    sam = {"type": sam}
+
                 if isinstance(sam, Mapping):
                     version["_mogrify"].append(sam)
                 else:

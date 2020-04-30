@@ -24,7 +24,7 @@ from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import Task, Tasks
 from frtls.templating import replace_strings_in_obj
-from frtls.types.typistry import TypistryPluginManager
+from frtls.types.plugins import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing
@@ -91,6 +91,9 @@ class Mogrifiception(FrklException):
 
 
 class Mogrifier(Task, SimpleTing):
+
+    _plugin_type = "instance"
+
     def __init__(
         self, name: str, meta: Optional[Mapping[str, Any]] = None, **kwargs
     ) -> None:
@@ -325,7 +328,7 @@ class Transmogritory(object):
             return self._plugin_manager
 
         self._plugin_manager = self._tingistry.typistry.get_plugin_manager(
-            "bring.mogrify.Mogrifier", plugin_type="instance"
+            "bring.mogrify.Mogrifier"
         )
         for k, v in self._plugin_manager._plugins.items():
             self._tingistry.register_prototing(f"bring.mogrify.plugins.{k}", v)

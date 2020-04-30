@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
-from bring.pkg_resolvers import PkgResolver
+from bring.pkg_types import PkgType
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
-from frtls.types.typistry import TypistryPluginManager
+from frtls.types.plugins import TypistryPluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing
 from tings.tingistry import Tingistry
@@ -456,17 +456,15 @@ class DynamicPkgTing(PkgTing):
 
         return metadata
 
-    def _get_resolver(self, source_dict: Dict) -> PkgResolver:
+    def _get_resolver(self, source_dict: Dict) -> PkgType:
 
         pkg_type = source_dict.get("type", None)
         if pkg_type is None:
             raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
 
-        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager(
-            "pkg_resolver"
-        )
+        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager("pkg_type")
 
-        resolver: PkgResolver = pm.get_plugin_for(pkg_type)
+        resolver: PkgType = pm.get_plugin_for(pkg_type)
         if resolver is None:
             r_type = source_dict.get("type", source_dict)
             raise TingException(

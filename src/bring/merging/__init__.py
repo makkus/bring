@@ -72,6 +72,9 @@ class TargetFolder(object):
 
 
 class MergeStrategy(metaclass=ABCMeta):
+
+    _plugin_type = "instance"
+
     def __init__(self, **config):
 
         self._config: Mapping[str, Any] = config
@@ -271,9 +274,7 @@ class FolderMerge(object):
         if isinstance(merge_strategy, collections.Mapping):
             ms_config = dict(merge_strategy)
             ms_type = ms_config.pop("type", "default")
-            pm = self._typistry.get_plugin_manager(
-                MergeStrategy, plugin_type="instance"
-            )
+            pm = self._typistry.get_plugin_manager(MergeStrategy)
             ms_cls = pm.get_plugin(ms_type)
             if ms_cls is None:
                 raise FrklException(
