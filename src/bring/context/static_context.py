@@ -33,6 +33,7 @@ class BringStaticContextTing(BringContextTing):
 
         self._pkg_lock: Optional[Lock] = None
         self._metadata_timestamp: Optional[Arrow] = None
+        self._timestamp_queried = False
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
     def add_urls(self, *urls: str):
@@ -42,6 +43,8 @@ class BringStaticContextTing(BringContextTing):
 
     async def _get_metadata_timestamp(self) -> Optional[str]:
 
+        if not self._timestamp_queried:
+            await self._get_pkgs()
         if self._metadata_timestamp:
             return str(self._metadata_timestamp)
         else:
@@ -83,13 +86,13 @@ class BringStaticContextTing(BringContextTing):
                 if pkg_name.startswith("_bring_"):
                     if pkg_name == "_bring_metadata_timestamp":
                         try:
+
                             pkg_data = arrow.get(pkg_data)
                             timestamps.append(pkg_data)
-
                         except Exception as e:
                             log.debug(f"Can't parse date '{pkg_data}', ignoring: {e}")
 
-                        continue
+                    continue
 
                 if pkg_name in pkgs.keys():
                     raise FrklException(
@@ -126,6 +129,8 @@ class BringStaticContextTing(BringContextTing):
             self._metadata_timestamp = oldest_timestamp
         else:
             self._metadata_timestamp = None
+
+        self._timestamp_queried = True
 
         return pkgs
 
