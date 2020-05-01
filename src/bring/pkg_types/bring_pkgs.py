@@ -2,9 +2,9 @@
 from typing import Any, Iterable, Mapping, Optional
 
 from bring.bring import Bring
-from bring.context import BringContextTing
 from bring.mogrify import assemble_mogrifiers
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from bring.utils import find_version, replace_var_aliases
 from frtls.async_helpers import wrap_async_task
@@ -34,22 +34,22 @@ class BringPkgsResolver(SimplePkgType):
         return arg_dict
 
     async def get_child_pkgs(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> Mapping[str, PkgTing]:
 
         pkgs = source_details["pkgs"]
         result = {}
         for pkg in pkgs:
-            context = pkg.get("context", None)
+            index = pkg.get("index", None)
             pkg_obj = await self.get_pkg(
-                pkg["name"], bring_context=bring_context, pkg_context=context
+                pkg["name"], bring_index=bring_index, pkg_index=index
             )
             result[pkg_obj.full_name] = pkg_obj
 
         return result
 
     async def get_seed_data(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
         """Overwrite to provide seed data for a pkg.
 
@@ -58,7 +58,7 @@ class BringPkgsResolver(SimplePkgType):
 
         childs = {}
         child_pkgs = await self.get_child_pkgs(
-            source_details=source_details, bring_context=bring_context
+            source_details=source_details, bring_index=bring_index
         )
         for pkg in child_pkgs.values():
             vals: Mapping[str, Any] = await pkg.get_values(  # type: ignore
@@ -72,25 +72,25 @@ class BringPkgsResolver(SimplePkgType):
     async def get_pkg(
         self,
         pkg_name: str,
-        bring_context: BringContextTing,
-        pkg_context: Optional[str] = None,
+        bring_index: BringIndexTing,
+        pkg_index: Optional[str] = None,
     ) -> PkgTing:
 
-        if pkg_context is None:
-            pkg_context = bring_context.full_name
+        if pkg_index is None:
+            pkg_index = bring_index.full_name
 
-        elif "." not in pkg_context:
+        elif "." not in pkg_index:
 
-            ctx = await self._bring.get_context(pkg_context)
+            ctx = await self._bring.get_index(pkg_index)
             if ctx is None:
-                ctx_names = await self._bring.context_names
+                ctx_names = await self._bring.index_names
                 raise FrklException(
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
-                    reason=f"Requested context '{pkg_context}' not among available contexts: {', '.join(ctx_names)}",
+                    reason=f"Requested index '{pkg_index}' not among available indexes: {', '.join(ctx_names)}",
                 )
-            pkg_context = ctx.full_name
+            pkg_index = ctx.full_name
 
-        ting_name = f"{pkg_context}.pkgs.{pkg_name}"
+        ting_name = f"{pkg_index}.pkgs.{pkg_name}"
 
         ting = self._bring._tingistry_obj.get_ting(ting_name)
         if ting is None:
@@ -113,20 +113,18 @@ class BringPkgsResolver(SimplePkgType):
         return ting  # type: ignore
 
     def get_unique_source_id(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> str:
 
         pkgs = wrap_async_task(
-            self.get_child_pkgs,
-            source_details=source_details,
-            bring_context=bring_context,
+            self.get_child_pkgs, source_details=source_details, bring_index=bring_index
         )
         pkg_names = sorted(pkgs.keys())
 
         return "_".join(pkg_names)
 
     async def _process_pkg_versions(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
 
         pkgs = source_details["pkgs"]
@@ -135,11 +133,9 @@ class BringPkgsResolver(SimplePkgType):
         for pkg in pkgs:
             name = pkg["name"]
             vars = pkg.get("vars", {})
-            context = pkg.get("context", None)
+            index = pkg.get("index", None)
 
-            pkg_obj = await self.get_pkg(
-                name, bring_context=bring_context, pkg_context=context
-            )
+            pkg_obj = await self.get_pkg(name, bring_index=bring_index, pkg_index=index)
             vals: Mapping[str, Any] = await pkg_obj.get_values(  # type: ignore
                 "metadata", resolve=True
             )

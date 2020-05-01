@@ -19,7 +19,7 @@ from tings.ting.inheriting import InheriTing
 log = logging.getLogger("bring")
 
 
-class BringContextTing(InheriTing, SimpleTing):
+class BringIndexTing(InheriTing, SimpleTing):
     def __init__(
         self,
         name: str,
@@ -171,7 +171,7 @@ class BringContextTing(InheriTing, SimpleTing):
         if pkg is None:
             pkg_names = await self.pkg_names
             raise FrklException(
-                msg=f"Can't retrieve package '{name}' from context '{self.name}'.",
+                msg=f"Can't retrieve package '{name}' from index '{self.name}'.",
                 reason="No package with that name available.",
                 solution=f"Make sure the package name is correct, available packages: {', '.join(pkg_names)}.",
             )
@@ -200,7 +200,7 @@ class BringContextTing(InheriTing, SimpleTing):
         if tasks is not None:
             await tasks.run_async()
         else:
-            log.info(f"Context '{self.name}' does not support updates, doing nothing")
+            log.info(f"Index '{self.name}' does not support updates, doing nothing")
 
     async def get_all_pkg_values(self, *value_names) -> Dict[str, Dict]:
 
@@ -217,7 +217,7 @@ class BringContextTing(InheriTing, SimpleTing):
 
         return result
 
-    async def export_context(self, update: bool = True) -> Mapping[str, Any]:
+    async def export_index(self, update: bool = True) -> Mapping[str, Any]:
 
         if update:
             await self.update()

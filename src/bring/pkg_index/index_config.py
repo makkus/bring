@@ -6,12 +6,12 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union
 
-from bring.context import BringContextTing
-from bring.context.dynamic_context import BringDynamicContextTing
-from bring.context.static_context import BringStaticContextTing
 from bring.defaults import BRING_CONTEXT_NAMESPACE, BRING_DEFAULT_CONTEXTS
+from bring.pkg_index import BringIndexTing
+from bring.pkg_index.folder_index import BringDynamicIndexTing
+from bring.pkg_index.static_index import BringStaticIndexTing
 from bring.system_info import get_current_system_info
-from bring.utils.contexts import validate_context_name
+from bring.utils.indexes import validate_index_name
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import (
@@ -26,20 +26,20 @@ from tings.tingistry import Tingistry
 log = logging.getLogger("bring")
 
 
-class BringContextConfig(metaclass=ABCMeta):
+class BringIndexConfig(metaclass=ABCMeta):
 
     _plugin_type = "instance"
 
     @classmethod
     def auto_parse_config_string(
-        cls, config_string: str, context_name: Optional[str] = None
+        cls, config_string: str, index_name: Optional[str] = None
     ) -> Dict[str, Any]:
 
         if config_string in BRING_DEFAULT_CONTEXTS.keys():
-            _default_context: Mapping[str, Any] = BRING_DEFAULT_CONTEXTS[
+            _default_index: Mapping[str, Any] = BRING_DEFAULT_CONTEXTS[
                 config_string
             ]  # type: ignore
-            _init_data: Dict[str, Any] = dict(_default_context)
+            _init_data: Dict[str, Any] = dict(_default_index)
             _init_data["name"] = config_string
         elif config_string.endswith(".bx"):
             index_file_name = os.path.basename(config_string)
@@ -73,12 +73,12 @@ class BringContextConfig(metaclass=ABCMeta):
             }
         else:
             raise FrklException(
-                msg=f"Can't create context for: {config_string}",
-                reason="String is not a context alias, folder, or git url.",
+                msg=f"Can't create index for: {config_string}",
+                reason="String is not a index alias, folder, or git url.",
             )
 
-        if context_name is not None:
-            _init_data["name"] = context_name
+        if index_name is not None:
+            _init_data["name"] = index_name
             _init_data["_name_generated"] = False
 
         return _init_data
@@ -88,22 +88,20 @@ class BringContextConfig(metaclass=ABCMeta):
         cls,
         tingistry_obj: Tingistry,
         init_data: Union[str, Mapping[str, Any]],
-        context_name: Optional[str] = None,
+        index_name: Optional[str] = None,
     ):
 
         if isinstance(init_data, str):
-            init_data = cls.auto_parse_config_string(
-                init_data, context_name=context_name
-            )
+            init_data = cls.auto_parse_config_string(init_data, index_name=index_name)
 
         config_type = init_data["type"]
-        pm = tingistry_obj.typistry.get_plugin_manager(BringContextConfig)
+        pm = tingistry_obj.typistry.get_plugin_manager(BringIndexConfig)
 
         config_type_cls = pm.get_plugin(config_type)
 
         if config_type_cls is None:
             raise FrklException(
-                msg=f"Can't create context config of type '{config_type}'.",
+                msg=f"Can't create index config of type '{config_type}'.",
                 reason="No plugin registered for this type.",
             )
         config = config_type_cls(tingistry_obj=tingistry_obj, init_data=init_data)
@@ -119,7 +117,7 @@ class BringContextConfig(metaclass=ABCMeta):
 
         self._tingistry_obj = tingistry_obj
         # if isinstance(init_data, str):
-        #     _init_data: Dict[str, Any] = BringContextConfig.auto_parse_config_string(
+        #     _init_data: Dict[str, Any] = BringIndexConfig.auto_parse_config_string(
         #         config_string=init_data
         #     )
         # else:
@@ -127,10 +125,10 @@ class BringContextConfig(metaclass=ABCMeta):
         #         "name",
         #         "type",
         #     ]:
-        #         context_name = list(init_data.keys())[0]
-        #         config_string = init_data[context_name]
-        #         _init_data = BringContextConfig.auto_parse_config_string(
-        #             config_string, context_name=context_name
+        #         index_name = list(init_data.keys())[0]
+        #         config_string = init_data[index_name]
+        #         _init_data = BringIndexConfig.auto_parse_config_string(
+        #             config_string, index_name=index_name
         #         )
         #     else:
         #         _init_data = dict(init_data)
@@ -145,7 +143,7 @@ class BringContextConfig(metaclass=ABCMeta):
             global_defaults = {}
         self._global_defaults: MutableMapping[str, Any] = dict(global_defaults)
 
-        self._context: Optional[BringContextTing] = None
+        self._index: Optional[BringIndexTing] = None
 
         self._extra_data: Optional[Mapping[str, Any]] = None
         self._config_dict: Optional[Mapping[str, Any]] = None
@@ -160,7 +158,7 @@ class BringContextConfig(metaclass=ABCMeta):
 
         if not self._name_autogenerated:
             raise FrklException(
-                msg=f"Can't change name of context '{self._name}'.",
+                msg=f"Can't change name of index '{self._name}'.",
                 reason="Name not autogenerated.",
             )
 
@@ -187,7 +185,7 @@ class BringContextConfig(metaclass=ABCMeta):
 
     @abstractmethod
     async def get_extra_data(self) -> Mapping[str, Any]:
-        """A method to retrieve config type specific context metadata/config."""
+        """A method to retrieve config type specific index metadata/config."""
 
         pass
 
@@ -219,7 +217,7 @@ class BringContextConfig(metaclass=ABCMeta):
             config_dict["defaults"]["vars"] = {}
         elif not isinstance(config_dict["defaults"]["vars"], collections.Mapping):
             raise FrklException(
-                f"Invalid config, 'vars' key in 'defaults' context property needs to be a mapping: {config_dict['defaults']['vars']}"
+                f"Invalid config, 'vars' key in 'defaults' index property needs to be a mapping: {config_dict['defaults']['vars']}"
             )
 
         if config_dict.get("add_sysinfo_to_default_vars", False):
@@ -241,20 +239,20 @@ class BringContextConfig(metaclass=ABCMeta):
 
         return result
 
-    async def get_context(self) -> BringContextTing:
+    async def get_index(self) -> BringIndexTing:
 
-        if self._context is None:
+        if self._index is None:
             # config_dict = await self.to_dict()
-            self._context = await self.create_context()
-        return self._context
+            self._index = await self.create_index()
+        return self._index
 
     @abstractmethod
-    async def create_context(self) -> BringContextTing:
+    async def create_index(self) -> BringIndexTing:
 
         pass
 
 
-class FolderContextConfig(BringContextConfig):
+class FolderIndexConfig(BringIndexConfig):
 
     _plugin_name = "folder"
 
@@ -264,16 +262,16 @@ class FolderContextConfig(BringContextConfig):
         full_indexes = []
         for dir in self.init_data["indexes"]:
             full_indexes.append(os.path.abspath(dir))
-            context_metadata = os.path.join(dir, ".bring_index")
+            index_metadata = os.path.join(dir, ".bring_index")
 
-            if os.path.isfile(context_metadata):
-                si = SmartInput(context_metadata)
+            if os.path.isfile(index_metadata):
+                si = SmartInput(index_metadata)
                 try:
                     content = await si.content_async()
                     config_overlays.append(content)
                 except Exception as e:
                     log.error(
-                        f"Can't read context metadata file '{context_metadata}', ignoring it. Error: {e}"
+                        f"Can't read index metadata file '{index_metadata}', ignoring it. Error: {e}"
                     )
                     log.error(f"Error: {e}", exc_info=True)
 
@@ -284,7 +282,7 @@ class FolderContextConfig(BringContextConfig):
 
         return config
 
-    async def create_context(self) -> BringContextTing:
+    async def create_index(self) -> BringIndexTing:
 
         config_dict = await self.config_dict
         indexes = list(config_dict["indexes"])
@@ -304,13 +302,13 @@ class FolderContextConfig(BringContextConfig):
                 _path = os.path.realpath(os.path.expanduser(folder))
         else:
             raise FrklException(
-                msg=f"Can't add context for: {folder}.",
+                msg=f"Can't add index for: {folder}.",
                 reason=f"Invalid input file type {input_type}.",
             )
 
-        validate_context_name(self._name)
-        ctx: BringDynamicContextTing = self._tingistry_obj.create_ting(  # type: ignore
-            "bring_dynamic_context_ting", f"{BRING_CONTEXT_NAMESPACE}.{self._name}"
+        validate_index_name(self._name)
+        ctx: BringDynamicIndexTing = self._tingistry_obj.create_ting(  # type: ignore
+            "bring_dynamic_index_ting", f"{BRING_CONTEXT_NAMESPACE}.{self._name}"
         )
         _ind = [_path]
         ctx_config = await self.to_dict()
@@ -324,7 +322,7 @@ class FolderContextConfig(BringContextConfig):
         return ctx
 
 
-class IndexContextConfig(BringContextConfig):
+class IndexIndexConfig(BringIndexConfig):
 
     _plugin_name = "index"
 
@@ -332,10 +330,10 @@ class IndexContextConfig(BringContextConfig):
 
         return {}
 
-    async def create_context(self) -> BringContextTing:
+    async def create_index(self) -> BringIndexTing:
 
-        ctx: BringStaticContextTing = self._tingistry_obj.create_ting(  # type: ignore
-            "bring.types.contexts.default_context",
+        ctx: BringStaticIndexTing = self._tingistry_obj.create_ting(  # type: ignore
+            "bring.types.indexes.default_index",
             f"{BRING_CONTEXT_NAMESPACE}.{self._name}",
         )
 

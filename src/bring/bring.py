@@ -6,11 +6,12 @@ import threading
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from anyio import create_task_group
-from bring.config.bring_config import BringConfig, BringContextConfig
-from bring.context import BringContextTing
+from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index_config import BringIndexConfig
 from bring.utils import BringTaskDesc
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
@@ -74,13 +75,13 @@ class Bring(SimpleTing):
         self.typistry.get_plugin_manager("pkg_type", plugin_config=env_conf)
 
         self._transmogritory = Transmogritory(self._tingistry_obj)
-        self._context_lock = threading.Lock()
+        self._index_lock = threading.Lock()
 
         self._bring_config: BringConfig = BringConfig(tingistry=self._tingistry_obj)
         self._bring_config.set_bring(self)
 
-        self._contexts: Dict[str, BringContextTing] = {}
-        self._all_contexts_created: bool = False
+        self._indexes: Dict[str, BringIndexTing] = {}
+        self._all_indexes_created: bool = False
 
     @property
     def config(self):
@@ -89,8 +90,8 @@ class Bring(SimpleTing):
 
     def _invalidate(self):
 
-        self._contexts = {}
-        self._all_contexts_created = False
+        self._indexes = {}
+        self._all_indexes_created = False
 
     @property
     def typistry(self):
@@ -114,89 +115,89 @@ class Bring(SimpleTing):
 
         return {}
 
-    async def _create_all_contexts(self):
+    async def _create_all_indexes(self):
 
-        with self._context_lock:
+        with self._index_lock:
 
-            if self._all_contexts_created:
+            if self._all_indexes_created:
                 return
 
-            async def create_context(_context_config: BringContextConfig):
-                ctx = await _context_config.get_context()
-                self._contexts[ctx.name] = ctx
+            async def create_index(_index_config: BringIndexConfig):
+                ctx = await _index_config.get_index()
+                self._indexes[ctx.name] = ctx
 
             async with create_task_group() as tg:
-                all_context_configs = await self._bring_config.get_all_context_configs()
-                for context_name, context_config in all_context_configs.items():
+                all_index_configs = await self._bring_config.get_all_index_configs()
+                for index_name, index_config in all_index_configs.items():
 
-                    if context_name not in self._contexts.keys():
-                        await tg.spawn(create_context, context_config)
+                    if index_name not in self._indexes.keys():
+                        await tg.spawn(create_index, index_config)
 
-            self._all_contexts_created = True
-
-    @property
-    async def contexts(self) -> Mapping[str, BringContextTing]:
-
-        await self._create_all_contexts()
-        return self._contexts
+            self._all_indexes_created = True
 
     @property
-    async def context_names(self) -> Iterable[str]:
+    async def indexes(self) -> Mapping[str, BringIndexTing]:
 
-        all_context_configs = await self._bring_config.get_all_context_configs()
-        return all_context_configs.keys()
+        await self._create_all_indexes()
+        return self._indexes
 
-    async def get_context(
-        self, context_name: Optional[str] = None, raise_exception=True
-    ) -> Optional[BringContextTing]:
+    @property
+    async def index_names(self) -> Iterable[str]:
 
-        if context_name is None:
-            context_name = await self._bring_config.get_default_context_name()
+        all_index_configs = await self._bring_config.get_all_index_configs()
+        return all_index_configs.keys()
 
-        with self._context_lock:
-            ctx = self._contexts.get(context_name, None)
+    async def get_index(
+        self, index_name: Optional[str] = None, raise_exception=True
+    ) -> Optional[BringIndexTing]:
+
+        if index_name is None:
+            index_name = await self._bring_config.get_default_index_name()
+
+        with self._index_lock:
+            ctx = self._indexes.get(index_name, None)
 
             if ctx is not None:
                 return ctx
 
-            context_config: BringContextConfig = await self._bring_config.get_context_config(  # type: ignore
-                context_name=context_name, raise_exception=raise_exception
+            index_config: BringIndexConfig = await self._bring_config.get_index_config(  # type: ignore
+                index_name=index_name, raise_exception=raise_exception
             )
 
-            if context_config is None:
+            if index_config is None:
 
                 if raise_exception:
                     raise FrklException(
-                        msg=f"Can't access bring context '{context_name}'.",
-                        reason="No context with that name.",
-                        solution=f"Create context, or choose one of the existing ones: {', '.join(await self.context_names)}",
+                        msg=f"Can't access bring index '{index_name}'.",
+                        reason="No index with that name.",
+                        solution=f"Create index, or choose one of the existing ones: {', '.join(await self.index_names)}",
                     )
                 else:
                     return None
 
-            ctx = await context_config.get_context()
-            self._contexts[context_name] = ctx
+            ctx = await index_config.get_index()
+            self._indexes[index_name] = ctx
 
             return ctx
 
-    async def update(self, context_names: Optional[Iterable[str]] = None):
+    async def update(self, index_names: Optional[Iterable[str]] = None):
 
-        if context_names is None:
-            context_names = await self.context_names
+        if index_names is None:
+            index_names = await self.index_names
 
         td = BringTaskDesc(
-            name="update metadata", msg="updating metadata for all contexts"
+            name="update metadata", msg="updating metadata for all indexes"
         )
         # tasks = ParallelTasksAsync(task_desc=td)
         tasks = SerialTasksAsync(task_desc=td)
-        for context_name in context_names:
-            context = await self.get_context(context_name)
-            if context is None:
+        for index_name in index_names:
+            index = await self.get_index(index_name)
+            if index is None:
                 raise FrklException(
-                    msg=f"Can't update context '{context_name}'.",
-                    reason="No context with that name registered.",
+                    msg=f"Can't update index '{index_name}'.",
+                    reason="No index with that name registered.",
                 )
-            tsk = await context._create_update_tasks()
+            tsk = await index._create_update_tasks()
 
             if tsk:
                 tasks.add_task(tsk)
@@ -204,81 +205,81 @@ class Bring(SimpleTing):
         await tasks.run_async()
 
     async def get_pkg_map(
-        self, contexts: Optional[Iterable[str]] = None
+        self, indexes: Optional[Iterable[str]] = None
     ) -> Mapping[str, Mapping[str, PkgTing]]:
-        """Get all pkgs, per available (or requested) contexts."""
+        """Get all pkgs, per available (or requested) indexes."""
 
-        if contexts is None:
-            ctxs: Iterable[BringContextTing] = (await self.contexts).values()
+        if indexes is None:
+            ctxs: Iterable[BringIndexTing] = (await self.indexes).values()
         else:
             ctxs = []
-            for c in contexts:
-                ctx = await self.get_context(c)
+            for c in indexes:
+                ctx = await self.get_index(c)
                 if ctx is None:
                     raise FrklException(
-                        msg=f"Can't get packages for context '{c}.",
-                        reason="No such context found.",
+                        msg=f"Can't get packages for index '{c}.",
+                        reason="No such index found.",
                     )
                 ctxs.append(ctx)
 
         pkg_map: Dict[str, Dict[str, PkgTing]] = {}
 
-        async def get_pkgs(_context: BringContextTing):
+        async def get_pkgs(_index: BringIndexTing):
 
-            pkgs = await _context.get_pkgs()
+            pkgs = await _index.get_pkgs()
             for pkg in pkgs.values():
-                pkg_map[_context.name][pkg.name] = pkg
+                pkg_map[_index.name][pkg.name] = pkg
 
-        for context in ctxs:
+        for index in ctxs:
 
-            if context.name in pkg_map.keys():
+            if index.name in pkg_map.keys():
                 raise FrklException(
-                    msg=f"Can't assemble packages for context '{context.name}'",
-                    reason="Duplicate context name.",
+                    msg=f"Can't assemble packages for index '{index.name}'",
+                    reason="Duplicate index name.",
                 )
-            pkg_map[context.name] = {}
+            pkg_map[index.name] = {}
 
         async with create_task_group() as tg:
 
-            for context in ctxs:
-                await tg.spawn(get_pkgs, context)
+            for index in ctxs:
+                await tg.spawn(get_pkgs, index)
 
         return pkg_map
 
     async def get_alias_pkg_map(
         self,
-        contexts: Optional[Iterable[str]] = None,
-        add_default_context_pkg_names: bool = False,
+        indexes: Optional[Iterable[str]] = None,
+        add_default_index_pkg_names: bool = False,
     ) -> Mapping[str, PkgTing]:
 
-        pkg_map = await self.get_pkg_map(contexts=contexts)
+        pkg_map = await self.get_pkg_map(indexes=indexes)
 
         result: Dict[str, PkgTing] = {}
-        if add_default_context_pkg_names:
+        if add_default_index_pkg_names:
 
-            default_context_name = await self.config.get_default_context_name()
-            pkgs = pkg_map.get(default_context_name, {})
+            default_index_name = await self.config.get_default_index_name()
+            pkgs = pkg_map.get(default_index_name, {})
 
             for pkg_name in sorted(pkgs.keys()):
                 if pkg_name not in result.keys():
                     result[pkg_name] = pkgs[pkg_name]
 
-        for context_name in sorted(pkg_map.keys()):
+        for index_name in sorted(pkg_map.keys()):
 
-            context_map = pkg_map[context_name]
-            for pkg_name in sorted(context_map.keys()):
-                result[f"{context_name}.{pkg_name}"] = context_map[pkg_name]
+            index_map = pkg_map[index_name]
+            for pkg_name in sorted(index_map.keys()):
+                result[f"{index_name}.{pkg_name}"] = index_map[pkg_name]
 
         return result
 
     async def get_pkg_property_map(
         self,
         *value_names: str,
-        contexts: Optional[Iterable[str]] = None,
+        indexes: Optional[Iterable[str]] = None,
         pkg_filter: Union[str, Iterable[str]] = None,
     ):
 
-        alias_pkg_map = await self.get_alias_pkg_map(contexts=contexts)
+        alias_pkg_map = await self.get_alias_pkg_map(indexes=indexes)
 
         if isinstance(pkg_filter, str):
             pkg_filter = [pkg_filter]
@@ -301,14 +302,14 @@ class Bring(SimpleTing):
         return result
 
     async def get_all_pkgs(
-        self, contexts: Optional[Iterable[str]] = None
+        self, indexes: Optional[Iterable[str]] = None
     ) -> Iterable[PkgTing]:
 
-        pkg_map = await self.get_pkg_map(contexts=contexts)
+        pkg_map = await self.get_pkg_map(indexes=indexes)
 
         result = []
-        for context_map in pkg_map.values():
-            for pkg in context_map.values():
+        for index_map in pkg_map.values():
+            for pkg in index_map.values():
                 result.append(pkg)
 
         return result
@@ -323,35 +324,35 @@ class Bring(SimpleTing):
     #     return _plugin
 
     async def get_pkg(
-        self, name: str, context: Optional[str] = None, raise_exception: bool = False
+        self, name: str, index: Optional[str] = None, raise_exception: bool = False
     ) -> Optional[PkgTing]:
 
-        if context and "." in name:
+        if index and "." in name:
             raise ValueError(
-                f"Can't get pkg '{name}' for context '{context}': either specify context name, or use namespaced pkg name, not both."
+                f"Can't get pkg '{name}' for index '{index}': either specify index name, or use namespaced pkg name, not both."
             )
 
         elif "." in name:
             tokens = name.split(".")
             if len(tokens) != 2:
                 raise ValueError(
-                    f"Invalid pkg name: {name}, needs to be format '[context_name.]pkg_name'"
+                    f"Invalid pkg name: {name}, needs to be format '[index_name.]pkg_name'"
                 )
-            _context_name: Optional[str] = tokens[0]
+            _index_name: Optional[str] = tokens[0]
             _pkg_name = name
         else:
-            _context_name = context
-            if _context_name:
-                _pkg_name = f"{_context_name}.{name}"
+            _index_name = index
+            if _index_name:
+                _pkg_name = f"{_index_name}.{name}"
             else:
                 _pkg_name = name
 
-        if _context_name:
+        if _index_name:
             pkgs = await self.get_alias_pkg_map(
-                contexts=[_context_name], add_default_context_pkg_names=True
+                indexes=[_index_name], add_default_index_pkg_names=True
             )
         else:
-            pkgs = await self.get_alias_pkg_map(add_default_context_pkg_names=True)
+            pkgs = await self.get_alias_pkg_map(add_default_index_pkg_names=True)
 
         pkg = pkgs.get(_pkg_name, None)
         if pkg is None and raise_exception:
@@ -359,92 +360,90 @@ class Bring(SimpleTing):
 
         return pkg
 
-    async def pkg_exists(self, pkg_name: str, pkg_context: Optional[str] = None):
+    async def pkg_exists(self, pkg_name: str, pkg_index: Optional[str] = None):
 
-        pkg = await self.get_pkg(
-            name=pkg_name, context=pkg_context, raise_exception=False
-        )
+        pkg = await self.get_pkg(name=pkg_name, index=pkg_index, raise_exception=False)
 
         return pkg is not None
 
     # async def find_pkg(
-    #     self, pkg_name: str, contexts: Optional[Iterable[str]] = None
+    #     self, pkg_name: str, indexes: Optional[Iterable[str]] = None
     # ) -> PkgTing:
-    #     """Finds one pkg with the specified name in all the available/specified contexts.
+    #     """Finds one pkg with the specified name in all the available/specified indexes.
     #
-    #     If more than one package is found, and if 'contexts' are provided, those are looked up in the order provided
-    #     to find the first match. If not contexts are provided, first the default contexts are searched, then the
-    #     extra ones. In this case, the result is not 100% predictable, as the order of those contexts might vary
+    #     If more than one package is found, and if 'indexes' are provided, those are looked up in the order provided
+    #     to find the first match. If not indexes are provided, first the default indexes are searched, then the
+    #     extra ones. In this case, the result is not 100% predictable, as the order of those indexes might vary
     #     from invocation to invocation.
     #
     #     Args:
     #         - *pkg_name*: the package name
-    #         - *contexts*: the contexts to look in (or all available ones, if set to 'None')
+    #         - *indexes*: the indexes to look in (or all available ones, if set to 'None')
     #
     #     """
     #
-    #     pkgs = await self.find_pkgs(pkg_name=pkg_name, contexts=contexts)
+    #     pkgs = await self.find_pkgs(pkg_name=pkg_name, indexes=indexes)
     #
     #     if len(pkgs) == 1:
     #         return pkgs[0]
     #
-    #     if contexts is None:
-    #         _contexts: List[BringContextTing] = []
-    #         for cc in await self.get_context_configs():
+    #     if indexes is None:
+    #         _indexes: List[BringIndexTing] = []
+    #         for cc in await self.get_index_configs():
     #             n = cc["name"]
-    #             ctx = await self.get_context(n)
-    #             _contexts.append(ctx)
+    #             ctx = await self.get_index(n)
+    #             _indexes.append(ctx)
     #     else:
-    #         _contexts = []
+    #         _indexes = []
     #         # TODO: make this parallel
-    #         for c in contexts:
-    #             ctx_2 = await self.get_context(c)
+    #         for c in indexes:
+    #             ctx_2 = await self.get_index(c)
     #             if ctx_2 is None:
     #                 raise FrklException(
     #                     msg=f"Can't search for pkg '{pkg_name}'.",
-    #                     reason=f"Requested context '{c}' not available.",
+    #                     reason=f"Requested index '{c}' not available.",
     #                 )
-    #             _contexts.append(ctx_2)
+    #             _indexes.append(ctx_2)
     #
-    #     for ctx in _contexts:
+    #     for ctx in _indexes:
     #
     #         for pkg in pkgs:
-    #             if pkg.bring_context == ctx:
+    #             if pkg.bring_index == ctx:
     #                 return pkg
     #
     #     raise FrklException(
-    #         msg=f"Can't find pkg '{pkg_name}' in the available/specified contexts."
+    #         msg=f"Can't find pkg '{pkg_name}' in the available/specified indexes."
     #     )
     #
     # async def find_pkgs(
-    #     self, pkg_name: str, contexts: Optional[Iterable[str]] = None
+    #     self, pkg_name: str, indexes: Optional[Iterable[str]] = None
     # ) -> List[PkgTing]:
     #
     #     pkgs: List[PkgTing] = []
     #
-    #     async def find_pkg(_context: BringContextTing, _pkg_name: str):
+    #     async def find_pkg(_index: BringIndexTing, _pkg_name: str):
     #
-    #         _pkgs = await _context.get_pkgs()
+    #         _pkgs = await _index.get_pkgs()
     #         _pkg = _pkgs.get(_pkg_name, None)
     #         if _pkg is not None:
     #             pkgs.append(_pkg)
     #
     #     async with create_task_group() as tg:
-    #         if contexts is None:
-    #             ctxs: Iterable[BringContextTing] = (await self.contexts).values()
+    #         if indexes is None:
+    #             ctxs: Iterable[BringIndexTing] = (await self.indexes).values()
     #         else:
     #             ctxs = []
-    #             for c in contexts:
-    #                 ctx = await self.get_context(c)
+    #             for c in indexes:
+    #                 ctx = await self.get_index(c)
     #                 if ctx is None:
     #                     raise FrklException(
     #                         msg=f"Can't find pkgs with name '{pkg_name}'.",
-    #                         reason=f"Requested context '{c}' not available.",
+    #                         reason=f"Requested index '{c}' not available.",
     #                     )
     #                 ctxs.append(ctx)
     #
-    #         for context in ctxs:
-    #             await tg.spawn(find_pkg, context, pkg_name)
+    #         for index in ctxs:
+    #             await tg.spawn(find_pkg, index, pkg_name)
     #
     #     return pkgs
 

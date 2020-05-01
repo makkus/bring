@@ -13,21 +13,21 @@ class BringUpdateCommand(click.Command):
             terminal = create_terminal()
         self._terminal = terminal
 
-        params = [Argument(["context"], required=False, nargs=1)]
+        params = [Argument(["index"], required=False, nargs=1)]
 
         super().__init__(name=name, callback=self.update, params=params)
 
     @click.pass_context
-    async def update(ctx, self, context):
+    async def update(ctx, self, index):
 
-        if context is not None:
+        if index is not None:
             click.echo()
-            click.echo(f"Updating metadata for context '{context}'...")
+            click.echo(f"Updating metadata for index '{index}'...")
             click.echo()
-            await self._bring.update(context_names=[context])
+            await self._bring.update(index_names=[index])
 
         else:
             click.echo()
-            click.echo("Updating metadata for all registered contexts...")
+            click.echo("Updating metadata for all registered indexes...")
             click.echo()
             await self._bring.update()

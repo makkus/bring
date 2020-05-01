@@ -3,19 +3,15 @@ from typing import Iterable, MutableMapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.context import BringContextTing
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
 
 
 class BringListPkgsGroup(FrklBaseCommand):
     def __init__(
-        self,
-        bring: Bring,
-        context: Optional[BringContextTing] = None,
-        name=None,
-        **kwargs,
+        self, bring: Bring, index: Optional[BringIndexTing] = None, name=None, **kwargs
     ):
 
         self._bring: Bring = bring
@@ -57,7 +53,7 @@ class BringListPkgsGroup(FrklBaseCommand):
                 rows.append((subcommand, help))
 
             if rows:
-                with formatter.section("Contexts"):
+                with formatter.section("Indexes"):
                     formatter.write_dl(rows)
 
     @click.pass_context
@@ -68,25 +64,25 @@ class BringListPkgsGroup(FrklBaseCommand):
 
         print()
         all: Iterable[PkgTing] = await self._bring.get_all_pkgs()
-        pkgs: MutableMapping[BringContextTing, PkgTing] = {}
+        pkgs: MutableMapping[BringIndexTing, PkgTing] = {}
 
         for pkg in all:
-            pkgs.setdefault(pkg.bring_context, []).append(pkg)
+            pkgs.setdefault(pkg.bring_index, []).append(pkg)
 
-        all_contexts = await self._bring.contexts
-        for c in all_contexts.values():
+        all_indexes = await self._bring.indexes
+        for c in all_indexes.values():
             if c not in pkgs.keys():
                 pkgs[c] = []
 
-        default_context = await self._bring.config.get_default_context_name()
+        default_index = await self._bring.config.get_default_index_name()
 
-        for _context, _pkgs in pkgs.items():
-            if _context.name == default_context:
-                _default_marker = " (default context)"
+        for _index, _pkgs in pkgs.items():
+            if _index.name == default_index:
+                _default_marker = " (default index)"
             else:
                 _default_marker = ""
             print(
-                f"{self._terminal.bold}context: {_context.name}{self._terminal.normal}{_default_marker}"
+                f"{self._terminal.bold}index: {_index.name}{self._terminal.normal}{_default_marker}"
             )
             print()
             if not _pkgs:
@@ -98,12 +94,12 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        return sorted(await self._bring.context_names)
+        return sorted(await self._bring.index_names)
 
     async def _get_command(self, ctx, name):
 
-        context = await self._bring.get_context(name)
-        _ctx_name = context.name
+        index = await self._bring.get_index(name)
+        _ctx_name = index.name
 
         @click.command(_ctx_name)
         @click.pass_context
@@ -111,7 +107,7 @@ class BringListPkgsGroup(FrklBaseCommand):
 
             print()
 
-            _pkgs = await context.get_pkgs()
+            _pkgs = await index.get_pkgs()
 
             if not _pkgs:
                 print("  No packages")
@@ -120,7 +116,7 @@ class BringListPkgsGroup(FrklBaseCommand):
                 click.echo(table_str)
             print()
 
-        ctx_info = await context.get_info()
+        ctx_info = await index.get_info()
         command.short_help = ctx_info.get("slug", "n/a")
 
         return command

@@ -54,8 +54,8 @@ class BringInstallGroup(FrklBaseCommand):
     def get_group_options(self) -> Union[Arg, Dict]:
 
         return {
-            # "context": {
-            #     "doc": "The context that contains the package.",
+            # "index": {
+            #     "doc": "The index that contains the package.",
             #     "type": "string",
             #     # "multiple": False,
             #     "required": False,
@@ -96,13 +96,13 @@ class BringInstallGroup(FrklBaseCommand):
 
         return []
 
-        # pkg_context = self._group_params.get("context")
-        # if pkg_context is None:
+        # pkg_index = self._group_params.get("index")
+        # if pkg_index is None:
         #     return []
         #
         # ctx.obj["list_install_commands"] = True
         #
-        # pkgs = await self._bring.get_all_pkgs(contexts=[pkg_context])
+        # pkgs = await self._bring.get_all_pkgs(indexes=[pkg_index])
         #
         # result = SortedSet()
         # for pkg in pkgs:
@@ -112,7 +112,7 @@ class BringInstallGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        # context_name = self._group_params.get("context", None)
+        # index_name = self._group_params.get("index", None)
 
         target = self._group_params.get("target")
         strategy = self._group_params.get("strategy")
@@ -191,7 +191,7 @@ class PkgInstallTingCommand(Command):
             slug = info.get("slug", "n/a")
             if slug.endswith("."):
                 slug = slug[0:-1]
-            short_help = f"{slug} (from: {self._pkg.bring_context.name})"
+            short_help = f"{slug} (from: {self._pkg.bring_index.name})"
 
             kwargs["short_help"] = short_help
             desc = info.get("desc", None)

@@ -2,15 +2,15 @@
 from typing import Any, Mapping, Optional
 
 import arrow
-from bring.context import BringContextTing
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
 from bring.pkgs import Pkgs
 from bring.utils import BringTaskDesc
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker
 
 
-class BringDynamicContextTing(BringContextTing):
+class BringDynamicIndexTing(BringIndexTing):
     def __init__(
         self,
         name: str,
@@ -20,12 +20,12 @@ class BringDynamicContextTing(BringContextTing):
 
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
-        self._pkg_namespace = f"bring.contexts.{self.name}.pkgs"
+        self._pkg_namespace = f"bring.indexes.{self.name}.pkgs"
         self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(  # type: ignore
             name=self._pkg_namespace,
             ting_class="pkgs",
             subscription_namespace=self._pkg_namespace,
-            bring_context=self,
+            bring_index=self,
         )
         self._maker_config: Optional[Mapping[str, Any]] = None
         self._maker: Optional[TingMaker] = None
@@ -50,14 +50,14 @@ class BringDynamicContextTing(BringContextTing):
 
         task_desc = BringTaskDesc(
             name=f"metadata update {self.name}",
-            msg=f"updating metadata for context '{self.name}'",
+            msg=f"updating metadata for index '{self.name}'",
         )
         tasks = ParallelTasksAsync(task_desc=task_desc)
         pkgs = await self.get_pkgs()
         for pkg_name, pkg in pkgs.items():
             td = BringTaskDesc(
                 name=f"{pkg_name}",
-                msg=f"updating metadata for pkg '{pkg_name}' (context: {self.name})",
+                msg=f"updating metadata for pkg '{pkg_name}' (index: {self.name})",
             )
             t = SingleTaskAsync(pkg.update_metadata, task_desc=td, parent_task=tasks)
             tasks.add_task(t)

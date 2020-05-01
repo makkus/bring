@@ -26,7 +26,7 @@ from frtls.templating import get_template_schema, template_schema_to_args
 
 
 if TYPE_CHECKING:
-    from bring.context import BringContextTing
+    from bring.pkg_index import BringIndexTing
 
 log = logging.getLogger("bring")
 
@@ -55,16 +55,16 @@ class PkgType(metaclass=ABCMeta):
 
     @abstractmethod
     def get_unique_source_id(
-        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_index: "BringIndexTing"
     ) -> str:
-        """Return a calculated unique id for a package, derived from the contexts of the source details (and possibly the current context).
+        """Return a calculated unique id for a package, derived from the indexes of the source details (and possibly the current index).
 
         This is used mainly for caching purposes.
         """
         pass
 
     async def get_seed_data(
-        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_index: "BringIndexTing"
     ):
         """Overwrite to provide seed data for a pkg.
 
@@ -78,7 +78,7 @@ class PkgType(metaclass=ABCMeta):
         self,
         metadata: Optional[Mapping[str, Any]],
         source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         config: Optional[Mapping[str, Any]] = None,
     ) -> bool:
         """Check whether the provided metadata dictionary can be considered valid, or whether it needs to be reloaded.
@@ -86,7 +86,7 @@ class PkgType(metaclass=ABCMeta):
         Args:
             - *metadata*: the metadata
             - *source_details*: source details of the package
-            - *freckops_bring_context*: the current bring context
+            - *freckops_bring_index*: the current bring index
             - *config*: the resolver config, containing the 'metadata_max_age' key
         """
 
@@ -99,7 +99,7 @@ class PkgType(metaclass=ABCMeta):
         if dict(metadata["source"]) != dict(source_details):
             return False
 
-        if metadata["context"] != bring_context.full_name:
+        if metadata["index"] != bring_index.full_name:
             return False
 
         if config is None:
@@ -125,7 +125,7 @@ class PkgType(metaclass=ABCMeta):
     async def _get_cached_metadata(
         self,
         source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         config: Optional[Mapping[str, Any]] = None,
     ):
         """Return potentially cached (in memory) metadata for the package described by the provided details."""
@@ -133,7 +133,7 @@ class PkgType(metaclass=ABCMeta):
         if config is None:
             config = {}
 
-        id = self.get_unique_source_id(source_details, bring_context)
+        id = self.get_unique_source_id(source_details, bring_index)
         if not id:
             raise Exception("Unique source id can't be empty")
 
@@ -143,14 +143,14 @@ class PkgType(metaclass=ABCMeta):
 
         # check whether we have the metadata in the global cache
         if self.check_pkg_metadata_valid(
-            all_metadata, source_details, bring_context=bring_context, config=config
+            all_metadata, source_details, bring_index=bring_index, config=config
         ):
             return all_metadata["metadata"]
 
         # check whether the metadata is cached within the PkgResolver
         metadata = await self._get_pkg_metadata(
             source_details=source_details,
-            bring_context=bring_context,
+            bring_index=bring_index,
             config=config,
             cached_only=True,
         )
@@ -158,7 +158,7 @@ class PkgType(metaclass=ABCMeta):
             PkgType.metadata_cache[self.__class__][id] = {
                 "metadata": metadata,
                 "source": source_details,
-                "context": bring_context.full_name,
+                "index": bring_index.full_name,
             }
             return metadata
 
@@ -167,7 +167,7 @@ class PkgType(metaclass=ABCMeta):
     async def get_metadata_timestamp(
         self,
         source_details: Union[str, Mapping[str, Any]],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
     ) -> Optional[arrow.Arrow]:
         """Return the timestamp of the existing metadata for the package referenced by the provided details.
 
@@ -182,7 +182,7 @@ class PkgType(metaclass=ABCMeta):
 
         metadata = await self._get_cached_metadata(
             source_details=_source_details,
-            bring_context=bring_context,
+            bring_index=bring_index,
             config={"metadata_max_age": -1},
         )
         if metadata is None:
@@ -196,7 +196,7 @@ class PkgType(metaclass=ABCMeta):
     async def metadata_is_valid(
         self,
         source_details: Union[str, Mapping[str, Any]],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         override_config: Optional[Mapping[str, Any]] = None,
     ) -> bool:
 
@@ -208,7 +208,7 @@ class PkgType(metaclass=ABCMeta):
         config = get_seeded_dict(self.get_resolver_config(), override_config)
 
         metadata = await self._get_cached_metadata(
-            source_details=_source_details, bring_context=bring_context, config=config
+            source_details=_source_details, bring_index=bring_index, config=config
         )
 
         if metadata:
@@ -220,10 +220,10 @@ class PkgType(metaclass=ABCMeta):
     async def get_pkg_metadata(
         self,
         source_details: Union[str, Mapping[str, Any]],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         override_config: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
-        """Return metadata of a bring package, specified via the provided source details and current context.
+        """Return metadata of a bring package, specified via the provided source details and current index.
 
         Returns a dictionary with the following keys:
 
@@ -243,7 +243,7 @@ class PkgType(metaclass=ABCMeta):
         config = get_seeded_dict(self.get_resolver_config(), override_config)
 
         metadata = await self._get_cached_metadata(
-            source_details=_source_details, bring_context=bring_context, config=config
+            source_details=_source_details, bring_index=bring_index, config=config
         )
 
         if metadata:
@@ -251,14 +251,14 @@ class PkgType(metaclass=ABCMeta):
 
         metadata = await self._get_pkg_metadata(
             source_details=_source_details,
-            bring_context=bring_context,
+            bring_index=bring_index,
             config=config,
             cached_only=False,
         )
         PkgType.metadata_cache.setdefault(self.__class__, {})[id] = {
             "metadata": metadata,
             "source": source_details,
-            "context": bring_context.full_name,
+            "index": bring_index.full_name,
         }
 
         return metadata
@@ -267,7 +267,7 @@ class PkgType(metaclass=ABCMeta):
     async def _get_pkg_metadata(
         self,
         source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         config: Mapping[str, Any],
         cached_only=False,
     ) -> Optional[Mapping[str, Any]]:
@@ -297,7 +297,7 @@ class SimplePkgType(PkgType):
 
     @abstractmethod
     async def _process_pkg_versions(
-        self, source_details: Mapping[str, Any], bring_context: "BringContextTing"
+        self, source_details: Mapping[str, Any], bring_index: "BringIndexTing"
     ) -> Mapping[str, Any]:
         """Process the provided source details, and retrieve a list of versions and other metadata related to the current state of the package.
 
@@ -322,13 +322,13 @@ class SimplePkgType(PkgType):
     async def _get_pkg_metadata(
         self,
         source_details: Mapping[str, Any],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         config: Mapping[str, Any],
         cached_only=False,
     ) -> Optional[Mapping[str, Mapping]]:
         """Utility method that handles (external/non-in-memory) caching of metadata, as well as calculating the 'args' return parameter."""
 
-        id = self.get_unique_source_id(source_details, bring_context=bring_context)
+        id = self.get_unique_source_id(source_details, bring_index=bring_index)
         if not id:
             raise Exception("Unique source id can't be empty")
 
@@ -337,7 +337,7 @@ class SimplePkgType(PkgType):
 
         all_metadata = await self.get_metadata_from_cache_file(metadata_file)
         if self.check_pkg_metadata_valid(
-            all_metadata, source_details, bring_context=bring_context, config=config
+            all_metadata, source_details, bring_index=bring_index, config=config
         ):
             return all_metadata["metadata"]
 
@@ -347,7 +347,7 @@ class SimplePkgType(PkgType):
         metadata = all_metadata.get("metadata", {})
         try:
             result: Mapping[str, Any] = await self._process_pkg_versions(
-                source_details=source_details, bring_context=bring_context
+                source_details=source_details, bring_index=bring_index
             )
             versions: List[Mapping] = result["versions"]
             aliases: MutableMapping[str, str] = result.get("aliases", None)
@@ -416,9 +416,7 @@ class SimplePkgType(PkgType):
         metadata["pkg_vars"] = pkg_vars
 
         metadata["metadata_check"] = str(arrow.Arrow.now())
-        await self.write_metadata(
-            metadata_file, metadata, source_details, bring_context
-        )
+        await self.write_metadata(metadata_file, metadata, source_details, bring_index)
 
         return metadata
 
@@ -535,13 +533,9 @@ class SimplePkgType(PkgType):
         metadata_file: str,
         metadata: Mapping[str, Any],
         source: Mapping[str, Any],
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
     ):
 
-        data = {
-            "metadata": metadata,
-            "source": source,
-            "context": bring_context.full_name,
-        }
+        data = {"metadata": metadata, "source": source, "index": bring_index.full_name}
         async with await aopen(metadata_file, "w") as f:
             await f.write(json.dumps(data))

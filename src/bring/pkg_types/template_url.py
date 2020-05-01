@@ -4,7 +4,7 @@ import itertools
 import os
 from typing import Any, Iterable, List, Mapping, Union
 
-from bring.context import BringContextTing
+from bring.pkg_index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from frtls.templating import process_string_template
 
@@ -40,7 +40,7 @@ class TemplateUrlResolver(SimplePkgType):
         }
 
     async def _process_pkg_versions(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
 
         vars = source_details["template_vars"]
@@ -77,7 +77,7 @@ class TemplateUrlResolver(SimplePkgType):
             return {"type": "file"}
 
     def get_unique_source_id(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> str:
 
         return source_details["url"]

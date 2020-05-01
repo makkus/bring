@@ -21,8 +21,7 @@ from tings.tingistry import Tingistry
 
 if TYPE_CHECKING:
     from bring.bring import Bring
-    from bring.context import BringContextTing  # noqa
-
+    from bring.pkg_index import BringIndexTing
 
 log = logging.getLogger("bring")
 
@@ -43,20 +42,20 @@ class PkgTing(SimpleTing):
         self._bring: Bring = self._tingistry_obj.get_ting("bring.mgmt")  # type: ignore
         # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
         super().__init__(name=name, meta=meta)
-        self._context: Optional["BringContextTing"] = None
+        self._index: Optional["BringIndexTing"] = None
 
     @property
-    def bring_context(self) -> "BringContextTing":
+    def bring_index(self) -> "BringIndexTing":
 
-        if self._context is None:
-            raise Exception(f"Context not (yet) set for PkgTing '{self.full_name}'.")
-        return self._context
+        if self._index is None:
+            raise Exception(f"Index not (yet) set for PkgTing '{self.full_name}'.")
+        return self._index
 
-    @bring_context.setter
-    def bring_context(self, context):
-        if self._context:
-            raise Exception(f"Context already set for PkgTing '{self.full_name}'.")
-        self._context = context
+    @bring_index.setter
+    def bring_index(self, index):
+        if self._index:
+            raise Exception(f"Index already set for PkgTing '{self.full_name}'.")
+        self._index = index
 
     def provides(self) -> Dict[str, str]:
 
@@ -68,7 +67,7 @@ class PkgTing(SimpleTing):
             "info": "dict",
             "labels": "dict",
             "tags": "list",
-            "context_name": "string",
+            "index_name": "string",
         }
 
     async def _get_aliases(self, metadata):
@@ -224,12 +223,12 @@ class PkgTing(SimpleTing):
     async def create_version_hash(self, **vars: Any):
 
         full_vars = await self.calculate_full_vars(**vars)
-        if self._context is None:
-            raise Exception("Context not set yet, this is a bug")
+        if self._index is None:
+            raise Exception("Index not set yet, this is a bug")
 
         _dict = {
             "pkg_name": self.full_name,
-            "pkg_context": self._context.full_name,
+            "pkg_index": self._index.full_name,
             "vars": full_vars,
         }
         hashes = DeepHash(_dict)
@@ -240,13 +239,11 @@ class PkgTing(SimpleTing):
         args: RecordArg = await self.get_value("args")  # type: ignore
 
         pkg_defaults = args.get_defaults()
-        context_vars: Dict[str, Any] = dict(
-            await self.bring_context.get_default_vars()
+        index_vars: Dict[str, Any] = dict(
+            await self.bring_index.get_default_vars()
         )  # type: ignore
 
-        _vars = get_seeded_dict(
-            pkg_defaults, context_vars, vars, merge_strategy="update"
-        )
+        _vars = get_seeded_dict(pkg_defaults, index_vars, vars, merge_strategy="update")
 
         filtered = {}
         for k, v in _vars.items():
@@ -261,9 +258,9 @@ class PkgTing(SimpleTing):
 
         pkg_defaults = args.get_defaults()
 
-        context_vars: Dict[
+        index_vars: Dict[
             str, Any
-        ] = await self.bring_context.get_default_vars()  # type: ignore
+        ] = await self.bring_index.get_default_vars()  # type: ignore
 
         result = {}
 
@@ -273,11 +270,11 @@ class PkgTing(SimpleTing):
 
             result[k] = {"value": v, "source": "user"}
 
-        for k, v in context_vars.items():
+        for k, v in index_vars.items():
 
             if k in result.keys() or k not in args.arg_names:
                 continue
-            result[k] = {"value": v, "source": "context"}
+            result[k] = {"value": v, "source": "index"}
 
         for k, v in pkg_defaults.items():
             if k in result.keys():
@@ -303,8 +300,8 @@ class PkgTing(SimpleTing):
         #     extra_modifiers = [{"type": "merge_into", "target": target}]
 
         if not target:
-            context_defaults = await self.bring_context.get_value("defaults")
-            target = context_defaults.get("target", None)
+            index_defaults = await self.bring_index.get_value("defaults")
+            target = index_defaults.get("target", None)
 
         if vars is None:
             vars = {}
@@ -390,17 +387,17 @@ class StaticPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self._context:
+        if not self._index:
             raise FrklException(
                 msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
-                reason="Context not set yet.",
+                reason="Index not set yet.",
             )
 
         result: Dict[str, Any] = {}
 
         for vn in value_names:
-            if vn == "context_name":
-                result[vn] = self.bring_context.name
+            if vn == "index_name":
+                result[vn] = self.bring_index.name
                 continue
             if vn == "args":
                 result[vn] = await self._calculate_args(requirements["metadata"])
@@ -438,7 +435,7 @@ class DynamicPkgTing(PkgTing):
         resolver = self._get_resolver(source_dict)
 
         cached = await resolver.metadata_is_valid(
-            source_dict, self.bring_context, override_config=config
+            source_dict, self.bring_index, override_config=config
         )
         if not cached and register_task:
             task_desc = BringTaskDesc(
@@ -448,7 +445,7 @@ class DynamicPkgTing(PkgTing):
             task_desc.task_started()
 
         metadata = await resolver.get_pkg_metadata(
-            source_dict, self.bring_context, override_config=config
+            source_dict, self.bring_index, override_config=config
         )
 
         if not cached and register_task:
@@ -489,10 +486,10 @@ class DynamicPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self._context:
+        if not self._index:
             raise FrklException(
                 msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
-                reason="Context not set yet.",
+                reason="Index not set yet.",
             )
 
         result: Dict[str, Any] = {}
@@ -500,14 +497,12 @@ class DynamicPkgTing(PkgTing):
 
         resolver = self._get_resolver(source_dict=source)
 
-        seed_data = await resolver.get_seed_data(
-            source, bring_context=self.bring_context
-        )
+        seed_data = await resolver.get_seed_data(source, bring_index=self.bring_index)
         if seed_data is None:
             seed_data = {}
 
-        if "context_name" in value_names:
-            result["context_name"] = self.bring_context.name
+        if "index_name" in value_names:
+            result["index_name"] = self.bring_index.name
 
         if "source" in value_names:
             result["source"] = source

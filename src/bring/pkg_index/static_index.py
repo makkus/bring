@@ -8,9 +8,9 @@ from typing import Any, Dict, List, Mapping, Optional
 import arrow
 from anyio import Lock, aopen
 from arrow import Arrow
-from bring.context import BringContextTing
-from bring.defaults import BRING_CONTEXT_FILES_CACHE
+from bring.defaults import BRING_INDEX_FILES_CACHE
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
 from bring.utils import BringTaskDesc
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
@@ -20,7 +20,7 @@ from frtls.tasks import SingleTaskAsync, Task
 log = logging.getLogger("bring")
 
 
-class BringStaticContextTing(BringContextTing):
+class BringStaticIndexTing(BringIndexTing):
     def __init__(
         self,
         name: str,
@@ -70,7 +70,7 @@ class BringStaticContextTing(BringContextTing):
                 content = await download_cached_binary_file_async(
                     url=index_url,
                     update=update,
-                    cache_base=BRING_CONTEXT_FILES_CACHE,
+                    cache_base=BRING_INDEX_FILES_CACHE,
                     return_content=True,
                 )
 
@@ -97,7 +97,7 @@ class BringStaticContextTing(BringContextTing):
                 if pkg_name in pkgs.keys():
                     raise FrklException(
                         msg=f"Can't add pkg '{pkg_name}'.",
-                        reason=f"Package with that name already exists in context '{self.name}'.",
+                        reason=f"Package with that name already exists in index '{self.name}'.",
                     )
 
                 ting: PkgTing = self._tingistry_obj.get_ting(  # type: ignore
@@ -108,7 +108,7 @@ class BringStaticContextTing(BringContextTing):
                         "bring.types.static_pkg",
                         f"{self.full_name}.pkgs.{pkg_name}",  # type: ignore
                     )
-                    ting.bring_context = self
+                    ting.bring_index = self
 
                 ting.input.set_values(**pkg_data)
                 # ting._set_result(data)
@@ -145,7 +145,7 @@ class BringStaticContextTing(BringContextTing):
 
         task_desc = BringTaskDesc(
             name=f"metadata update {self.name}",
-            msg=f"updating metadata for context '{self.name}'",
+            msg=f"updating metadata for index '{self.name}'",
         )
 
         async def update_index():

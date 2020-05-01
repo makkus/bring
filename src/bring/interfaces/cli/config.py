@@ -141,6 +141,6 @@ class BringConfigGroup(FrklBaseCommand):
 #
 #     bring: Bring = ctx.obj["bring"]
 #
-#     profiles = await bring.config.get_all_context_configs()
+#     profiles = await bring.config.get_all_index_configs()
 #
 #     print(profiles)

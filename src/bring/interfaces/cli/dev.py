@@ -21,7 +21,7 @@ def dev(ctx):
 @dev.command()
 @click.argument("pkg_name", nargs=1)
 @click.pass_context
-async def details(ctx, pkg_name, context):
+async def details(ctx, pkg_name, index):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
     bring: Bring = ctx.obj["bring"]

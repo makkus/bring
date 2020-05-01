@@ -6,7 +6,7 @@ from typing import Optional
 from asyncclick import Choice, Option
 from bring.bring import Bring
 from bring.defaults import BRINGISTRY_INIT
-from bring.interfaces.cli.export_context import BringExportContextCommand
+from bring.interfaces.cli.export_index import BringExportIndexCommand
 from frtls.cli.group import FrklBaseCommand
 from frtls.cli.logging import logzero_option_obj_async
 from frtls.cli.terminal import create_terminal
@@ -16,7 +16,7 @@ from tings.tingistry import Tingistries
 
 COMMAND_GROUP_HELP = """'bring' is a package manager for files and file-sets.
 
-'bring'-managed files that are part of so called 'contexts': collections of metadata items, each describing one specific file or file-set.
+'bring'-managed files that are part of so called 'indexes': collections of metadata items, each describing one specific file or file-set.
 """
 
 ALIASES = {"in": "install", "if": "info"}
@@ -32,12 +32,12 @@ class BringCommandGroup(FrklBaseCommand):
         kwargs["help"] = COMMAND_GROUP_HELP
 
         terminal = create_terminal()
-        context_setting = dict(
+        index_setting = dict(
             # default_map={},
             max_content_width=terminal.width,
             help_option_names=["-h", "--help"],
         )
-        kwargs["context_settings"] = context_setting
+        kwargs["context_settings"] = index_setting
 
         logzero_option = logzero_option_obj_async()
 
@@ -48,12 +48,12 @@ class BringCommandGroup(FrklBaseCommand):
             type=str,
             help=f"task log output plugin(s), available: {', '.join(['tree', 'simple'])} ",
         )
-        context_option = Option(
-            param_decls=["--context", "-ctx", "-x"],
+        index_option = Option(
+            param_decls=["--index", "-i"],
             multiple=True,
             required=False,
             type=str,
-            help="one or several profile context(s), overwrites contexts in configuration",
+            help="one or several profile index(s), overwrites indexes in configuration",
         )
 
         profile_option = Option(
@@ -74,7 +74,7 @@ class BringCommandGroup(FrklBaseCommand):
         kwargs["params"] = [
             logzero_option,
             task_log_option,
-            context_option,
+            index_option,
             profile_option,
             output_option,
         ]
@@ -110,7 +110,7 @@ class BringCommandGroup(FrklBaseCommand):
             "info",
             "list",
             "update",
-            "export-context",
+            "export-index",
             "config",
             "doc",
             "plugin",
@@ -137,7 +137,7 @@ class BringCommandGroup(FrklBaseCommand):
             profile_options = self._group_params["config"]
             task_log = self._group_params["task_log"]
             output = self._group_params["output"]
-            contexts = self._group_params["context"]
+            indexes = self._group_params["index"]
 
             user_config = {}
             if task_log:
@@ -146,8 +146,8 @@ class BringCommandGroup(FrklBaseCommand):
             if output:
                 user_config["output"] = output
 
-            if contexts:
-                user_config["contexts"] = contexts
+            if indexes:
+                user_config["indexes"] = indexes
 
             config_list = list(profile_options) + [user_config]
 
@@ -193,7 +193,7 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.info import BringInfoPkgsGroup
 
             command = BringInfoPkgsGroup(bring=self.get_bring(), name="info")
-            command.short_help = "display context or pkg information"
+            command.short_help = "display index or pkg information"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
@@ -201,7 +201,7 @@ class BringCommandGroup(FrklBaseCommand):
             command = BringUpdateCommand(
                 bring=self.get_bring(), name="update", terminal=self._terminal
             )
-            command.short_help = "update package metadata for all contexts"
+            command.short_help = "update package metadata for all indexes"
 
         elif name == "doc":
             from bring.interfaces.cli.doc import BringDocGroup
@@ -215,12 +215,12 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = dev
 
-        elif name == "export-context":
+        elif name == "export-index":
 
-            command = BringExportContextCommand(
+            command = BringExportIndexCommand(
                 bring=self.get_bring(), name="export", terminal=self._terminal
             )
-            command.short_help = "export all contexts"
+            command.short_help = "export all indexes"
 
         elif name == "self":
 

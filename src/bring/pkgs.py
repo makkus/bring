@@ -8,7 +8,7 @@ from tings.ting.tings import SubscripTings
 
 
 if TYPE_CHECKING:
-    from bring.context import BringContextTing
+    from bring.pkg_index import BringIndexTing
     from tings.tingistry import Tingistry
 
 
@@ -17,7 +17,7 @@ class Pkgs(SubscripTings):
         self,
         name: str,
         subscription_namespace: str,
-        bring_context: "BringContextTing",
+        bring_index: "BringIndexTing",
         meta: Dict[str, Any] = None,
     ):
 
@@ -28,7 +28,7 @@ class Pkgs(SubscripTings):
 
         self._pkgs: Dict[str, PkgTing] = {}
         self._tingistry_obj: "Tingistry" = meta["tingistry"]
-        self._bring_context = bring_context
+        self._bring_index = bring_index
         super().__init__(
             name=name,
             prototing="bring.types.dynamic_pkg",
@@ -40,7 +40,7 @@ class Pkgs(SubscripTings):
 
         if not isinstance(ting, PkgTing):
             raise TypeError(f"Invalid type '{type(ting)}', 'PkgTing' required.")
-        ting.bring_context = self._bring_context
+        ting.bring_index = self._bring_index
         self._pkgs[ting.name] = ting
 
     def _ting_removed(self, ting: Ting) -> None:

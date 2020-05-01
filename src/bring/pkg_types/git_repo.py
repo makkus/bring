@@ -3,7 +3,7 @@ from collections import OrderedDict
 from typing import Any, Iterable, Mapping, MutableMapping
 
 import git
-from bring.context import BringContextTing
+from bring.pkg_index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from bring.utils.git import ensure_repo_cloned
 from pydriller import Commit, GitRepository
@@ -29,13 +29,13 @@ class GitRepo(SimplePkgType):
         return {"url": {"type": "string", "required": True, "doc": "The git repo url."}}
 
     def get_unique_source_id(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> str:
 
         return source_details["url"]
 
     async def _process_pkg_versions(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
 
         cache_path = await ensure_repo_cloned(url=source_details["url"], update=True)

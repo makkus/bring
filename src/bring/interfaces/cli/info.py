@@ -6,24 +6,24 @@ import asyncclick as click
 from asyncclick import Command, Option
 from blessed import Terminal
 from bring.bring import Bring
-from bring.context import BringContextTing
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.interfaces.cli.utils import (
     log,
-    print_context_list_for_help,
+    print_index_list_for_help,
     print_pkg_list_help,
 )
 from bring.pkg import PkgTing
+from bring.pkg_index import BringIndexTing
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
 from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import serialize
 
 
-INFO_HELP = """Display information about a context or package.
+INFO_HELP = """Display information about a index or package.
 
-You can either provide a context or package name. If the specified value matches a context name, context information will
-be displayed. Otherwise all contexts will be looked up to find a matching package name. If you want to display information for a package from the default context, you may omit the 'context' part of the package name.
+You can either provide a index or package name. If the specified value matches a index name, index information will
+be displayed. Otherwise all indexes will be looked up to find a matching package name. If you want to display information for a package from the default index, you may omit the 'index' part of the package name.
 """
 
 
@@ -52,7 +52,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         """
 
         wrap_async_task(
-            print_context_list_for_help, bring=self._bring, formatter=formatter
+            print_index_list_for_help, bring=self._bring, formatter=formatter
         )
         wrap_async_task(print_pkg_list_help, bring=self._bring, formatter=formatter)
 
@@ -63,23 +63,21 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
     async def _get_command(self, ctx, name):
 
-        # context_name = self._group_params.get("context", None)
+        # index_name = self._group_params.get("index", None)
 
-        # _ctx_name = await ensure_context(self._bring, name=context_name)
-        # await self._bring.get_context(_ctx_name)
+        # _ctx_name = await ensure_index(self._bring, name=index_name)
+        # await self._bring.get_index(_ctx_name)
 
         load_details = not ctx.obj.get("list_info_commands", False)
 
         if not load_details:
             return None
 
-        context = await self._bring.get_context(
-            context_name=name, raise_exception=False
-        )
-        if context is not None:
-            command = ContextInfoTingCommand(
+        index = await self._bring.get_index(index_name=name, raise_exception=False)
+        if index is not None:
+            command = IndexInfoTingCommand(
                 name=name,
-                context=context,
+                index=index,
                 load_details=load_details,
                 terminal=self._terminal,
             )
@@ -95,17 +93,17 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         return command
 
 
-class ContextInfoTingCommand(Command):
+class IndexInfoTingCommand(Command):
     def __init__(
         self,
         name: str,
-        context: BringContextTing,
+        index: BringIndexTing,
         load_details: bool = False,
         terminal: Optional[Terminal] = None,
         **kwargs,
     ):
 
-        self._context: BringContextTing = context
+        self._index: BringIndexTing = index
 
         if terminal is None:
             terminal = create_terminal()
@@ -114,7 +112,7 @@ class ContextInfoTingCommand(Command):
         try:
             val_names = ["config", "info"]
             self._data = wrap_async_task(
-                self._context.get_values, *val_names, _raise_exception=True
+                self._index.get_values, *val_names, _raise_exception=True
             )
             slug = self._data["info"].get("slug", "n/a")
             if slug.endswith("."):
@@ -123,14 +121,14 @@ class ContextInfoTingCommand(Command):
 
             kwargs["short_help"] = short_help
             desc = self._data["info"].get("desc", None)
-            help = f"Display info for the '{self._context.name}' package."
+            help = f"Display info for the '{self._index.name}' package."
             if desc:
                 help = f"{help}\n\n{desc}"
 
             params = [
                 Option(
                     ["--update", "-u"],
-                    help="update context metadata",
+                    help="update index metadata",
                     is_flag=True,
                     required=False,
                 ),
@@ -164,13 +162,13 @@ class ContextInfoTingCommand(Command):
         if not full:
             to_print = self._data
         else:
-            metadata_timestamp = await self._context.get_metadata_timestamp(
+            metadata_timestamp = await self._index.get_metadata_timestamp(
                 return_format="human"
             )
 
             if metadata_timestamp == BRING_NO_METADATA_TIMESTAMP_MARKER:
                 metadata_timestamp = "unknown"
-            pkgs = await self._context.get_all_pkg_values("info")
+            pkgs = await self._index.get_all_pkg_values("info")
             pkg_slug_map = {}
             for pkg_name in sorted(pkgs.keys()):
                 pkg_slug_map[pkg_name] = (
@@ -222,7 +220,7 @@ class PkgInfoTingCommand(Command):
             slug = info.get("slug", "n/a")
             if slug.endswith("."):
                 slug = slug[0:-1]
-            short_help = f"{slug} (from: {self._pkg.bring_context.name})"
+            short_help = f"{slug} (from: {self._pkg.bring_index.name})"
 
             kwargs["short_help"] = short_help
             desc = info.get("desc", None)

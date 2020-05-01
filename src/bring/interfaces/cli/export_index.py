@@ -14,7 +14,7 @@ from frtls.cli.terminal import create_terminal
 log = logging.getLogger("bring")
 
 
-class BringExportContextCommand(click.Command):
+class BringExportIndexCommand(click.Command):
     def __init__(self, name: str, bring: Bring, terminal=None, **kwargs):
 
         self._bring: Bring = bring
@@ -23,34 +23,32 @@ class BringExportContextCommand(click.Command):
         self._terminal = terminal
 
         params = [
-            Argument(["context"], required=False, nargs=1),
+            Argument(["index"], required=False, nargs=1),
             Option(["--output-file", "-o"], required=False),
         ]
 
-        super().__init__(
-            name=name, callback=self.export_context, params=params, **kwargs
-        )
+        super().__init__(name=name, callback=self.export_index, params=params, **kwargs)
 
     @click.pass_context
-    async def export_context(ctx, self, output_file, context: Optional[str]):
+    async def export_index(ctx, self, output_file, index: Optional[str]):
 
         click.echo()
 
-        if not context:
-            context_obj = await self._bring.get_context()
+        if not index:
+            index_obj = await self._bring.get_index()
         else:
-            context_obj = await self._bring.get_context(context)
+            index_obj = await self._bring.get_index(index)
 
-        all_values = await context_obj.export_context()
+        all_values = await index_obj.export_index()
 
         json_data = json.dumps(all_values, indent=2) + "\n"
 
         json_bytes = json_data.encode("utf-8")
 
         if output_file is None:
-            _path = os.path.join(os.getcwd(), f"{context_obj.name}.bx")
+            _path = os.path.join(os.getcwd(), f"{index_obj.name}.bx")
         elif os.path.isdir(os.path.realpath(output_file)):
-            _path = os.path.join(output_file, f"{context_obj.name}.bx")
+            _path = os.path.join(output_file, f"{index_obj.name}.bx")
         else:
             _path = output_file
 

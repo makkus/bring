@@ -2,7 +2,7 @@
 import os
 from typing import Any, Iterable, Mapping, MutableMapping
 
-from bring.context import BringContextTing
+from bring.pkg_index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from pydriller import GitRepository
 
@@ -33,13 +33,13 @@ class Folder(SimplePkgType):
         return ["folder"]
 
     def get_unique_source_id(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> str:
 
         return source_details["path"]
 
     async def _process_pkg_versions(
-        self, source_details: Mapping, bring_context: BringContextTing
+        self, source_details: Mapping, bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
 
         return {

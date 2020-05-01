@@ -6,6 +6,6 @@ log = logging.getLogger("bring")
 
 
 # TODO: implement
-def validate_context_name(name: str):
+def validate_index_name(name: str):
 
     pass

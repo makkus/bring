@@ -14,14 +14,14 @@ from typing import (
 
 import anyio
 from bring.config.folder_config import FolderConfigProfilesTing
-from bring.context import BringContextTing
-from bring.context.context_config import BringContextConfig
 from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
     BRING_DEFAULT_CONFIG,
     BRING_DEFAULT_CONFIG_PROFILE,
     BRING_TASKS_BASE_TOPIC,
 )
+from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index_config import BringIndexConfig
 from bring.system_info import get_current_system_info
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
@@ -61,12 +61,12 @@ class BringConfig(object):
         self._config_input: Iterable[Union[str, Mapping[str, Any]]] = ["__init_dict__"]
         self._config_dict: Optional[Mapping[str, Any]] = None
 
-        self._default_context_name: Optional[str] = None
+        self._default_index_name: Optional[str] = None
 
-        # self._extra_context_configs: List[BringContextConfig] = []
-        self._all_context_configs: Optional[Dict[str, BringContextConfig]] = None
+        # self._extra_index_configs: List[BringIndexConfig] = []
+        self._all_index_configs: Optional[Dict[str, BringIndexConfig]] = None
         self._bring: Optional["Bring"] = None
-        # self._use_config_contexts: bool = True
+        # self._use_config_indexes: bool = True
         self._config_dict_lock = anyio.create_lock()
 
         twm = AppEnvironment().get_global("task_watcher")
@@ -82,9 +82,9 @@ class BringConfig(object):
     def invalidate(self):
 
         self._config_dict = None
-        # self._context_configs = None
-        self._all_context_configs = None
-        # self._auto_default_context_name = None
+        # self._index_configs = None
+        self._all_index_configs = None
+        # self._auto_default_index_name = None
 
         if self._bring is not None:
             self._bring.invalidate()
@@ -153,47 +153,47 @@ class BringConfig(object):
 
             profile_dict = await self.calculate_config(self.config_input)
 
-            self._all_context_configs = {}
-            default_context_name = self._default_context_name
-            if default_context_name is None:
-                default_context_name = profile_dict.get("default_context", None)
+            self._all_index_configs = {}
+            default_index_name = self._default_index_name
+            if default_index_name is None:
+                default_index_name = profile_dict.get("default_index", None)
 
-            profile_context_configs_first = None
+            profile_index_configs_first = None
 
-            profile_context_configs = profile_dict.get("contexts", None)
+            profile_index_configs = profile_dict.get("indexes", None)
 
-            if not profile_context_configs:
+            if not profile_index_configs:
                 raise FrklException(
-                    msg="Invalid configuration: no package contexts specified"
+                    msg="Invalid configuration: no package indexes specified"
                 )
 
-            for context_config in profile_context_configs:
+            for index_config in profile_index_configs:
 
-                context = BringContextConfig.create(
-                    tingistry_obj=self._tingistry_obj, init_data=context_config
+                index = BringIndexConfig.create(
+                    tingistry_obj=self._tingistry_obj, init_data=index_config
                 )
-                # context = BringContextConfig(
-                #     tingistry_obj=self._tingistry_obj, init_data=context_config
+                # index = BringIndexConfig(
+                #     tingistry_obj=self._tingistry_obj, init_data=index_config
                 # )
-                if context.name in self._all_context_configs.keys():
+                if index.name in self._all_index_configs.keys():
                     raise FrklException(
-                        msg=f"Can't add context '{context.name}'",
-                        reason="Duplicate context name.",
+                        msg=f"Can't add index '{index.name}'",
+                        reason="Duplicate index name.",
                     )
-                if profile_context_configs_first is None:
-                    profile_context_configs_first = context.name
-                self._all_context_configs[context.name] = context
+                if profile_index_configs_first is None:
+                    profile_index_configs_first = index.name
+                self._all_index_configs[index.name] = index
 
-            if default_context_name is None:
-                default_context_name = profile_context_configs_first
+            if default_index_name is None:
+                default_index_name = profile_index_configs_first
 
-            exploded_context_configs = []
-            for c in self._all_context_configs.values():
+            exploded_index_configs = []
+            for c in self._all_index_configs.values():
                 config_dict = await c.to_dict()
-                exploded_context_configs.append(config_dict)
+                exploded_index_configs.append(config_dict)
 
-            profile_dict["contexts"] = exploded_context_configs
-            profile_dict["default_context"] = default_context_name
+            profile_dict["indexes"] = exploded_index_configs
+            profile_dict["default_index"] = default_index_name
 
             if "defaults" not in profile_dict.keys():
                 profile_dict["defaults"] = {}
@@ -235,107 +235,107 @@ class BringConfig(object):
 
             return self._config_dict
 
-    async def get_default_context_name(self) -> str:
+    async def get_default_index_name(self) -> str:
 
         config_dict = await self.get_config_dict()
 
-        return config_dict["default_context"]
+        return config_dict["default_index"]
 
-    async def set_default_context_name(self, context_name: str) -> None:
+    async def set_default_index_name(self, index_name: str) -> None:
 
-        acc = await self.get_all_context_configs()
-        if context_name not in acc.keys():
+        acc = await self.get_all_index_configs()
+        if index_name not in acc.keys():
             raise FrklException(
-                msg=f"Can't set default context to '{context_name}'",
-                reason="No context with that name.",
+                msg=f"Can't set default index to '{index_name}'",
+                reason="No index with that name.",
             )
 
-        self._default_context_name = context_name
+        self._default_index_name = index_name
         self.invalidate()
 
-    async def get_all_context_configs(self) -> Mapping[str, BringContextConfig]:
+    async def get_all_index_configs(self) -> Mapping[str, BringIndexConfig]:
 
-        if self._all_context_configs is None:
+        if self._all_index_configs is None:
             await self.get_config_dict()
-        return self._all_context_configs  # type: ignore
+        return self._all_index_configs  # type: ignore
 
-    async def get_context_config(
-        self, context_name: str, raise_exception: bool = True
-    ) -> Optional[BringContextConfig]:
+    async def get_index_config(
+        self, index_name: str, raise_exception: bool = True
+    ) -> Optional[BringIndexConfig]:
 
-        all_contexts = await self.get_all_context_configs()
+        all_indexes = await self.get_all_index_configs()
 
-        context_config = all_contexts.get(context_name, None)
+        index_config = all_indexes.get(index_name, None)
 
-        if context_config is None:
+        if index_config is None:
             if raise_exception:
                 raise FrklException(
-                    msg=f"Can't retrieve config for context '{context_name}'.",
-                    reason="No context with that name registered.",
+                    msg=f"Can't retrieve config for index '{index_name}'.",
+                    reason="No index with that name registered.",
                 )
             else:
                 return None
 
-        return context_config
+        return index_config
 
-    # async def ensure_context(
-    #     self, context_config_string: str, set_default: bool = False
-    # ) -> BringContextConfig:
+    # async def ensure_index(
+    #     self, index_config_string: str, set_default: bool = False
+    # ) -> BringIndexConfig:
     #
-    #     all_context_configs = await self.get_all_context_configs()
+    #     all_index_configs = await self.get_all_index_configs()
     #
-    #     if context_config_string in all_context_configs.keys():
-    #         await self.set_default_context_name(context_config_string)
-    #         return all_context_configs[context_config_string]
+    #     if index_config_string in all_index_configs.keys():
+    #         await self.set_default_index_name(index_config_string)
+    #         return all_index_configs[index_config_string]
     #
     #     _name: Optional[str]
     #     _config: str
-    #     if "=" in context_config_string:
-    #         _name, _config = context_config_string.split("=", maxsplit=1)
+    #     if "=" in index_config_string:
+    #         _name, _config = index_config_string.split("=", maxsplit=1)
     #     else:
     #         _name = None
-    #         _config = context_config_string
+    #         _config = index_config_string
     #
     #     try:
-    #         cc = await self.add_extra_context(
-    #             context_config=_config, name=_name, set_default=set_default
+    #         cc = await self.add_extra_index(
+    #             index_config=_config, name=_name, set_default=set_default
     #         )
     #     except Exception as e:
     #         raise FrklException(
-    #             msg=f"Invalid context data '{context_config_string}'.",
-    #             reason="Not a valid context name, folder, or git url.",
+    #             msg=f"Invalid index data '{index_config_string}'.",
+    #             reason="Not a valid index name, folder, or git url.",
     #             parent=e,
     #         )
     #
     #     return cc
 
-    # async def add_extra_context(
+    # async def add_extra_index(
     #     self,
-    #     context_config: Union[str, Mapping[str, Any]],
+    #     index_config: Union[str, Mapping[str, Any]],
     #     name: Optional[str] = None,
     #     set_default: bool = False,
-    # ) -> BringContextConfig:
-    #     """Add an extra context to the current configuration."""
+    # ) -> BringIndexConfig:
+    #     """Add an extra index to the current configuration."""
     #
-    #     _context_config = BringContextConfig(
-    #         tingistry_obj=self._tingistry_obj, init_data=context_config
+    #     _index_config = BringIndexConfig(
+    #         tingistry_obj=self._tingistry_obj, init_data=index_config
     #     )
     #     if name:
-    #         _context_config.name = name
+    #         _index_config.name = name
     #
-    #     self._extra_context_configs.append(_context_config)
+    #     self._extra_index_configs.append(_index_config)
     #
     #     self.invalidate()
     #     await self.get_config_dict()
     #
     #     if set_default:
-    #         await self.set_default_context_name(_context_config.name)
+    #         await self.set_default_index_name(_index_config.name)
     #
-    #     return _context_config
+    #     return _index_config
 
-    async def get_context(self, context_name: str) -> BringContextTing:
+    async def get_index(self, index_name: str) -> BringIndexTing:
 
-        context_config: BringContextConfig = await self.get_context_config(
-            context_name, raise_exception=True
+        index_config: BringIndexConfig = await self.get_index_config(
+            index_name, raise_exception=True
         )  # type: ignore
-        return await context_config.get_context()
+        return await index_config.get_index()

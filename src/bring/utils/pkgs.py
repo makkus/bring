@@ -92,8 +92,8 @@ async def explain_version(pkg: PkgTing, target: Optional[str] = None, **vars) ->
         source = v["source"]
         if source == "pkg":
             origin = "pkg default"
-        elif source == "context":
-            origin = "context default"
+        elif source == "index":
+            origin = "index default"
         elif source == "user":
             origin = "user input"
         else:

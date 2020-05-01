@@ -17,7 +17,7 @@ def dev(ctx):
 
 @dev.command()
 @click.argument("path", nargs=1)
-# @click.option("--context", "-c", help="the context of the package", required=False)
+# @click.option("--index", "-c", help="the index of the package", required=False)
 @click.pass_context
 async def differ(ctx, path):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
@@ -40,10 +40,10 @@ async def differ(ctx, path):
     # print(new_content)
     # bring: Bring = ctx.obj["bring"]
     #
-    # _ctx_name = await ensure_context(bring, name=context)
-    # bring_context: BringContextTing = bring.get_context(_ctx_name)
+    # _ctx_name = await ensure_index(bring, name=index)
+    # bring_index: BringIndexTing = bring.get_index(_ctx_name)
     #
-    # pkg = await bring_context.get_pkg(pkg_name)
+    # pkg = await bring_index.get_pkg(pkg_name)
     # vals = await pkg.get_values("metadata")
     #
     # import pp  # type: ignore

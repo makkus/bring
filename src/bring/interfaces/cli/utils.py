@@ -7,7 +7,7 @@ from asyncclick import HelpFormatter
 from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
-from bring.context import BringContextTing
+from bring.pkg_index import BringIndexTing
 from frtls.async_helpers import wrap_async_task
 
 
@@ -33,20 +33,20 @@ async def print_config_list_for_help(bring_config: BringConfig, formatter):
     pass
 
 
-async def create_context_list_for_help(bring: Bring) -> List[Tuple[str, str]]:
+async def create_index_list_for_help(bring: Bring) -> List[Tuple[str, str]]:
 
-    contexts = await bring.contexts
+    indexes = await bring.indexes
 
     infos = {}
 
-    async def add_context(_context_name: str, _context: BringContextTing):
+    async def add_index(_index_name: str, _index: BringIndexTing):
 
-        info = await _context.get_info()
-        infos[_context_name] = info
+        info = await _index.get_info()
+        infos[_index_name] = info
 
     async with create_task_group() as tg:
-        for context_name, context in contexts.items():
-            await tg.spawn(add_context, context_name, context)
+        for index_name, index in indexes.items():
+            await tg.spawn(add_index, index_name, index)
 
     result = []
     for ctx_name in sorted(infos.keys()):
@@ -59,45 +59,45 @@ async def create_context_list_for_help(bring: Bring) -> List[Tuple[str, str]]:
     return result
 
 
-async def print_context_list_for_help(bring: Bring, formatter):
+async def print_index_list_for_help(bring: Bring, formatter):
 
-    context_list = await create_context_list_for_help(bring=bring)
+    index_list = await create_index_list_for_help(bring=bring)
 
-    if len(context_list):
-        limit = formatter.width - 6 - max(len(cmd[0]) for cmd in context_list)
+    if len(index_list):
+        limit = formatter.width - 6 - max(len(cmd[0]) for cmd in index_list)
 
         rows = []
-        for subcommand, help in context_list:
+        for subcommand, help in index_list:
             _help = make_default_short_help(help, max_length=limit)
             rows.append((subcommand, _help))
 
         if rows:
-            with formatter.section("Contexts"):
+            with formatter.section("Indexes"):
                 formatter.write_dl(rows)
 
 
 async def create_pkg_list_for_help(
-    bring: Bring, indicate_optional_context: bool = True
+    bring: Bring, indicate_optional_index: bool = True
 ) -> List[Tuple[str, str]]:
     """Extra format methods for multi methods that adds all the commands
     after the options.
     """
 
-    default_context_name = wrap_async_task(bring.config.get_default_context_name)
+    default_index_name = wrap_async_task(bring.config.get_default_index_name)
 
-    pkgs = await bring.get_pkg_property_map("info", "context_name")
+    pkgs = await bring.get_pkg_property_map("info", "index_name")
 
     short_help_map = []
 
     for pkg_name in sorted(pkgs.keys()):
         details = pkgs[pkg_name]
         info = details["info"]
-        context_name = details["context_name"]
+        index_name = details["index_name"]
         short_help = info.get("slug", "n/a")
         if short_help.endswith("."):
             short_help = short_help[0:-1]
 
-        if context_name == default_context_name:
+        if index_name == default_index_name:
             tokens = pkg_name.split(".")
             # _name = tokens[1]
             _name = f"[{tokens[0]}.]{tokens[1]}"

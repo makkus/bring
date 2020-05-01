@@ -17,7 +17,7 @@ from typing import (
 
 import arrow
 import httpx
-from bring.context import BringContextTing
+from bring.pkg_index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from frtls.exceptions import FrklException
 from httpx import Headers
@@ -89,7 +89,7 @@ class GithubRelease(SimplePkgType):
         return ["github-release"]
 
     def get_unique_source_id(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> str:
 
         github_user = source_details.get("user_name")
@@ -140,7 +140,7 @@ class GithubRelease(SimplePkgType):
         }
 
     async def _process_pkg_versions(
-        self, source_details: Mapping[str, Any], bring_context: BringContextTing
+        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
     ) -> Mapping[str, Any]:
 
         github_user = source_details.get("user_name")

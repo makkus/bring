@@ -15,13 +15,13 @@ else:
     BRING_MODULE_BASE_FOLDER = os.path.join(sys._MEIPASS, "bring")  # type: ignore
     """Marker to indicate the base folder for the `bring` module."""
 
-BRING_CONTEXTS_FOLDER = os.path.join(BRING_APP_DIRS.user_config_dir, "contexts")
+# BRING_CONTEXTS_FOLDER = os.path.join(BRING_APP_DIRS.user_config_dir, "indexes")
 
 BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
-BRING_DEFAULT_CONTEXTS_FOLDER = os.path.join(BRING_RESOURCES_FOLDER, "default_contexts")
+# BRING_DEFAULT_CONTEXTS_FOLDER = os.path.join(BRING_RESOURCES_FOLDER, "default_indexes")
 
 BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
-BRING_CONTEXT_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "contexts")
+BRING_INDEX_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "indexes")
 
 BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_checkouts")
 
@@ -40,11 +40,11 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.mogrify.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
-    "bring.context",
+    "bring.pkg_index",
     "bring.config",
 ]
 
-BRING_CONTEXT_NAMESPACE = "bring.contexts"
+BRING_CONTEXT_NAMESPACE = "bring.indexes"
 BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 
 BRING_DEFAULT_CONTEXTS = {
@@ -81,8 +81,8 @@ BRING_DEFAULT_CONTEXTS = {
 }
 
 BRING_DEFAULT_CONFIG = {
-    "contexts": ["binaries", "scripts", "collections", "kube-install-manifests"],
-    # "default_context": "binaries",
+    "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
+    # "default_index": "binaries",
     "task_log": ["tree"],
     "defaults": {"vars": {}},
     "output": "default",
@@ -105,29 +105,29 @@ BRINGISTRY_INIT = {
         {"prototing_name": "bring.types.static_pkg", "ting_class": "static_pkg_ting"},
         # {
         #     "ting_name": BRING_CONTEXT_NAMESPACE,
-        #     "prototing_name": "internal.singletings.context_list",
+        #     "prototing_name": "internal.singletings.index_list",
         #     "ting_class": "subscrip_tings",
         #     "prototing_factory": "singleting",
-        #     "prototing": "bring_dynamic_context_ting",
-        #     "subscription_namespace": "bring.contexts.dynamic",
+        #     "prototing": "bring_dynamic_index_ting",
+        #     "subscription_namespace": "bring.indexes.dynamic",
         # },
         {
-            "prototing_name": "bring.types.config_file_context_maker",
+            "prototing_name": "bring.types.config_file_index_maker",
             "ting_class": "text_file_ting_maker",
-            "prototing": "bring_dynamic_context_ting",
+            "prototing": "bring_dynamic_index_ting",
             "ting_name_strategy": "basename_no_ext",
             "ting_target_namespace": BRING_CONTEXT_NAMESPACE,
-            "file_matchers": [{"type": "extension", "regex": ".*\\.context$"}],
+            "file_matchers": [{"type": "extension", "regex": ".*\\.index$"}],
         },
         {
-            "prototing_name": "bring.types.contexts.default_context",
-            "ting_class": "bring_static_context_ting",
+            "prototing_name": "bring.types.indexes.default_index",
+            "ting_class": "bring_static_index_ting",
         }
         # {
-        #     "prototing_name": "bring.types.static_context_maker",
+        #     "prototing_name": "bring.types.static_index_maker",
         #     "ting_class": "smart_input_dict_ting_maker",
-        #     "prototing": "bring_static_context_ting",
-        #     "ting_target_namespace": "bring.contexts.static"
+        #     "prototing": "bring_static_index_ting",
+        #     "ting_target_namespace": "bring.indexes.static"
         # }
     ],
     "tings": [],

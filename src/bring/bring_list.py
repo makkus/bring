@@ -38,28 +38,28 @@ class BringItem(object):
     def __init__(
         self,
         name: str,
-        context: Optional[str] = None,
+        index: Optional[str] = None,
         vars: Mapping[str, Any] = None,
         mogrify: Iterable[Union[str, Mapping[str, Any]]] = None,
     ) -> None:
 
-        if "." in name and context:
+        if "." in name and index:
             raise FrklException(
                 msg=f"Can't create item '{name}'.",
-                reason="Context provided, but name uses dotted notation.",
+                reason="Index provided, but name uses dotted notation.",
                 solution="Use either or.",
             )
 
-        _context: Optional[str]
+        _index: Optional[str]
         _name: str
         if "." in name:
-            _context, _name = name.split(".", maxsplit=1)
+            _index, _name = name.split(".", maxsplit=1)
         else:
-            _context = context
+            _index = index
             _name = name
 
         self._name: str = _name
-        self._context: Optional[str] = _context
+        self._index: Optional[str] = _index
 
         if vars is None:
             vars = {}
@@ -79,7 +79,7 @@ class BringItem(object):
 
         return {
             "name": self.name,
-            "context": self.context,
+            "index": self.index,
             "vars": self.vars,
             "mogrifiers": self.mogrify,
         }
@@ -89,8 +89,8 @@ class BringItem(object):
         return self._name
 
     @property
-    def context(self) -> Optional[str]:
-        return self._context
+    def index(self) -> Optional[str]:
+        return self._index
 
     @property
     def vars(self) -> Mapping[str, Any]:
@@ -151,12 +151,12 @@ class BringList(object):
         async def retrieve_pkg(_item: BringItem):
 
             pkg: Optional[PkgTing] = await bring.get_pkg(
-                name=_item.name, context=_item.context
+                name=_item.name, index=_item.index
             )
 
             if pkg is None:
-                if _item.context:
-                    _msg = f" from context ({_item.context})"
+                if _item.index:
+                    _msg = f" from index ({_item.index})"
                 else:
                     _msg = ""
                 raise FrklException(msg=f"Can't retrieve pkg '{_item.name}'{_msg}.")
