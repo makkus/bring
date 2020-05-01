@@ -115,10 +115,12 @@ class PkgTypePluginGroup(BringPluginGroup):
             plugin = pm.get_plugin(name)
 
             args = plugin.get_args()
-            import pp
-
-            pp(desc)
-            pp(args)
+            print(desc)
+            print(args)
+            # import pp
+            #
+            # pp(desc)
+            # pp(args)
 
         return plugin_command
 
