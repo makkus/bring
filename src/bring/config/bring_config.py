@@ -20,10 +20,13 @@ from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
     BRING_DEFAULT_CONFIG,
     BRING_DEFAULT_CONFIG_PROFILE,
+    BRING_TASKS_BASE_TOPIC,
 )
 from bring.system_info import get_current_system_info
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
+from frtls.introspection.pkg_env import AppEnvironment
+from frtls.tasks.task_watcher import TaskWatchManager
 from tings.tingistry import Tingistry
 
 
@@ -65,6 +68,13 @@ class BringConfig(object):
         self._bring: Optional["Bring"] = None
         # self._use_config_contexts: bool = True
         self._config_dict_lock = anyio.create_lock()
+
+        twm = AppEnvironment().get_global("task_watcher")
+        if twm is None:
+            twm = TaskWatchManager(typistry=self._tingistry_obj.typistry)
+            AppEnvironment().set_global("task_watcher", twm)
+        self._task_watch_manager: TaskWatchManager = twm
+        self._task_watcher_ids: List[str] = []
 
     def set_bring(self, bring: "Bring"):
         self._bring = bring
@@ -205,6 +215,23 @@ class BringConfig(object):
                         profile_dict["defaults"]["vars"][k] = v
 
             self._config_dict = profile_dict
+
+            for watcher_id in self._task_watcher_ids:
+                self._task_watch_manager.remove_watcher(watcher_id)
+
+            self._task_watcher_ids.clear()
+            task_log_config: Union[str, Mapping, Iterable] = self._config_dict.get(
+                "task_log", []
+            )
+
+            if isinstance(task_log_config, (str, collections.Mapping)):
+                task_log_config = [task_log_config]
+            for tlc in task_log_config:
+                if isinstance(tlc, str):
+                    tlc = {"type": tlc, "base_topics": [BRING_TASKS_BASE_TOPIC]}
+
+                id = self._task_watch_manager.add_watcher(tlc)
+                self._task_watcher_ids.append(id)
 
             return self._config_dict
 
