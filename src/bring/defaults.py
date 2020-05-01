@@ -83,7 +83,7 @@ BRING_DEFAULT_CONTEXTS = {
 BRING_DEFAULT_CONFIG = {
     "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
     # "default_index": "binaries",
-    "task_log": ["tree"],
+    "task_log": [],
     "defaults": {"vars": {}},
     "output": "default",
     "add_sysinfo_to_default_vars": False,

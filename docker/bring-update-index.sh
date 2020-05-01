@@ -7,4 +7,4 @@ then
  INDEX_NAME=$(basename ${PWD})
 fi
 
-bring --task-log simple -x . export-context -o "${INDEX_NAME}.bx"
+bring --task-log simple -x . export-index -o "${INDEX_NAME}.bx"

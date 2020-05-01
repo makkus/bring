@@ -27,8 +27,7 @@ exclude = '''
 output_dir = "site"
 modules = [
 "bring",
-"bring.context",
-"bring.context.utils"
+"bring.pkg_index",
 ]
 extra_markdown_extensions = [
   "attr_list"
