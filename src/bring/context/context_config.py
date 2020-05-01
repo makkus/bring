@@ -268,10 +268,8 @@ class FolderContextConfig(BringContextConfig):
 
             if os.path.isfile(context_metadata):
                 si = SmartInput(context_metadata)
-                print(si)
                 try:
                     content = await si.content_async()
-                    print(content)
                     config_overlays.append(content)
                 except Exception as e:
                     log.error(

@@ -242,4 +242,4 @@ class BringContextTing(InheriTing, SimpleTing):
 
         _all_values["_bring_metadata_timestamp"] = str(arrow.now())
 
-        return all_values
+        return _all_values
