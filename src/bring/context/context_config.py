@@ -54,6 +54,8 @@ class BringContextConfig(metaclass=ABCMeta):
             if is_git_repo_url(config_string):
                 raise NotImplementedError()
 
+            config_string = os.path.abspath(config_string)
+
             if config_string.endswith(os.path.sep):
                 config_string = config_string[0:-1]
             if os.path.isdir(config_string):
