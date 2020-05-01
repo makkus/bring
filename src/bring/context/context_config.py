@@ -198,7 +198,7 @@ class BringContextConfig(metaclass=ABCMeta):
             extra_data, self.init_data, merge_strategy="merge"
         )
 
-        return config_dict
+        return config_dict  # type: ignore
 
     @property
     async def config_dict(self) -> Mapping:
