@@ -7,6 +7,7 @@ from asyncclick import Command, Option
 from blessed import Terminal
 from bring.bring import Bring
 from bring.context import BringContextTing
+from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.interfaces.cli.utils import (
     log,
     print_context_list_for_help,
@@ -111,17 +112,17 @@ class ContextInfoTingCommand(Command):
 
         self._terminal = terminal
         try:
-            val_names = ["config"]
+            val_names = ["config", "info"]
             self._data = wrap_async_task(
                 self._context.get_values, *val_names, _raise_exception=True
             )
-            slug = self._data["config"]["info"].get("slug", "n/a")
+            slug = self._data["info"].get("slug", "n/a")
             if slug.endswith("."):
                 slug = slug[0:-1]
             short_help = slug
 
             kwargs["short_help"] = short_help
-            desc = self._data["config"]["info"].get("desc", None)
+            desc = self._data["info"].get("desc", None)
             help = f"Display info for the '{self._context.name}' package."
             if desc:
                 help = f"{help}\n\n{desc}"
@@ -163,6 +164,12 @@ class ContextInfoTingCommand(Command):
         if not full:
             to_print = self._data
         else:
+            metadata_timestamp = await self._context.get_metadata_timestamp(
+                return_format="human"
+            )
+
+            if metadata_timestamp == BRING_NO_METADATA_TIMESTAMP_MARKER:
+                metadata_timestamp = "unknown"
             pkgs = await self._context.get_all_pkg_values("info")
             pkg_slug_map = {}
             for pkg_name in sorted(pkgs.keys()):
@@ -172,7 +179,11 @@ class ContextInfoTingCommand(Command):
                     .get("slug", "no description available")
                 )
 
-            to_print = {"config": self._data["config"], "pkgs": pkg_slug_map}
+            to_print = {
+                "metadata snapshot": metadata_timestamp,
+                "config": self._data["config"],
+                "pkgs": pkg_slug_map,
+            }
         # to_print["info"] = info["info"]
         # to_print["labels"] = info["labels"]
         # to_print["metadata snapshot"] = age.humanize()

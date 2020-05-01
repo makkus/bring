@@ -191,16 +191,22 @@ class BringContextConfig(metaclass=ABCMeta):
 
         pass
 
+    async def get_raw_config(self) -> Dict[str, Any]:
+
+        extra_data = await self.extra_data
+        config_dict = get_seeded_dict(
+            extra_data, self.init_data, merge_strategy="merge"
+        )
+
+        return config_dict
+
     @property
     async def config_dict(self) -> Mapping:
 
         if self._config_dict is not None:
             return self._config_dict
 
-        extra_data = await self.extra_data
-        config_dict = get_seeded_dict(
-            extra_data, self.init_data, merge_strategy="merge"
-        )
+        config_dict = await self.get_raw_config()
 
         defaults = config_dict.get("defaults", {})
         if not self._global_defaults:
@@ -258,11 +264,14 @@ class FolderContextConfig(BringContextConfig):
         full_indexes = []
         for dir in self.init_data["indexes"]:
             full_indexes.append(os.path.abspath(dir))
-            context_metadata = os.path.join(dir, ".bx")
+            context_metadata = os.path.join(dir, ".bring_index")
+
             if os.path.isfile(context_metadata):
                 si = SmartInput(context_metadata)
+                print(si)
                 try:
                     content = await si.content_async()
+                    print(content)
                     config_overlays.append(content)
                 except Exception as e:
                     log.error(

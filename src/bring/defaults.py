@@ -155,3 +155,5 @@ BRING_METADATA_FOLDER_NAME = ".bring"
 BRING_ALLOWED_MARKER_NAME = "bring_allowed"
 
 BRING_TASKS_BASE_TOPIC = "bring.tasks"
+
+BRING_NO_METADATA_TIMESTAMP_MARKER = "unknown_metadata_timestamp"

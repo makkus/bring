@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Mapping, Optional
 
+import arrow
 from bring.context import BringContextTing
 from bring.pkg import PkgTing
 from bring.pkgs import Pkgs
@@ -29,10 +30,17 @@ class BringDynamicContextTing(BringContextTing):
         self._maker_config: Optional[Mapping[str, Any]] = None
         self._maker: Optional[TingMaker] = None
 
+        self._metadata_timestamp: Optional[str] = None
+
     async def init(self, config: Mapping[str, Any]) -> None:
 
         maker = await self.get_maker(config)
         await maker.sync()
+        self._metadata_timestamp = str(arrow.Arrow.now())
+
+    async def _get_metadata_timestamp(self) -> Optional[str]:
+
+        return self._metadata_timestamp
 
     async def _get_pkgs(self) -> Mapping[str, PkgTing]:
 

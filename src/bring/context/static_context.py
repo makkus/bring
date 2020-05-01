@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 import json
+import logging
 import os
 import zlib
 from typing import Any, Dict, List, Mapping, Optional
 
+import arrow
 from anyio import Lock, aopen
+from arrow import Arrow
 from bring.context import BringContextTing
 from bring.defaults import BRING_CONTEXT_FILES_CACHE
 from bring.pkg import PkgTing
@@ -12,6 +15,9 @@ from bring.utils import BringTaskDesc
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
 from frtls.tasks import SingleTaskAsync, Task
+
+
+log = logging.getLogger("bring")
 
 
 class BringStaticContextTing(BringContextTing):
@@ -26,6 +32,7 @@ class BringStaticContextTing(BringContextTing):
         self._config: Optional[Mapping[str, Any]] = None
 
         self._pkg_lock: Optional[Lock] = None
+        self._metadata_timestamp: Optional[Arrow] = None
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 
     def add_urls(self, *urls: str):
@@ -33,11 +40,24 @@ class BringStaticContextTing(BringContextTing):
         self._urls.extend(urls)
         self.invalidate()
 
+    async def _get_metadata_timestamp(self) -> Optional[str]:
+
+        if self._metadata_timestamp:
+            return str(self._metadata_timestamp)
+        else:
+            return None
+
     async def _load_pkgs(self, update: bool = False) -> Dict[str, PkgTing]:
 
         pkgs: Dict[str, PkgTing] = {}
 
+        timestamps = []
+        all_timestamps = True
+
         async def add_index(index_url: str, _update: bool = False):
+
+            nonlocal all_timestamps
+            nonlocal timestamps
 
             if os.path.exists(index_url):
                 async with await aopen(index_url, "rb") as f:
@@ -55,7 +75,21 @@ class BringStaticContextTing(BringContextTing):
 
             data = json.loads(json_string)
 
+            if "_bring_metadata_timestamp" not in data.keys():
+                all_timestamps = False
+
             for pkg_name, pkg_data in data.items():
+
+                if pkg_name.startswith("_bring_"):
+                    if pkg_name == "_bring_metadata_timestamp":
+                        try:
+                            pkg_data = arrow.get(pkg_data)
+                            timestamps.append(pkg_data)
+
+                        except Exception as e:
+                            log.debug(f"Can't parse date '{pkg_data}', ignoring: {e}")
+
+                        continue
 
                 if pkg_name in pkgs.keys():
                     raise FrklException(
@@ -81,6 +115,17 @@ class BringStaticContextTing(BringContextTing):
         for url in self._urls:
             # await tg.spawn(add_index, url)
             await add_index(url, _update=update)
+
+        if timestamps and all_timestamps:
+            oldest_timestamp = timestamps[0]
+            if len(timestamps) > 1:
+                for timestamp in timestamps[1:]:
+                    if timestamp < oldest_timestamp:
+                        oldest_timestamp = timestamp
+
+            self._metadata_timestamp = oldest_timestamp
+        else:
+            self._metadata_timestamp = None
 
         return pkgs
 
