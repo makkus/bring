@@ -84,7 +84,7 @@ class BringInstallGroup(FrklBaseCommand):
                 "default": False,
                 "required": False,
             },
-            "dry_run": {
+            "explain": {
                 "doc": "Don't perform installation, only explain steps.",
                 "type": "boolean",
                 "default": False,
@@ -117,7 +117,7 @@ class BringInstallGroup(FrklBaseCommand):
         target = self._group_params.get("target")
         strategy = self._group_params.get("strategy")
         # merge = self._group_params.get("merge")
-        dry_run = self._group_params.get("dry_run")
+        explain = self._group_params.get("explain")
 
         # write_metadata = self._group_params.get("write_metadata")
 
@@ -147,7 +147,7 @@ class BringInstallGroup(FrklBaseCommand):
                 pkg=pkg,
                 target=target,
                 strategy=strategy,
-                dry_run=dry_run,
+                explain=explain,
                 terminal=self._terminal,
                 load_details=load_details,
             )
@@ -162,7 +162,7 @@ class PkgInstallTingCommand(Command):
         pkg: PkgTing,
         target: str,
         strategy: str,
-        dry_run: bool = False,
+        explain: bool = False,
         load_details: bool = False,
         terminal=None,
         **kwargs,
@@ -173,7 +173,7 @@ class PkgInstallTingCommand(Command):
         self._target = target
         self._strategy = strategy
 
-        self._dry_run: bool = dry_run
+        self._explain: bool = explain
 
         if terminal is None:
             terminal = create_terminal()
@@ -220,7 +220,7 @@ class PkgInstallTingCommand(Command):
             if v is not None:
                 _vars[k] = v
 
-        if self._dry_run:
+        if self._explain:
             click.echo()
 
             explanation = await explain_version(

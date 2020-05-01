@@ -57,8 +57,8 @@ If you don't specify the ``--target`` parameter, and the context does not have a
 
 {{ cli("bring", "install", "kube-install-manifests.cert-manager") }}
 
-### Dry run
+### Install details
 
-In case you are wondering what the install command actually does, you can use the ``--dry-run`` flag to get some information about the variables used, and the tasks that compose the install process:
+In case you are wondering what the install command actually does, you can use the ``--explain`` flag to get some information about the variables used, and the tasks that compose the install process:
 
 {{ cli("bring", "install", "--dry-run", "binaries.fd") }}
