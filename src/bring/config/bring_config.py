@@ -266,6 +266,7 @@ class BringConfig(object):
         all_contexts = await self.get_all_context_configs()
 
         context_config = all_contexts.get(context_name, None)
+
         if context_config is None:
             if raise_exception:
                 raise FrklException(

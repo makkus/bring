@@ -8,9 +8,10 @@ from anyio import Lock, aopen
 from bring.context import BringContextTing
 from bring.defaults import BRING_CONTEXT_FILES_CACHE
 from bring.pkg import PkgTing
+from bring.utils import BringTaskDesc
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
-from frtls.tasks import Task
+from frtls.tasks import SingleTaskAsync, Task
 
 
 class BringStaticContextTing(BringContextTing):
@@ -32,13 +33,11 @@ class BringStaticContextTing(BringContextTing):
         self._urls.extend(urls)
         self.invalidate()
 
-    async def _load_pkgs(self) -> Dict[str, PkgTing]:
+    async def _load_pkgs(self, update: bool = False) -> Dict[str, PkgTing]:
 
         pkgs: Dict[str, PkgTing] = {}
 
-        async def add_index(index_url: str):
-
-            update = False
+        async def add_index(index_url: str, _update: bool = False):
 
             if os.path.exists(index_url):
                 async with await aopen(index_url, "rb") as f:
@@ -81,7 +80,7 @@ class BringStaticContextTing(BringContextTing):
         # async with create_task_group() as tg:
         for url in self._urls:
             # await tg.spawn(add_index, url)
-            await add_index(url)
+            await add_index(url, _update=update)
 
         return pkgs
 
@@ -94,7 +93,18 @@ class BringStaticContextTing(BringContextTing):
 
     async def _create_update_tasks(self) -> Optional[Task]:
 
-        return None
+        task_desc = BringTaskDesc(
+            name=f"metadata update {self.name}",
+            msg=f"updating metadata for context '{self.name}'",
+        )
+
+        async def update_index():
+            self.invalidate()
+            await self._load_pkgs(update=True)
+
+        task = SingleTaskAsync(update_index, task_desc=task_desc, parent_task=None)
+
+        return task
 
     async def init(self, config: Mapping[str, Any]) -> None:
 

@@ -82,7 +82,7 @@ BRING_DEFAULT_CONTEXTS = {
 
 BRING_DEFAULT_CONFIG = {
     "contexts": ["binaries", "scripts", "collections", "kube-install-manifests"],
-    "default_context": "binaries",
+    # "default_context": "binaries",
     "task_log": ["tree"],
     "defaults": {"vars": {}},
     "output": "default",

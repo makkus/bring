@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 from abc import abstractmethod
 from typing import Any, Dict, Iterable, Mapping, Optional
 
@@ -10,6 +11,9 @@ from frtls.tasks import Task
 from frtls.types.utils import is_instance_or_subclass
 from tings.ting import SimpleTing
 from tings.ting.inheriting import InheriTing
+
+
+log = logging.getLogger("bring")
 
 
 class BringContextTing(InheriTing, SimpleTing):
@@ -111,10 +115,10 @@ class BringContextTing(InheriTing, SimpleTing):
         slug = config.get("info", {}).get("slug", "no description available")
         return {"name": self.name, "parent": parent, "slug": slug}
 
-    async def get_pkgs(self) -> Mapping[str, PkgTing]:
+    async def get_pkgs(self, update: bool = False) -> Mapping[str, PkgTing]:
 
-        # if not self._initialized:
-        #     raise Exception("Not initialized yet, this is a bug.")
+        if update:
+            await self.update()
 
         return await self.get_value("pkgs")
 
@@ -165,6 +169,8 @@ class BringContextTing(InheriTing, SimpleTing):
         tasks = await self._create_update_tasks()
         if tasks is not None:
             await tasks.run_async()
+        else:
+            log.info(f"Context '{self.name}' does not support updates, doing nothing")
 
     async def get_all_pkg_values(self, *value_names) -> Dict[str, Dict]:
 
