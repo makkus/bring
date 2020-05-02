@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Iterable, Optional
+from typing import Iterable
 
 import asyncclick as click
 from bring.config.bring_config import BringConfig
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 from frtls.formats.output_formats import create_multi_column_table, serialize
-from tings.tingistry import Tingistries, Tingistry
 
 
 CONFIG_HELP = """Configuration-related utility commands"""
@@ -16,11 +15,16 @@ log = logging.getLogger("bring")
 
 
 class BringConfigGroup(FrklBaseCommand):
-    def __init__(self, config_list: Iterable[str], name: str = "config", **kwargs):
+    def __init__(
+        self,
+        bring_config: BringConfig,
+        config_list: Iterable[str],
+        name: str = "config",
+        **kwargs,
+    ):
 
-        self._config_list: Iterable[str] = config_list
-        self._tingistry_obj: Optional[Tingistry] = None
-        self._bring_config: Optional[BringConfig] = None
+        self._bring_config: BringConfig = bring_config
+        self._config_list = config_list
 
         kwargs["help"] = CONFIG_HELP
 
@@ -32,15 +36,6 @@ class BringConfigGroup(FrklBaseCommand):
             result_callback=None,
             **kwargs,
         )
-
-    def get_config(self) -> BringConfig:
-
-        if self._bring_config is None:
-            self._tingistry_obj = Tingistries.create("bring")
-            self._bring_config = BringConfig(  # type: ignore
-                tingistry=self._tingistry_obj
-            )  # type: ignore
-        return self._bring_config
 
     # def format_commands(self, ctx, formatter):
     #     """Extra format methods for multi methods that adds all the commands
@@ -57,8 +52,8 @@ class BringConfigGroup(FrklBaseCommand):
         if ctx.invoked_subcommand is not None:
             return
 
-        self.get_config().config_input = self._config_list
-        c = await self.get_config().get_config_dict()
+        self._bring_config.set_config(*self._config_list)
+        c = await self._bring_config.get_config_dict()
 
         click.echo(serialize(c, format="yaml"))
 

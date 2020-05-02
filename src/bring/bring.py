@@ -30,7 +30,12 @@ DEFAULT_TRANSFORM_PROFILES = {
 
 
 class Bring(SimpleTing):
-    def __init__(self, name: str = None, meta: Optional[Mapping[str, Any]] = None):
+    def __init__(
+        self,
+        name: str = None,
+        bring_config: BringConfig = None,
+        meta: Optional[Mapping[str, Any]] = None,
+    ):
 
         prototings: Iterable[Mapping] = BRINGISTRY_INIT["prototings"]  # type: ignore
         tings: Iterable[Mapping] = BRINGISTRY_INIT["tings"]  # type: ignore
@@ -77,14 +82,19 @@ class Bring(SimpleTing):
         self._transmogritory = Transmogritory(self._tingistry_obj)
         self._index_lock = threading.Lock()
 
-        self._bring_config: BringConfig = BringConfig(tingistry=self._tingistry_obj)
-        self._bring_config.set_bring(self)
+        self._bring_config: Optional[BringConfig] = bring_config
+        if self._bring_config is not None:
+            self._bring_config.set_bring(self)
 
         self._indexes: Dict[str, BringIndexTing] = {}
         self._all_indexes_created: bool = False
 
     @property
-    def config(self):
+    def config(self) -> BringConfig:
+
+        if self._bring_config is None:
+            self._bring_config = BringConfig(tingistry=self._tingistry_obj)
+            self._bring_config.set_bring(self)
 
         return self._bring_config
 
@@ -127,7 +137,7 @@ class Bring(SimpleTing):
                 self._indexes[ctx.name] = ctx
 
             async with create_task_group() as tg:
-                all_index_configs = await self._bring_config.get_all_index_configs()
+                all_index_configs = await self.config.get_all_index_configs()
                 for index_name, index_config in all_index_configs.items():
 
                     if index_name not in self._indexes.keys():
@@ -144,7 +154,7 @@ class Bring(SimpleTing):
     @property
     async def index_names(self) -> Iterable[str]:
 
-        all_index_configs = await self._bring_config.get_all_index_configs()
+        all_index_configs = await self.config.get_all_index_configs()
         return all_index_configs.keys()
 
     async def get_index(
@@ -152,7 +162,7 @@ class Bring(SimpleTing):
     ) -> Optional[BringIndexTing]:
 
         if index_name is None:
-            index_name = await self._bring_config.get_default_index_name()
+            index_name = await self.config.get_default_index_name()
 
         with self._index_lock:
             ctx = self._indexes.get(index_name, None)
@@ -160,7 +170,7 @@ class Bring(SimpleTing):
             if ctx is not None:
                 return ctx
 
-            index_config: BringIndexConfig = await self._bring_config.get_index_config(  # type: ignore
+            index_config: BringIndexConfig = await self.config.get_index_config(  # type: ignore
                 index_name=index_name, raise_exception=raise_exception
             )
 

@@ -64,7 +64,6 @@ BRING_DEFAULT_CONTEXTS = {
     },
     "collections": {
         "type": "index",
-        "var_defaults": {},
         "indexes": [
             "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
         ],
@@ -72,7 +71,6 @@ BRING_DEFAULT_CONTEXTS = {
     },
     "kube-install-manifests": {
         "type": "index",
-        "var_defaults": {},
         "indexes": [
             "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
         ],

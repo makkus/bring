@@ -40,9 +40,14 @@ class BringConfig(object):
     def __init__(
         self,
         tingistry: Tingistry,
+        name: Optional[str] = None
         # config_input: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
     ):
 
+        if name is None:
+            name = "default"
+
+        self._name = name
         self._tingistry_obj = tingistry
 
         self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
@@ -76,7 +81,15 @@ class BringConfig(object):
         self._task_watch_manager: TaskWatchManager = twm
         self._task_watcher_ids: List[str] = []
 
+    @property
+    def name(self):
+
+        return self._name
+
     def set_bring(self, bring: "Bring"):
+
+        if self._bring is not None:
+            raise Exception("Bring object already set for this config, this is a bug.")
         self._bring = bring
 
     def invalidate(self):
@@ -97,22 +110,19 @@ class BringConfig(object):
     def config_input(self) -> Iterable[Union[str, Mapping[str, Any]]]:
         return self._config_input
 
-    @config_input.setter
-    def config_input(
-        self, config_input: Optional[Iterable[Union[str, Mapping[str, Any]]]]
-    ):
+    def set_config(self, *config_input: Union[str, Mapping[str, Any]]):
 
-        if config_input is None:
-            config_input = []
-
-        config_input = list(config_input)
+        _config_input: List[Union[str, Mapping[str, Any]]] = []
         if not config_input or config_input[0] != "__init_dict__":
-            config_input.insert(0, "__init_dict__")
+            _config_input.append("__init_dict__")
 
-        differs: bool = self._config_input != config_input
-        self._config_input = config_input
+        for config in config_input:
+            _config_input.append(config)
+
+        differs: bool = self._config_input != _config_input
 
         if differs:
+            self._config_input = _config_input
             self.invalidate()
 
     async def calculate_config(
@@ -128,19 +138,28 @@ class BringConfig(object):
 
         for c in config_list:
 
+            temp_dict: Optional[Mapping[str, Any]] = None
             if isinstance(c, str):
-
                 if c == "__init_dict__":
-                    result.append(BRING_DEFAULT_CONFIG)
-                    continue
+                    temp_dict = BRING_DEFAULT_CONFIG
 
-                elif c not in config_dicts.keys():
-                    raise FrklException(msg=f"No config profile '{c}'")
+                elif "=" in c:
+                    k, v = c.split("=", maxsplit=1)
+                    temp_dict = {k: v}
 
-                result.append(config_dicts[c])
-            else:
-                result.append(c)
+                elif c in config_dicts.keys():
+                    temp_dict = config_dicts[c]
 
+            elif isinstance(c, collections.Mapping):
+                temp_dict = c
+
+            if temp_dict is None:
+                raise FrklException(
+                    msg=f"Can't parse config item: {c}.",
+                    reason="Invalid type or config option, must be either name of a config profile, a key/value pair (separated with '=', or a dict-like object.",
+                )
+
+            result.append(temp_dict)
         result_dict = get_seeded_dict(*result, merge_strategy="merge")
 
         return result_dict
@@ -278,64 +297,18 @@ class BringConfig(object):
 
         return index_config
 
-    # async def ensure_index(
-    #     self, index_config_string: str, set_default: bool = False
-    # ) -> BringIndexConfig:
-    #
-    #     all_index_configs = await self.get_all_index_configs()
-    #
-    #     if index_config_string in all_index_configs.keys():
-    #         await self.set_default_index_name(index_config_string)
-    #         return all_index_configs[index_config_string]
-    #
-    #     _name: Optional[str]
-    #     _config: str
-    #     if "=" in index_config_string:
-    #         _name, _config = index_config_string.split("=", maxsplit=1)
-    #     else:
-    #         _name = None
-    #         _config = index_config_string
-    #
-    #     try:
-    #         cc = await self.add_extra_index(
-    #             index_config=_config, name=_name, set_default=set_default
-    #         )
-    #     except Exception as e:
-    #         raise FrklException(
-    #             msg=f"Invalid index data '{index_config_string}'.",
-    #             reason="Not a valid index name, folder, or git url.",
-    #             parent=e,
-    #         )
-    #
-    #     return cc
-
-    # async def add_extra_index(
-    #     self,
-    #     index_config: Union[str, Mapping[str, Any]],
-    #     name: Optional[str] = None,
-    #     set_default: bool = False,
-    # ) -> BringIndexConfig:
-    #     """Add an extra index to the current configuration."""
-    #
-    #     _index_config = BringIndexConfig(
-    #         tingistry_obj=self._tingistry_obj, init_data=index_config
-    #     )
-    #     if name:
-    #         _index_config.name = name
-    #
-    #     self._extra_index_configs.append(_index_config)
-    #
-    #     self.invalidate()
-    #     await self.get_config_dict()
-    #
-    #     if set_default:
-    #         await self.set_default_index_name(_index_config.name)
-    #
-    #     return _index_config
-
     async def get_index(self, index_name: str) -> BringIndexTing:
 
         index_config: BringIndexConfig = await self.get_index_config(
             index_name, raise_exception=True
         )  # type: ignore
         return await index_config.get_index()
+
+    def get_bring(self) -> "Bring":
+
+        if self._bring is None:
+            self._bring = self._tingistry_obj.create_singleting(
+                f"bring.{self.name}", "bring", bring_config=self
+            )
+
+        return self._bring
