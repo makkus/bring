@@ -307,8 +307,8 @@ class BringConfig(object):
     def get_bring(self) -> "Bring":
 
         if self._bring is None:
-            self._bring = self._tingistry_obj.create_singleting(
+            self._bring = self._tingistry_obj.create_singleting(  # type: ignore
                 f"bring.{self.name}", "bring", bring_config=self
             )
 
-        return self._bring
+        return self._bring  # type: ignore
