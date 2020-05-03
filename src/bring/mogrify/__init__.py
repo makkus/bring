@@ -313,13 +313,36 @@ class Transmogrificator(Tasks):
         return result
 
 
-class Transmogritory(object):
-    def __init__(self, tingistry: "Tingistry", _load_plugins_at_init: bool = True):
+class Transmogritory(SimpleTing):
+    """Registry that holds all mogrify plugins.
+    """
 
-        self._tingistry: Tingistry = tingistry
+    def __init__(
+        self,
+        name: str,
+        _load_plugins_at_init: bool = True,
+        meta: Optional[Mapping[str, Any]] = None,
+    ):
+
+        self._tingistry_obj: Tingistry = meta["tingistry"]  # type: ignore
         self._plugin_manager: Optional[TypistryPluginManager] = None
+
+        super().__init__(name=name, meta=meta)
         if _load_plugins_at_init:
             self.plugin_manager  # noqa
+
+    def provides(self) -> Mapping[str, str]:
+
+        # TODO: make a real 'ting' out of this, probably not necessary though, it's really just a bring-global object
+        return {}
+
+    def requires(self) -> Mapping[str, str]:
+
+        return {}
+
+    def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+
+        return {}
 
     @property
     def plugin_manager(self) -> TypistryPluginManager:
@@ -327,11 +350,11 @@ class Transmogritory(object):
         if self._plugin_manager is not None:
             return self._plugin_manager
 
-        self._plugin_manager = self._tingistry.typistry.get_plugin_manager(
+        self._plugin_manager = self._tingistry_obj.typistry.get_plugin_manager(
             "bring.mogrify.Mogrifier"
         )
         for k, v in self._plugin_manager._plugins.items():
-            self._tingistry.register_prototing(f"bring.mogrify.plugins.{k}", v)
+            self._tingistry_obj.register_prototing(f"bring.mogrify.plugins.{k}", v)
 
         return self._plugin_manager
 
@@ -351,7 +374,7 @@ class Transmogritory(object):
                 reason=f"No mogrify plugin '{mogrify_plugin}' available.",
             )
 
-        ting: Mogrifier = self._tingistry.create_ting(  # type: ignore
+        ting: Mogrifier = self._tingistry_obj.create_ting(  # type: ignore
             prototing=f"bring.mogrify.plugins.{mogrify_plugin}",
             ting_name=f"bring.mogrify.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
         )
@@ -382,7 +405,11 @@ class Transmogritory(object):
         mogrifier_list = assemble_mogrifiers(mogrifier_list=data, vars=vars, args=args)
 
         transmogrificator = Transmogrificator(
-            pipeline_id, self._tingistry, task_desc=task_desc, target=target, **kwargs
+            pipeline_id,
+            self._tingistry_obj,
+            task_desc=task_desc,
+            target=target,
+            **kwargs,
         )
         for index, _mog in enumerate(mogrifier_list):
 
@@ -448,7 +475,7 @@ class Transmogritory(object):
 
                     tm = Transmogrificator(
                         f"{pipeline_id}_{index}_{j}",
-                        self._tingistry,
+                        self._tingistry_obj,
                         *tings,
                         task_desc=td,
                         working_dir=tm_working_dir,

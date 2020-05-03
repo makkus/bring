@@ -80,7 +80,7 @@ class BringDynamicIndexTing(BringIndexTing):
             prototing="bring.types.dynamic_pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
-            file_matchers=[{"type": "extension", "regex": ".*\\.pkg"}],
+            file_matchers=[{"type": "extension", "regex": ".*\\.br.pkg"}],
         )
 
         indexes = config.get("indexes", [])

@@ -20,7 +20,6 @@ from tings.tingistry import Tingistry
 
 
 if TYPE_CHECKING:
-    from bring.bring import Bring
     from bring.pkg_index import BringIndexTing
 
 log = logging.getLogger("bring")
@@ -39,8 +38,10 @@ class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
         self._tingistry_obj: Tingistry = meta["tingistry"]
-        self._bring: Bring = self._tingistry_obj.get_ting("bring.mgmt")  # type: ignore
-        # self._bring_pkgs = meta["tingistry"]["obj"].get_ting("bring.pkgs")
+        self._transmogritory: Transmogritory = self._tingistry_obj.get_ting(
+            "bring.transmogritory", raise_exception=True
+        )
+
         super().__init__(name=name, meta=meta)
         self._index: Optional["BringIndexTing"] = None
 
@@ -199,15 +200,15 @@ class PkgTing(SimpleTing):
         # import pp
         # pp(metadata['pkg_vars'].keys())
 
-        if self._bring is None:
-            raise Exception("'bring' attribute not set yet, this is a bug")
-        transmogritory: Transmogritory = self._bring._transmogritory
+        # if self._bring is None:
+        #     raise Exception("'bring' attribute not set yet, this is a bug")
+        # transmogritory: Transmogritory = self._bring._transmogritory
 
         task_desc = BringTaskDesc(
             name=f"install pkg '{self.name}'", msg=f"installing pkg {self.name}"
         )
 
-        tm = transmogritory.create_transmogrificator(
+        tm = self._transmogritory.create_transmogrificator(
             mogrify_list,
             vars=_vars,
             args=metadata["pkg_vars"]["mogrify_vars"],

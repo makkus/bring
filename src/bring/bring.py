@@ -79,7 +79,15 @@ class Bring(SimpleTing):
         env_conf["bringistry"] = self
         self.typistry.get_plugin_manager("pkg_type", plugin_config=env_conf)
 
-        self._transmogritory = Transmogritory(self._tingistry_obj)
+        # self._transmogritory = Transmogritory(self._tingistry_obj)
+        self._transmogritory = self._tingistry_obj.get_ting(
+            "bring.transmogritory", raise_exception=False
+        )
+        if self._transmogritory is None:
+            self._transmogritory = self._tingistry_obj.create_singleting(
+                "bring.transmogritory", Transmogritory
+            )
+
         self._index_lock = threading.Lock()
 
         self._bring_config: Optional[BringConfig] = bring_config
