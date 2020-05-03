@@ -46,9 +46,9 @@ class BringExportIndexCommand(click.Command):
         json_bytes = json_data.encode("utf-8")
 
         if output_file is None:
-            _path = os.path.join(os.getcwd(), f"{index_obj.name}.bx")
+            _path = os.path.join(os.getcwd(), f"{index_obj.name}.br.idx")
         elif os.path.isdir(os.path.realpath(output_file)):
-            _path = os.path.join(output_file, f"{index_obj.name}.bx")
+            _path = os.path.join(output_file, f"{index_obj.name}.br.idx")
         else:
             _path = output_file
 

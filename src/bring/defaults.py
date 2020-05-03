@@ -50,14 +50,18 @@ BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 BRING_DEFAULT_CONTEXTS = {
     "binaries": {
         "type": "index",
-        "indexes": ["https://gitlab.com/tingistries/binaries/-/raw/master/binaries.bx"],
+        "indexes": [
+            "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx"
+        ],
         "defaults": {"target": "~/.local/bring", "vars": {}},
         "add_sysinfo_to_default_vars": True,
         "info": {"slug": "Single file, compiled applications."},
     },
     "scripts": {
         "type": "index",
-        "indexes": ["https://gitlab.com/tingistries/scripts/-/raw/master/scripts.bx"],
+        "indexes": [
+            "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx"
+        ],
         "defaults": {"target": "~/.local/bring", "vars": {}},
         "add_sysinfo_to_default_vars": True,
         "info": {"slug": "Shell scripts."},
@@ -65,14 +69,14 @@ BRING_DEFAULT_CONTEXTS = {
     "collections": {
         "type": "index",
         "indexes": [
-            "https://gitlab.com/tingistries/collections/-/raw/master/collections.bx"
+            "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx"
         ],
         "info": {"slug": "Miscellaneous collections of files."},
     },
     "kube-install-manifests": {
         "type": "index",
         "indexes": [
-            "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.bx"
+            "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx"
         ],
         "info": {"slug": "Install manifests for Kubernetes apps."},
     },
