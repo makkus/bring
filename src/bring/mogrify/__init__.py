@@ -333,14 +333,14 @@ class Transmogritory(SimpleTing):
 
     def provides(self) -> Mapping[str, str]:
 
-        # TODO: make a real 'ting' out of this, probably not necessary though, it's really just a bring-global object
+        # TODO: make a real 'ting' out of this, probably not necessary though, it's really just a tingistry-global object
         return {}
 
     def requires(self) -> Mapping[str, str]:
 
         return {}
 
-    def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
         return {}
 

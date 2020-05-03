@@ -38,7 +38,7 @@ class PkgTing(SimpleTing):
     def __init__(self, name, meta: Dict[str, Any]):
 
         self._tingistry_obj: Tingistry = meta["tingistry"]
-        self._transmogritory: Transmogritory = self._tingistry_obj.get_ting(
+        self._transmogritory: Transmogritory = self._tingistry_obj.get_ting(  # type: ignore
             "bring.transmogritory", raise_exception=True
         )
 
