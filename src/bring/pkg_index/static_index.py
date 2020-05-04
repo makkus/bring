@@ -9,8 +9,8 @@ import arrow
 from anyio import Lock, aopen
 from arrow import Arrow
 from bring.defaults import BRING_INDEX_FILES_CACHE
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException

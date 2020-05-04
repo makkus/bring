@@ -2,9 +2,9 @@
 from typing import Any, Mapping, Optional
 
 import arrow
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
-from bring.pkgs import Pkgs
+from bring.pkg_index.pkg import PkgTing
+from bring.pkg_index.pkgs import Pkgs
 from bring.utils import BringTaskDesc
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker

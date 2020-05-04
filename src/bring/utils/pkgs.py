@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from blessed import Terminal
-from bring.pkg import PkgTing
+from bring.pkg_index.pkg import PkgTing
 from bring.utils import find_version, replace_var_aliases
 from colorama import Fore, Style
 from frtls.cli.terminal import create_terminal

@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping
 
 from anyio import create_task_group
-from bring.pkg import PkgTing
+from bring.pkg_index.pkg import PkgTing
 from tings.ting import Ting
 from tings.ting.tings import SubscripTings
 

@@ -5,7 +5,7 @@ import shutil
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from bring.defaults import BRING_PLUGIN_CACHE
-from bring.pkg import PkgTing
+from bring.pkg_index.pkg import PkgTing
 from frtls.exceptions import FrklException
 from tings.common.templating import TemplaTing, TemplaTingRepo
 

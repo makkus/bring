@@ -12,8 +12,8 @@ from bring.interfaces.cli.utils import (
     print_index_list_for_help,
     print_pkg_list_help,
 )
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
 from frtls.cli.terminal import create_terminal

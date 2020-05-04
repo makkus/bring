@@ -3,8 +3,8 @@ from typing import Iterable, MutableMapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional
 
 from bring.defaults import BRING_PLUGIN_CACHE, BRING_WORKSPACE_FOLDER
-from bring.pkg import PkgTing
+from bring.pkg_index.pkg import PkgTing
 from bring.utils.paths import copy_filtered_files
 from frtls.args.arg import RecordArg
 from frtls.exceptions import FrklException

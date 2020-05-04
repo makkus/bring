@@ -9,9 +9,9 @@ from anyio import create_task_group
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
 from bring.pkg_index.index_config import BringIndexConfig
+from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException

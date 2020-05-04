@@ -7,7 +7,7 @@ from asyncclick import Command
 from bring.bring import Bring
 from bring.bring_list import BringList
 from bring.interfaces.cli.utils import log, print_pkg_list_help
-from bring.pkg import PkgTing
+from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkgs import explain_version
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task

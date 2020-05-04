@@ -3,8 +3,8 @@ from typing import Any, Iterable, Mapping, Optional
 
 from bring.bring import Bring
 from bring.mogrify import assemble_mogrifiers
-from bring.pkg import PkgTing
 from bring.pkg_index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import SimplePkgType
 from bring.utils import find_version, replace_var_aliases
 from frtls.async_helpers import wrap_async_task
