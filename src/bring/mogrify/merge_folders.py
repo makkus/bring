@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Mapping, MutableMapping
 
-from bring.merging import FolderMerge
 from bring.mogrify import SimpleMogrifier
+from bring.utils.merging import FolderMerge
 
 
 class MergeFolderMogrifier(SimpleMogrifier):

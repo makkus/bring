@@ -7,7 +7,7 @@ import arrow
 from anyio import create_task_group
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.pkg_index.pkg import PkgTing
-from bring.system_info import get_current_system_info
+from bring.utils.system_info import get_current_system_info
 from frtls.dicts import dict_merge
 from frtls.exceptions import FrklException
 from frtls.tasks import Task

@@ -2,8 +2,8 @@
 import logging
 from typing import Any, Mapping, MutableMapping, Optional, Union
 
-from bring.merging import FolderMerge
 from bring.mogrify import SimpleMogrifier
+from bring.utils.merging import FolderMerge
 
 
 log = logging.getLogger("bring")

@@ -10,8 +10,8 @@ from bring.defaults import BRING_CONTEXT_NAMESPACE, BRING_DEFAULT_CONTEXTS
 from bring.pkg_index import BringIndexTing
 from bring.pkg_index.folder_index import BringDynamicIndexTing
 from bring.pkg_index.static_index import BringStaticIndexTing
-from bring.system_info import get_current_system_info
 from bring.utils.indexes import validate_index_name
+from bring.utils.system_info import get_current_system_info
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import (

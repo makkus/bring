@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from bring.defaults import BRING_RESULTS_FOLDER
-from bring.merging import FolderMerge, MergeStrategy
 from bring.pkg_index.pkg import PkgTing
+from bring.utils.merging import FolderMerge, MergeStrategy
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import SmartInput
 

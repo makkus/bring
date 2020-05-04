@@ -22,7 +22,7 @@ from bring.defaults import (
 )
 from bring.pkg_index import BringIndexTing
 from bring.pkg_index.index_config import BringIndexConfig
-from bring.system_info import get_current_system_info
+from bring.utils.system_info import get_current_system_info
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.introspection.pkg_env import AppEnvironment
