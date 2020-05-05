@@ -127,7 +127,7 @@ class TemplatePkgCommand(Command):
 
     async def process(self, **kwargs):
 
-        vars = self._args.from_cli_input(kwargs)
+        vars = self._args.from_cli_input(**kwargs, _remove_none_values=True)
 
         if self._templa_ting is None:
             raise Exception("'templating not set, this is a bug")

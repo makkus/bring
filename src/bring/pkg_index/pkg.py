@@ -5,6 +5,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
 
+from bring.defaults import BRING_TEMP_FOLDER_MARKER
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_types import PkgType
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
@@ -303,6 +304,9 @@ class PkgTing(SimpleTing):
         if not target:
             index_defaults = await self.bring_index.get_value("defaults")
             target = index_defaults.get("target", None)
+
+        if target == BRING_TEMP_FOLDER_MARKER:
+            target = None
 
         if vars is None:
             vars = {}

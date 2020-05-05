@@ -4,6 +4,7 @@ import sys
 from typing import Any, Dict
 
 from appdirs import AppDirs
+from frtls.templating import get_global_jinja_env
 
 
 BRING_APP_DIRS = AppDirs("bring", "frkl")
@@ -157,3 +158,9 @@ BRING_ALLOWED_MARKER_NAME = "bring_allowed"
 BRING_TASKS_BASE_TOPIC = "bring.tasks"
 
 BRING_NO_METADATA_TIMESTAMP_MARKER = "unknown_metadata_timestamp"
+
+BRING_TEMP_FOLDER_MARKER = "__temp__"
+
+BRING_INS_JINJA_ENV = get_global_jinja_env(delimiter_profile="frkl", env_type="native")
+
+BRING_AUTO_ARG = {"type": "string", "required": True}

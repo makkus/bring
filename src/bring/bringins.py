@@ -2,23 +2,46 @@
 import collections
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Union,
+)
 
 from anyio import create_task_group
-from bring.defaults import BRING_RESULTS_FOLDER
+from bring.defaults import (
+    BRING_AUTO_ARG,
+    BRING_RESULTS_FOLDER,
+    BRING_TEMP_FOLDER_MARKER,
+)
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.merging import FolderMerge, MergeStrategy
+from frtls.dicts import get_seeded_dict
+from frtls.doc import Doc
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import SmartInput
+from frtls.templating import (
+    create_var_regex,
+    find_var_names_in_obj,
+    replace_var_names_in_obj,
+)
 
 
 if TYPE_CHECKING:
     from bring.bring import Bring
 
+BRING_IN_DEFAULT_DELIMITER = create_var_regex()
 
-class BringItem(object):
+
+class BringIn(object):
     @classmethod
-    def create(cls, item: Union[str, Mapping[str, Any]]) -> "BringItem":
+    def create(cls, item: Union[str, Mapping[str, Any]]) -> "BringIn":
 
         if isinstance(item, str):
             result: Mapping[str, Any] = {"name": item}
@@ -30,7 +53,7 @@ class BringItem(object):
             )
 
         try:
-            bring_item = BringItem(**result)
+            bring_item = BringIn(**result)
             return bring_item
         except Exception as e:
             raise ValueError(f"Can't create bring item with input '{item}': {e}")
@@ -75,6 +98,8 @@ class BringItem(object):
                 _m = m
             self._mogrify.append(_m)
 
+        self._var_names: Optional[Set[str]] = None
+
     def to_dict(self) -> Mapping[str, Any]:
 
         return {
@@ -96,19 +121,52 @@ class BringItem(object):
     def vars(self) -> Mapping[str, Any]:
         return self._vars
 
+    def process_vars(self, repl_dict: Mapping[str, Any]):
+
+        repl = replace_var_names_in_obj(
+            self._vars, repl_dict=repl_dict, delimiter=BRING_IN_DEFAULT_DELIMITER
+        )
+        return repl
+
+    def process_mogrify(self, repl_dict: Mapping[str, Any]):
+
+        repl = replace_var_names_in_obj(
+            self._mogrify, repl_dict=repl_dict, delimiter=BRING_IN_DEFAULT_DELIMITER
+        )
+        return repl
+
     @property
     def mogrify(self) -> Iterable[Mapping[str, Any]]:
 
         return self._mogrify
 
+    def get_var_names(self) -> Set[str]:
 
-class BringList(object):
+        if self._var_names is not None:
+            return self._var_names
+
+        obj: Dict[str, Any] = {}
+        if self._vars:
+            obj["vars"] = self._vars
+        if self._mogrify:
+            obj["mogrify"] = self._mogrify
+
+        self._var_names = find_var_names_in_obj(
+            obj, delimiter=BRING_IN_DEFAULT_DELIMITER
+        )
+        return self._var_names
+
+
+class BringIns(object):
     @classmethod
-    async def from_file(cls, path: Union[str, Path]) -> "BringList":
+    async def from_file(cls, path: Union[str, Path]) -> "BringIns":
 
         si = SmartInput(path)
 
         content = await si.content_async()
+
+        if not isinstance(content, collections.Mapping):
+            content = {"pkgs": content}
 
         return cls.create(data=content["pkgs"])
 
@@ -116,8 +174,8 @@ class BringList(object):
     def create(
         cls,
         data: Union[Mapping[str, Any], Iterable[Mapping[str, Any]]],
-        item_defaults: Mapping[str, Any] = None,
-    ) -> "BringList":
+        defaults: Mapping[str, Any] = None,
+    ) -> "BringIns":
 
         if not isinstance(data, collections.abc.Mapping):
             _data: Mapping[str, Any] = {"items": data}
@@ -126,21 +184,78 @@ class BringList(object):
 
         items = []
         for item in _data.get("items", []):
-            bi = BringItem.create(item)
+            bi = BringIn.create(item)
             items.append(bi)
 
-        return BringList(*items, item_defaults=item_defaults)
+        return BringIns(*items, defaults=defaults)
 
     def __init__(
-        self, *items: BringItem, item_defaults: Mapping[str, Any] = None
+        self,
+        *items: BringIn,
+        defaults: Optional[Mapping[str, Any]] = None,
+        args: Optional[Mapping[str, Any]] = None,
+        doc: Optional[Union[str, Mapping[str, Any]]] = None,
     ) -> None:
 
         self._items = items
-        self._item_defaults = item_defaults
+        self._defaults = defaults
+
+        self._doc = Doc(doc)
+        self._var_names: Optional[Set[str]] = None
+        if args is None:
+            args = {}
+        self._provided_args: Mapping[str, Any] = args
+        self._auto_args: Optional[Mapping[str, Any]] = None
+        self._args: Optional[Mapping[str, Any]] = None
+
+    @property
+    def doc(self) -> Doc:
+
+        return self._doc
+
+    @property
+    def args(self) -> Mapping[str, Any]:
+
+        if self._args is not None:
+            return self._args
+
+        self._args = get_seeded_dict(
+            self.auto_args, self._provided_args, merge_strategy="update"
+        )
+        return self._args
+
+    @property
+    def auto_args(self) -> Mapping[str, Any]:
+
+        if self._auto_args is not None:
+            return self._auto_args
+
+        self._auto_args = {}
+        for vn in self.get_var_names():
+            if vn in self._provided_args.keys():
+                continue
+
+            self._auto_args[vn] = dict(BRING_AUTO_ARG)
+
+        return self._auto_args
+
+    def get_var_names(self) -> Set[str]:
+
+        if self._var_names is not None:
+            return self._var_names
+
+        self._var_names = set()
+        for item in self._items:
+
+            var_names = item.get_var_names()
+            self._var_names.update(var_names)
+
+        return self._var_names
 
     async def install(
         self,
         bring: "Bring",
+        vars: Optional[Mapping[str, Any]] = None,
         target: Union[str, Path] = None,
         strategy: Optional[Union[str, Mapping[str, Any], MergeStrategy]] = None,
         flatten: bool = False,
@@ -148,7 +263,7 @@ class BringList(object):
 
         item_list = []
 
-        async def retrieve_pkg(_item: BringItem):
+        async def retrieve_pkg(_item: BringIn, _vars: Mapping[str, Any]):
 
             pkg: Optional[PkgTing] = await bring.get_pkg(
                 name=_item.name, index=_item.index
@@ -164,14 +279,19 @@ class BringList(object):
             data = {"pkg": pkg, "item": _item}
 
             t = await pkg.create_version_folder(
-                target=None, vars=_item.vars, extra_mogrifiers=_item.mogrify
+                target=BRING_TEMP_FOLDER_MARKER,
+                vars=_item.process_vars(repl_dict=_vars),
+                extra_mogrifiers=_item.process_mogrify(repl_dict=_vars),
             )
             data["target"] = t
             item_list.append(data)
 
+        if vars is None:
+            vars = {}
+
         async with create_task_group() as tg:
             for i in self._items:
-                await tg.spawn(retrieve_pkg, i)
+                await tg.spawn(retrieve_pkg, i, vars)
 
         if target is None:
             target = tempfile.mkdtemp(prefix="install_", dir=BRING_RESULTS_FOLDER)

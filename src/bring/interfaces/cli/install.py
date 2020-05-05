@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import asyncclick as click
 from asyncclick import Command
 from bring.bring import Bring
-from bring.bring_list import BringList
+from bring.bringins import BringIns
 from bring.interfaces.cli.utils import log, print_pkg_list_help
 from bring.pkg_index.pkg import PkgTing
+from bring.utils.bring_ins import explain_bring_ins
 from bring.utils.pkgs import explain_version
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
@@ -128,13 +129,18 @@ class BringInstallGroup(FrklBaseCommand):
 
         if os.path.isfile(name):
 
-            bring_list = await BringList.from_file(name)
+            bring_ins = await BringIns.from_file(name)
 
-            @click.command()
-            @click.pass_context
-            async def command(ctx):
-
-                await bring_list.install(bring=self._bring)
+            command = PkgBringInsCommand(
+                name,
+                bring_ins=bring_ins,
+                bring=self._bring,
+                target=target,
+                strategy=strategy,
+                explain=explain,
+                terminal=self._terminal,
+                load_details=load_details,
+            )
 
             return command
 
@@ -153,6 +159,69 @@ class BringInstallGroup(FrklBaseCommand):
             )
 
             return command
+
+
+class PkgBringInsCommand(Command):
+    def __init__(
+        self,
+        name: str,
+        bring_ins: BringIns,
+        bring: Bring,
+        target: str,
+        strategy: str,
+        explain: bool = False,
+        load_details: bool = False,
+        terminal=None,
+        **kwargs,
+    ):
+
+        self._bring_ins: BringIns = bring_ins
+        self._bring = bring
+
+        self._target = target
+        self._strategy = strategy
+
+        self._explain: bool = explain
+
+        if terminal is None:
+            terminal = create_terminal()
+        self._terminal = terminal
+
+        self._args: Optional[RecordArg] = None
+
+        try:
+            doc = self._bring_ins.doc
+
+            if load_details:
+                arg_map = self._bring_ins.args
+                self._args = self._bring.arg_hive.create_record_arg(arg_map)
+                params = self._args.to_cli_options(
+                    add_defaults=False, remove_required_when_default=True
+                )
+                kwargs["params"] = params
+
+                kwargs["help"] = doc.get_help(use_short_help=True)
+
+            kwargs["short_help"] = doc.get_short_help(use_help=True)
+        except (Exception) as e:
+            log.debug(f"Can't create PkgInstallTingCommand object: {e}", exc_info=True)
+            raise e
+
+        super().__init__(name=name, callback=self.install, **kwargs)
+
+    async def install(self, **kwargs):
+
+        _vars = self._args.from_cli_input(_remove_none_values=True, **kwargs)
+
+        if self._explain:
+            click.echo()
+            explanation = await explain_bring_ins(self._bring_ins)
+            click.echo(explanation)
+
+        else:
+
+            path = await self._bring_ins.install(bring=self._bring, vars=_vars)
+            print(path)
 
 
 class PkgInstallTingCommand(Command):

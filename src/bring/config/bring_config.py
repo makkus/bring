@@ -13,6 +13,7 @@ from typing import (
 )
 
 import anyio
+from anyio import Lock
 from bring.config.folder_config import FolderConfigProfilesTing
 from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
@@ -72,7 +73,7 @@ class BringConfig(object):
         self._all_index_configs: Optional[Dict[str, BringIndexConfig]] = None
         self._bring: Optional["Bring"] = None
         # self._use_config_indexes: bool = True
-        self._config_dict_lock = anyio.create_lock()
+        self._config_dict_lock: Optional[Lock] = None
 
         twm = AppEnvironment().get_global("task_watcher")
         if twm is None:
@@ -80,6 +81,15 @@ class BringConfig(object):
             AppEnvironment().set_global("task_watcher", twm)
         self._task_watch_manager: TaskWatchManager = twm
         self._task_watcher_ids: List[str] = []
+
+    async def _get_config_dict_lock(self):
+
+        # TODO: make this multithreaded?
+
+        if self._config_dict_lock is None:
+            self._config_dict_lock = anyio.create_lock()
+
+        return self._config_dict_lock
 
     @property
     def name(self):
@@ -166,7 +176,7 @@ class BringConfig(object):
 
     async def get_config_dict(self) -> Mapping[str, Any]:
 
-        async with self._config_dict_lock:
+        async with await self._get_config_dict_lock():
             if self._config_dict is not None:
                 return self._config_dict
 

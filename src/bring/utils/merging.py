@@ -300,4 +300,6 @@ class FolderMerge(object):
 
     def merge_folders(self, *sources: Union[str, Path]) -> None:
 
+        self._target.ensure_exists()
+
         self.merge_strategy.merge(self._target, *sources)

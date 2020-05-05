@@ -2,10 +2,9 @@
 
 """Main module."""
 import os
-import threading
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
-from anyio import create_task_group
+from anyio import Lock, create_lock, create_task_group
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory
@@ -88,7 +87,7 @@ class Bring(SimpleTing):
                 "bring.transmogritory", Transmogritory
             )
 
-        self._index_lock = threading.Lock()
+        self._index_lock: Optional[Lock] = None
 
         self._bring_config: Optional[BringConfig] = bring_config
         if self._bring_config is not None:
@@ -96,6 +95,12 @@ class Bring(SimpleTing):
 
         self._indexes: Dict[str, BringIndexTing] = {}
         self._all_indexes_created: bool = False
+
+    async def _get_index_lock(self) -> Lock:
+
+        if self._index_lock is None:
+            self._index_lock = create_lock()
+        return self._index_lock
 
     @property
     def config(self) -> BringConfig:
@@ -135,7 +140,7 @@ class Bring(SimpleTing):
 
     async def _create_all_indexes(self):
 
-        with self._index_lock:
+        async with await self._get_index_lock():
 
             if self._all_indexes_created:
                 return
@@ -147,7 +152,6 @@ class Bring(SimpleTing):
             async with create_task_group() as tg:
                 all_index_configs = await self.config.get_all_index_configs()
                 for index_name, index_config in all_index_configs.items():
-
                     if index_name not in self._indexes.keys():
                         await tg.spawn(create_index, index_config)
 
@@ -172,11 +176,13 @@ class Bring(SimpleTing):
         if index_name is None:
             index_name = await self.config.get_default_index_name()
 
-        with self._index_lock:
-            ctx = self._indexes.get(index_name, None)
+        # indexes = await self.indexes
+        # idx = indexes.get(index_name)
+        async with await self._get_index_lock():
+            idx = self._indexes.get(index_name, None)
 
-            if ctx is not None:
-                return ctx
+            if idx is not None:
+                return idx
 
             index_config: BringIndexConfig = await self.config.get_index_config(  # type: ignore
                 index_name=index_name, raise_exception=raise_exception
@@ -193,10 +199,10 @@ class Bring(SimpleTing):
                 else:
                     return None
 
-            ctx = await index_config.get_index()
-            self._indexes[index_name] = ctx
+            idx = await index_config.get_index()
+            self._indexes[index_name] = idx
 
-            return ctx
+        return idx
 
     async def update(self, index_names: Optional[Iterable[str]] = None):
 
