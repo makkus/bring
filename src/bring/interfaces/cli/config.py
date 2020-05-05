@@ -96,9 +96,7 @@ class BringConfigGroup(FrklBaseCommand):
                         profile_list.append([profile_name, slug])
 
                     table = create_multi_column_table(
-                        profile_list,
-                        headers=["profile", "description"],
-                        terminal=self._terminal,
+                        profile_list, headers=["profile", "description"]
                     )
                     click.echo()
                     click.echo(table)

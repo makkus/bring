@@ -6,7 +6,6 @@ from bring.bring import Bring
 from bring.plugins.cli import AbstractBringCommand, BringCliPlugin
 from bring.plugins.templating.core import BringTemplate
 from frtls.args.arg import Arg, RecordArg
-from frtls.cli.terminal import create_terminal
 from frtls.exceptions import FrklException
 from tings.common.templating import TemplaTing
 
@@ -16,22 +15,14 @@ class TemplatePlugin(BringCliPlugin):
     _plugin_name = "template"
 
     async def create_command(self) -> Command:
-        command = TemplatePluginCommand(
-            name="template", bring=self.bring, terminal=self.terminal
-        )
+        command = TemplatePluginCommand(name="template", bring=self.bring)
         return command
 
 
 class TemplatePluginCommand(AbstractBringCommand):
-    def __init__(self, name: str, bring: Bring, terminal=None, **kwargs):
+    def __init__(self, name: str, bring: Bring, **kwargs):
 
-        super().__init__(
-            name=name,
-            bring=bring,
-            terminal=terminal,
-            subcommand_metavar="PKG",
-            **kwargs,
-        )
+        super().__init__(name=name, bring=bring, subcommand_metavar="PKG", **kwargs)
 
     def get_group_options(self) -> Union[Arg, Dict]:
 
@@ -86,7 +77,6 @@ class TemplatePluginCommand(AbstractBringCommand):
             bring_template=bring_template,
             template_name=name,
             templa_ting=templa_ting,
-            terminal=self._terminal,
             load_details=load_details,
             args=args,
         )
@@ -103,7 +93,6 @@ class TemplatePkgCommand(Command):
         templa_ting: TemplaTing,
         load_details: bool = False,
         args: Optional[RecordArg] = None,
-        terminal=None,
         **kwargs,
     ):
 
@@ -111,10 +100,6 @@ class TemplatePkgCommand(Command):
         self._bring_template: BringTemplate = bring_template
 
         self._template_name: str = template_name
-
-        if terminal is None:
-            terminal = create_terminal()
-        self._terminal = terminal
 
         self._templa_ting: Optional[TemplaTing] = templa_ting
         self._args = args

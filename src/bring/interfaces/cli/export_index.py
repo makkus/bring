@@ -8,19 +8,15 @@ from typing import Optional
 import asyncclick as click
 from asyncclick.core import Argument, Option
 from bring.bring import Bring
-from frtls.cli.terminal import create_terminal
 
 
 log = logging.getLogger("bring")
 
 
 class BringExportIndexCommand(click.Command):
-    def __init__(self, name: str, bring: Bring, terminal=None, **kwargs):
+    def __init__(self, name: str, bring: Bring, **kwargs):
 
         self._bring: Bring = bring
-        if terminal is None:
-            terminal = create_terminal()
-        self._terminal = terminal
 
         params = [
             Argument(["index"], required=False, nargs=1),

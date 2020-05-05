@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import arrow
 import asyncclick as click
 from asyncclick import Command, Option
-from blessed import Terminal
 from bring.bring import Bring
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.interfaces.cli.utils import (
@@ -16,7 +15,6 @@ from bring.pkg_index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
-from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import serialize
 
 
@@ -76,10 +74,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         index = await self._bring.get_index(index_name=name, raise_exception=False)
         if index is not None:
             command = IndexInfoTingCommand(
-                name=name,
-                index=index,
-                load_details=load_details,
-                terminal=self._terminal,
+                name=name, index=index, load_details=load_details
             )
             return command
 
@@ -87,28 +82,17 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         if pkg is None:
             return None
 
-        command = PkgInfoTingCommand(
-            name=name, pkg=pkg, load_details=load_details, terminal=self._terminal
-        )
+        command = PkgInfoTingCommand(name=name, pkg=pkg, load_details=load_details)
         return command
 
 
 class IndexInfoTingCommand(Command):
     def __init__(
-        self,
-        name: str,
-        index: BringIndexTing,
-        load_details: bool = False,
-        terminal: Optional[Terminal] = None,
-        **kwargs,
+        self, name: str, index: BringIndexTing, load_details: bool = False, **kwargs
     ):
 
         self._index: BringIndexTing = index
 
-        if terminal is None:
-            terminal = create_terminal()
-
-        self._terminal = terminal
         try:
             val_names = ["config", "info"]
             self._data = wrap_async_task(
@@ -196,21 +180,10 @@ class IndexInfoTingCommand(Command):
 
 
 class PkgInfoTingCommand(Command):
-    def __init__(
-        self,
-        name: str,
-        pkg: PkgTing,
-        load_details: bool = False,
-        terminal: Optional[Terminal] = None,
-        **kwargs,
-    ):
+    def __init__(self, name: str, pkg: PkgTing, load_details: bool = False, **kwargs):
 
         self._pkg: PkgTing = pkg
 
-        if terminal is None:
-            terminal = create_terminal()
-
-        self._terminal = terminal
         try:
             val_names = ["info"]
             vals = wrap_async_task(

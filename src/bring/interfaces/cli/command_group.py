@@ -92,9 +92,6 @@ class BringCommandGroup(FrklBaseCommand):
             no_args_is_help=True,
             chain=False,
             result_callback=None,
-            # callback=callback,
-            # callback=None,
-            # arg_hive=bring.arg_hive,
             **kwargs,
         )
 
@@ -172,10 +169,7 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.config import BringConfigGroup
 
             command = BringConfigGroup(
-                bring_config=self.bring_config,
-                config_list=config_list,
-                name=name,
-                terminal=self._terminal,
+                bring_config=self.bring_config, config_list=config_list, name=name
             )
 
             return command
@@ -188,24 +182,18 @@ class BringCommandGroup(FrklBaseCommand):
 
             from bring.interfaces.cli.list_pkgs import BringListPkgsGroup
 
-            command = BringListPkgsGroup(
-                bring=self.bring, name="info", terminal=self._terminal
-            )
+            command = BringListPkgsGroup(bring=self.bring, name="info")
             command.short_help = "display information for packages"
 
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
 
-            command = BringInstallGroup(
-                bring=self.bring, name="install", terminal=self._terminal
-            )
+            command = BringInstallGroup(bring=self.bring, name="install")
             command.short_help = "install one or a list of packages"
         elif name == "plugin":
             from bring.interfaces.cli.plugin import BringPluginGroup
 
-            command = BringPluginGroup(
-                bring=self.bring, name="process", terminal=self._terminal
-            )
+            command = BringPluginGroup(bring=self.bring, name="process")
             command.short_help = "install one or a list of packages"
 
         elif name == "info":
@@ -217,17 +205,13 @@ class BringCommandGroup(FrklBaseCommand):
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
 
-            command = BringUpdateCommand(
-                bring=self.bring, name="update", terminal=self._terminal
-            )
+            command = BringUpdateCommand(bring=self.bring, name="update")
             command.short_help = "update package metadata for all indexes"
 
         elif name == "doc":
             from bring.interfaces.cli.doc import BringDocGroup
 
-            command = BringDocGroup(
-                tingistry=self._tingistry_obj, terminal=self._terminal
-            )
+            command = BringDocGroup(tingistry=self._tingistry_obj)
 
         elif name == "dev":
             from bring.interfaces.cli.dev import dev
@@ -236,9 +220,7 @@ class BringCommandGroup(FrklBaseCommand):
 
         elif name == "export-index":
 
-            command = BringExportIndexCommand(
-                bring=self.bring, name="export", terminal=self._terminal
-            )
+            command = BringExportIndexCommand(bring=self.bring, name="export")
             command.short_help = "export all indexes"
 
         elif name == "self":

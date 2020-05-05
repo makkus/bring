@@ -81,9 +81,7 @@ class BringListPkgsGroup(FrklBaseCommand):
                 _default_marker = " (default index)"
             else:
                 _default_marker = ""
-            print(
-                f"{self._terminal.bold}index: {_index.name}{self._terminal.normal}{_default_marker}"
-            )
+            print(f"index: {_index.name}{_default_marker}")
             print()
             if not _pkgs:
                 print("  No packages")

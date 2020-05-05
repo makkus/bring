@@ -3,11 +3,9 @@ import logging
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from anyio import create_task_group
-from blessed import Terminal
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import find_version, replace_var_aliases
 from colorama import Fore, Style
-from frtls.cli.terminal import create_terminal
 from frtls.formats.output_formats import create_two_column_table
 from sortedcontainers import SortedDict
 from tings.exceptions import TingTaskException
@@ -42,11 +40,8 @@ async def get_values_for_pkgs(
 
 
 async def create_pkg_info_table_string(
-    pkgs: Iterable[PkgTing], header: bool = False, terminal: Optional[Terminal] = None
+    pkgs: Iterable[PkgTing], header: bool = False
 ) -> str:
-
-    if terminal is None:
-        terminal = create_terminal()
 
     pkg_vals = await get_values_for_pkgs(pkgs, "info")
     data = SortedDict()
@@ -63,7 +58,7 @@ async def create_pkg_info_table_string(
         _header: Optional[List[str]] = ["pkg", "desc"]
     else:
         _header = None
-    table_str = create_two_column_table(data, header=_header, terminal=terminal)
+    table_str = create_two_column_table(data, header=_header)
 
     return table_str
 

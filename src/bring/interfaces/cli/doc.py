@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Optional
 
 import asyncclick as click
-from blessed import Terminal
 from bring.mogrify import Mogrifier
 from bring.pkg_types import PkgType
 from frtls.args.hive import ArgHive
@@ -19,13 +17,7 @@ PLUGIN_HELP = """documentation for application components"""
 
 
 class BringDocGroup(FrklBaseCommand):
-    def __init__(
-        self,
-        tingistry: Tingistry,
-        name: str = "doc",
-        terminal: Terminal = None,
-        **kwargs,
-    ):
+    def __init__(self, tingistry: Tingistry, name: str = "doc", **kwargs):
         """Install"""
 
         # self.print_version_callback = print_version_callback
@@ -36,7 +28,7 @@ class BringDocGroup(FrklBaseCommand):
         # self._plugin_managers: Dict[str, TypistryPluginManager] = None
 
         super(BringDocGroup, self).__init__(
-            name=name, arg_hive=self._tingistry.arg_hive, terminal=terminal, **kwargs
+            name=name, arg_hive=self._tingistry.arg_hive, **kwargs
         )
 
     # def plugin_managers(self) -> Mapping[str, TypistryPluginManager]:
@@ -62,36 +54,26 @@ class BringDocGroup(FrklBaseCommand):
         if name == "pkg-type":
             plugin_manager = self._typistry.get_plugin_manager(PkgType)
             command = PkgTypePluginGroup(
-                plugin_manager=plugin_manager,
-                arg_hive=self._tingistry.arg_hive,
-                terminal=self._terminal,
+                plugin_manager=plugin_manager, arg_hive=self._tingistry.arg_hive
             )
 
         elif name == "mogrifier":
             plugin_manager = self._typistry.get_plugin_manager(Mogrifier)
             command = MogrifyPluginGroup(
-                plugin_manager=plugin_manager,
-                arg_hive=self._tingistry.arg_hive,
-                terminal=self._terminal,
+                plugin_manager=plugin_manager, arg_hive=self._tingistry.arg_hive
             )
 
         return command
 
 
 class BringPluginGroup(FrklBaseCommand):
-    def __init__(
-        self,
-        plugin_manager: TypistryPluginManager,
-        arg_hive: ArgHive,
-        terminal: Optional[Terminal] = None,
-    ):
+    def __init__(self, plugin_manager: TypistryPluginManager, arg_hive: ArgHive):
 
         self._plugin_manager = plugin_manager
 
         super(BringPluginGroup, self).__init__(
             name=self._plugin_manager.manager_name,
             arg_hive=arg_hive,
-            terminal=terminal,
             subcommand_metavar="PLUGIN",
         )
 

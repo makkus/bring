@@ -13,7 +13,6 @@ from bring.utils.pkgs import explain_version
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
-from frtls.cli.terminal import create_terminal
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -138,7 +137,6 @@ class BringInstallGroup(FrklBaseCommand):
                 target=target,
                 strategy=strategy,
                 explain=explain,
-                terminal=self._terminal,
                 load_details=load_details,
             )
 
@@ -154,7 +152,6 @@ class BringInstallGroup(FrklBaseCommand):
                 target=target,
                 strategy=strategy,
                 explain=explain,
-                terminal=self._terminal,
                 load_details=load_details,
             )
 
@@ -171,7 +168,6 @@ class PkgBringInsCommand(Command):
         strategy: str,
         explain: bool = False,
         load_details: bool = False,
-        terminal=None,
         **kwargs,
     ):
 
@@ -182,10 +178,6 @@ class PkgBringInsCommand(Command):
         self._strategy = strategy
 
         self._explain: bool = explain
-
-        if terminal is None:
-            terminal = create_terminal()
-        self._terminal = terminal
 
         self._args: Optional[RecordArg] = None
 
@@ -233,7 +225,6 @@ class PkgInstallTingCommand(Command):
         strategy: str,
         explain: bool = False,
         load_details: bool = False,
-        terminal=None,
         **kwargs,
     ):
 
@@ -243,10 +234,6 @@ class PkgInstallTingCommand(Command):
         self._strategy = strategy
 
         self._explain: bool = explain
-
-        if terminal is None:
-            terminal = create_terminal()
-        self._terminal = terminal
 
         try:
             if load_details:
