@@ -41,6 +41,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.plugins.templating.*",
     "bring.pkg_index.*",
     "bring.config",
+    "frtls.tasks.watchers.*",
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.indexes"
@@ -164,3 +165,8 @@ BRING_TEMP_FOLDER_MARKER = "__temp__"
 BRING_INS_JINJA_ENV = get_global_jinja_env(delimiter_profile="frkl", env_type="native")
 
 BRING_AUTO_ARG = {"type": "string", "required": True}
+DEFAULT_ARGS_DICT = {
+    "os": {"doc": "The operating system to run on.", "type": "string"},
+    "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
+    "version": {"doc": "The version of the package."},
+}

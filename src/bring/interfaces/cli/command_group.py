@@ -53,7 +53,7 @@ class BringCommandGroup(FrklBaseCommand):
             multiple=True,
             required=False,
             type=str,
-            help=f"task log output plugin(s), available: {', '.join(['tree', 'simple'])} ",
+            help=f"task log output plugin(s), available: {', '.join(['terminal', 'tree', 'simple'])} ",
         )
         index_option = Option(
             param_decls=["--index", "-i"],

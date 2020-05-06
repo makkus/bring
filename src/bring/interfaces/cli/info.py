@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict
-
-import arrow
 import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
+from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import (
     log,
     print_index_list_for_help,
@@ -13,6 +11,7 @@ from bring.interfaces.cli.utils import (
 )
 from bring.pkg_index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from bring.utils.pkgs import PkgInfoDisplay
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
 from frtls.formats.output_formats import serialize
@@ -184,19 +183,14 @@ class PkgInfoTingCommand(Command):
 
         self._pkg: PkgTing = pkg
 
+        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(pkg=pkg)
         try:
-            val_names = ["info"]
-            vals = wrap_async_task(
-                self._pkg.get_values, *val_names, _raise_exception=True
-            )
-            info = vals["info"]
-            slug = info.get("slug", "n/a")
-            if slug.endswith("."):
-                slug = slug[0:-1]
-            short_help = f"{slug} (from: {self._pkg.bring_index.name})"
+
+            # slug = self._pkg_info.slug
+            short_help = self._pkg_info.short_help
 
             kwargs["short_help"] = short_help
-            desc = info.get("desc", None)
+            desc = self._pkg_info.desc
             help = f"Display info for the '{self._pkg.name}' package."
             if desc:
                 help = f"{help}\n\n{desc}"
@@ -209,8 +203,8 @@ class PkgInfoTingCommand(Command):
                     required=False,
                 ),
                 Option(
-                    ["--full", "-f"],
-                    help="display full info",
+                    ["--args", "-a"],
+                    help="display only arguments for package",
                     is_flag=True,
                     required=False,
                 ),
@@ -224,26 +218,30 @@ class PkgInfoTingCommand(Command):
         super().__init__(name=name, callback=self.info, params=params, **kwargs)
 
     @click.pass_context
-    async def info(ctx, self, update: bool = False, full: bool = False):
+    async def info(ctx, self, update: bool = False, args: bool = False):
 
-        args: Dict[str, Any] = {"include_metadata": True}
-        if update:
-            args["retrieve_config"] = {"metadata_max_age": 0}
+        self._pkg_info.update = update
+        self._pkg_info.display_only_args = args
+        console.print(self._pkg_info)
 
-        info = await self._pkg.get_info(**args)
-
-        metadata = info["metadata"]
-        age = arrow.get(metadata["timestamp"])
-
-        to_print = {}
-        to_print["info"] = info["info"]
-        to_print["labels"] = info["labels"]
-        to_print["metadata snapshot"] = age.humanize()
-        to_print["args"] = metadata["pkg_args"]
-        to_print["aliases"] = metadata["aliases"]
-
-        if full:
-            to_print["version list"] = metadata["version_list"]
-
-        click.echo()
-        click.echo(serialize(to_print, format="yaml"))
+        # args: Dict[str, Any] = {"include_metadata": True}
+        # if update:
+        #     args["retrieve_config"] = {"metadata_max_age": 0}
+        #
+        # info = await self._pkg.get_info(**args)
+        #
+        # metadata = info["metadata"]
+        # age = arrow.get(metadata["timestamp"])
+        #
+        # to_print = {}
+        # to_print["info"] = info["info"]
+        # to_print["labels"] = info["labels"]
+        # to_print["metadata snapshot"] = age.humanize()
+        # to_print["args"] = metadata["pkg_args"]
+        # to_print["aliases"] = metadata["aliases"]
+        #
+        # if full:
+        #     to_print["version list"] = metadata["version_list"]
+        #
+        # click.echo()
+        # click.echo(serialize(to_print, format="yaml"))

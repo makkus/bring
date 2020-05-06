@@ -20,7 +20,15 @@ class TemplateMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        return "processing template"
+        vals = self.input_values
+        incl = vals.get("include", None)
+
+        result = "processing template(s)"
+
+        if incl:
+            result += f" matching: {', '.join(incl)}"
+
+        return result
 
     def requires(self) -> Mapping[str, str]:
 

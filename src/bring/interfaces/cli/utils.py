@@ -22,7 +22,7 @@ class BringHelpFormatter(HelpFormatter):
 
 
 async def create_config_list_for_help(
-    bring_config: BringConfig
+    bring_config: BringConfig,
 ) -> List[Tuple[str, str]]:
 
     pass

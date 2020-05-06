@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import collections
+import os
 import tempfile
+import uuid
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -121,6 +123,12 @@ class BringIn(object):
     def vars(self) -> Mapping[str, Any]:
         return self._vars
 
+    async def get_pkg(self, bring: "Bring") -> Optional[PkgTing]:
+
+        pkg: Optional[PkgTing] = await bring.get_pkg(name=self.name, index=self.index)
+
+        return pkg
+
     def process_vars(self, repl_dict: Mapping[str, Any]):
 
         repl = replace_var_names_in_obj(
@@ -168,13 +176,14 @@ class BringIns(object):
         if not isinstance(content, collections.Mapping):
             content = {"pkgs": content}
 
-        return cls.create(data=content["pkgs"])
+        return cls.create(data=content["pkgs"], id=os.path.abspath(path))
 
     @classmethod
     def create(
         cls,
         data: Union[Mapping[str, Any], Iterable[Mapping[str, Any]]],
-        defaults: Mapping[str, Any] = None,
+        defaults: Optional[Mapping[str, Any]] = None,
+        id: Optional[str] = None,
     ) -> "BringIns":
 
         if not isinstance(data, collections.abc.Mapping):
@@ -187,7 +196,7 @@ class BringIns(object):
             bi = BringIn.create(item)
             items.append(bi)
 
-        return BringIns(*items, defaults=defaults)
+        return BringIns(*items, defaults=defaults, id=id)
 
     def __init__(
         self,
@@ -195,9 +204,15 @@ class BringIns(object):
         defaults: Optional[Mapping[str, Any]] = None,
         args: Optional[Mapping[str, Any]] = None,
         doc: Optional[Union[str, Mapping[str, Any]]] = None,
+        id: Optional[str] = None,
     ) -> None:
 
-        self._items = items
+        if id is None:
+            id = str(uuid.uuid4())
+
+        self._id: str = id
+
+        self._childs: Iterable[BringIn] = items
         self._defaults = defaults
 
         self._doc = Doc(doc)
@@ -207,6 +222,16 @@ class BringIns(object):
         self._provided_args: Mapping[str, Any] = args
         self._auto_args: Optional[Mapping[str, Any]] = None
         self._args: Optional[Mapping[str, Any]] = None
+
+    @property
+    def id(self) -> str:
+
+        return self._id
+
+    @property
+    def childs(self) -> Iterable[BringIn]:
+
+        return self._childs
 
     @property
     def doc(self) -> Doc:
@@ -245,7 +270,7 @@ class BringIns(object):
             return self._var_names
 
         self._var_names = set()
-        for item in self._items:
+        for item in self._childs:
 
             var_names = item.get_var_names()
             self._var_names.update(var_names)
@@ -265,9 +290,7 @@ class BringIns(object):
 
         async def retrieve_pkg(_item: BringIn, _vars: Mapping[str, Any]):
 
-            pkg: Optional[PkgTing] = await bring.get_pkg(
-                name=_item.name, index=_item.index
-            )
+            pkg: Optional[PkgTing] = await _item.get_pkg(bring)
 
             if pkg is None:
                 if _item.index:
@@ -290,7 +313,7 @@ class BringIns(object):
             vars = {}
 
         async with create_task_group() as tg:
-            for i in self._items:
+            for i in self._childs:
                 await tg.spawn(retrieve_pkg, i, vars)
 
         if target is None:

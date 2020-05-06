@@ -141,7 +141,7 @@ class PkgTing(SimpleTing):
         retrieve_config: Optional[Mapping[str, Any]] = None,
     ):
 
-        val_keys = ["info", "source", "labels"]
+        val_keys = ["info", "source", "labels", "tags"]
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             *val_keys, resolve=True
         )
@@ -153,6 +153,7 @@ class PkgTing(SimpleTing):
 
         result["info"] = info
         result["labels"] = vals["labels"]
+        result["tags"] = vals["tags"]
 
         if include_metadata:
 
@@ -305,8 +306,8 @@ class PkgTing(SimpleTing):
             index_defaults = await self.bring_index.get_value("defaults")
             target = index_defaults.get("target", None)
 
-        if target == BRING_TEMP_FOLDER_MARKER:
-            target = None
+        if target is None:
+            target = BRING_TEMP_FOLDER_MARKER
 
         if vars is None:
             vars = {}
@@ -539,6 +540,10 @@ class DynamicPkgTing(PkgTing):
             result["labels"] = get_seeded_dict(
                 seed_data.get("labels", None), labels, merge_strategy="update"
             )
+
+        if "tags" in value_names:
+            tags = requirements.get("tags", [])
+            result["tags"] = tags
 
         if "tags" in value_names:
             result["tags"] = requirements.get("tags", [])

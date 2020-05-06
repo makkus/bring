@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import copy
 import logging
 import re
 import time
@@ -30,12 +29,6 @@ DEFAULT_URL_REGEXES = [
 # "https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\.(?P<type>.*)$"
 
 log = logging.getLogger("bring")
-
-DEFAULT_ARGS_DICT = {
-    "os": {"doc": "The operating system to run on.", "type": "string"},
-    "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
-    "version": {"doc": "The version of the package."},
-}
 
 
 class GithubRelease(SimplePkgType):
@@ -199,6 +192,7 @@ class GithubRelease(SimplePkgType):
             url_regexes = [url_regexes]
 
         log.debug(f"Regexes for {github_user}/{repo_name}: {url_regexes}")
+
         result: List[Mapping] = []
         aliases: Dict[str, MutableMapping] = {}
         for release in releases:
@@ -207,8 +201,8 @@ class GithubRelease(SimplePkgType):
             if version_data:
                 result.extend(version_data)
 
-        args = copy.deepcopy(DEFAULT_ARGS_DICT)
-        return {"versions": result, "aliases": aliases, "args": args}
+        # args = copy.deepcopy(DEFAULT_ARGS_DICT)
+        return {"versions": result, "aliases": aliases}
 
     def parse_release_data(
         self,
@@ -238,7 +232,6 @@ class GithubRelease(SimplePkgType):
             vars = None
             for regex in url_regexes:
                 match = re.search(regex, browser_download_url)
-
                 if match is not None:
                     vars = match.groupdict()
                     break

@@ -18,7 +18,7 @@ from typing import (
 
 import arrow
 from anyio import aopen
-from bring.defaults import BRING_PKG_CACHE, PKG_RESOLVER_DEFAULTS
+from bring.defaults import BRING_PKG_CACHE, DEFAULT_ARGS_DICT, PKG_RESOLVER_DEFAULTS
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
@@ -352,6 +352,9 @@ class SimplePkgType(PkgType):
             versions: List[Mapping] = result["versions"]
             aliases: MutableMapping[str, str] = result.get("aliases", None)
             pkg_args: Mapping[str, Mapping] = result.get("args", None)
+            pkg_args = get_seeded_dict(
+                DEFAULT_ARGS_DICT, pkg_args, merge_strategy="update"
+            )
 
         except (Exception) as e:
             log.debug(f"Can't retrieve versions for pkg: {e}")

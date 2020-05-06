@@ -6,10 +6,11 @@ import asyncclick as click
 from asyncclick import Command
 from bring.bring import Bring
 from bring.bringins import BringIns
+from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import log, print_pkg_list_help
 from bring.pkg_index.pkg import PkgTing
-from bring.utils.bring_ins import explain_bring_ins
-from bring.utils.pkgs import explain_version
+from bring.utils.bring_ins import BringInsExplanation
+from bring.utils.pkgs import PkgVersionExplanation
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
@@ -207,8 +208,14 @@ class PkgBringInsCommand(Command):
 
         if self._explain:
             click.echo()
-            explanation = await explain_bring_ins(self._bring_ins)
-            click.echo(explanation)
+
+            explanation = BringInsExplanation(
+                bring=self._bring,
+                bring_ins=self._bring_ins,
+                target=self._target,
+                **_vars,
+            )
+            console.print(explanation)
 
         else:
 
@@ -279,10 +286,15 @@ class PkgInstallTingCommand(Command):
         if self._explain:
             click.echo()
 
-            explanation = await explain_version(
+            explanation = PkgVersionExplanation(
                 pkg=self._pkg, target=self._target, **_vars
             )
-            click.echo(explanation)
+
+            console.print(explanation)
+            # explanation = await explain_version(
+            #     pkg=self._pkg, target=self._target, **_vars
+            # )
+            # click.echo(explanation)
         else:
 
             path = await self._pkg.create_version_folder(
