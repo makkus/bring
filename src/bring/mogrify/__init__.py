@@ -148,7 +148,7 @@ class Mogrifier(Task, SimpleTing):
                 reason=f"No class attribute '_requires' availble for {self.__class__.__name__}. This is a bug.",
             )
 
-        return self.__class__._requires
+        return self.__class__._requires  # type: ignore
 
     def provides(self) -> Mapping[str, str]:
 
@@ -158,7 +158,7 @@ class Mogrifier(Task, SimpleTing):
                 reason=f"No class attribute '_provides' availble for {self.__class__.__name__}. This is a bug.",
             )
 
-        return self.__class__._provides
+        return self.__class__._provides  # type: ignore
 
     @abstractmethod
     def get_msg(self) -> str:
