@@ -13,6 +13,8 @@ log = logging.getLogger("bring")
 class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
 
     _plugin_name: str = "parallel_pkg_merge"
+    _provides: Mapping[str, str] = {"folder_path": "string"}
+    _requires: Mapping[str, str] = {"pipeline_id": "string", "merge": "any"}
 
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]], **kwargs):
 
@@ -36,17 +38,9 @@ class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
         self._merge_task.parent_task = self
         self._merge_task.working_dir = self.working_dir
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {"pipeline_id": "string", "merge": "any"}
-
     def get_msg(self) -> str:
 
         return "merging multiple pkgs"
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def execute(self) -> Any:
 

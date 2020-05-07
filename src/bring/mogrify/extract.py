@@ -10,6 +10,8 @@ from frtls.exceptions import FrklException
 class ExtractMogrifier(SimpleMogrifier):
     """Extract an archive.
 
+    This mogrifier is used internally, and, for now, can't be used in user-created mogrifier lists.
+
     Supported archive formats:
       - zip
       - tar
@@ -19,6 +21,9 @@ class ExtractMogrifier(SimpleMogrifier):
     """
 
     _plugin_name = "extract"
+
+    _requires = {"file_path": "string", "remove_root": "boolean?"}
+    _provides = {"folder_path": "string"}
 
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None):
 
@@ -36,14 +41,6 @@ class ExtractMogrifier(SimpleMogrifier):
         if vals.get("remove_root", None):
             result = result + " (disregarding root folder, only using contents of it)"
         return result
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"file_path": "string", "remove_root": "boolean?"}
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

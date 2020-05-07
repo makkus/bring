@@ -11,22 +11,17 @@ class HelmTemplateMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "helm_template"
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {
-            "folder_path": "string",
-            "name": "string",
-            "values": "dict?",
-            "namespace": "string?",
-        }
+    _requires = {
+        "folder_path": "string",
+        "name": "string",
+        "values": "dict?",
+        "namespace": "string?",
+    }
+    _provides = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
         return "creating kubernetes manifests"
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

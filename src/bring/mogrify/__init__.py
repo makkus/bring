@@ -140,6 +140,26 @@ class Mogrifier(Task, SimpleTing):
 
         return self._mogrify_result
 
+    def requires(self) -> Mapping[str, str]:
+
+        if not hasattr(self.__class__, "_requires"):
+            raise FrklException(
+                f"Error processing mogrifier '{self.name}'.",
+                reason=f"No class attribute '_requires' availble for {self.__class__.__name__}. This is a bug.",
+            )
+
+        return self.__class__._requires
+
+    def provides(self) -> Mapping[str, str]:
+
+        if not hasattr(self.__class__, "_provides"):
+            raise FrklException(
+                f"Error processing mogrifier '{self.name}'.",
+                reason=f"No class attribute '_provides' availble for {self.__class__.__name__}. This is a bug.",
+            )
+
+        return self.__class__._provides
+
     @abstractmethod
     def get_msg(self) -> str:
 

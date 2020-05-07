@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Optional
+from typing import Any, Optional, Type
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.interfaces.cli import bring_code_theme, bring_style, console
+from bring.mogrify import Mogrifier
 from bring.pkg_types import PkgType
 from bring.utils.doc import create_pkg_type_markdown_string
 from frtls.args.renderers.rich import to_rich_table
@@ -78,10 +79,10 @@ class BringDocGroup(FrklBaseCommand):
 
 
 class BringPluginGroup(FrklBaseCommand):
-    def __init__(self, tingistry: Tingistry):
+    def __init__(self, tingistry: Tingistry, plugin_class: Type):
 
         self._tingistry: Tingistry = tingistry
-        self._plugin_manager = self._tingistry.get_plugin_manager(PkgType)
+        self._plugin_manager = self._tingistry.get_plugin_manager(plugin_class)
 
         self._bring: Optional[Bring] = None
         super(BringPluginGroup, self).__init__(
@@ -98,12 +99,24 @@ class BringPluginGroup(FrklBaseCommand):
             self._bring = bring_config.get_bring()
         return self._bring
 
+    def get_plugin_doc(self, plugin_name: str):
+
+        return self._plugin_manager.get_plugin_doc(plugin_name=plugin_name)
+
+    def get_plugin(self, plugin_name: str) -> Any:
+
+        return self._plugin_manager.get_plugin(plugin_name=plugin_name)
+
     async def _list_commands(self, ctx):
 
         return sorted(self._plugin_manager.plugin_names)
 
 
 class PkgTypePluginGroup(BringPluginGroup):
+    def __init__(self, tingistry: Tingistry):
+
+        super().__init__(tingistry=tingistry, plugin_class=PkgType)
+
     async def _get_command(self, ctx, name):
 
         if name not in self._plugin_manager.plugin_names:
@@ -115,8 +128,7 @@ class PkgTypePluginGroup(BringPluginGroup):
 
             all = []
 
-            pm = self._plugin_manager
-            doc = pm.get_plugin_doc(name)
+            doc = self.get_plugin_doc(name)
             doc.extract_metadata("examples")
 
             desc_string = f"## Package type: **{name}**\n"
@@ -132,7 +144,7 @@ class PkgTypePluginGroup(BringPluginGroup):
             )
             all.append(desc)
 
-            plugin = pm.get_plugin(name)
+            plugin = self.get_plugin(name)
             args = plugin.get_args()
             record_arg = self._arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)
@@ -157,16 +169,72 @@ class PkgTypePluginGroup(BringPluginGroup):
 
 
 class MogrifyPluginGroup(BringPluginGroup):
+    def __init__(self, tingistry: Tingistry):
+
+        super().__init__(tingistry=tingistry, plugin_class=Mogrifier)
+
     async def _get_command(self, ctx, name):
         @click.command()
         @click.pass_context
-        def plugin_command(ctx):
+        async def plugin_command(ctx):
 
-            pm = self._plugin_manager
-            plugin = pm.get_plugin(name)
-            # doc = pm.get_plugin_doc(name)
-            #
-            # print(desc)
-            print(plugin)
+            all = []
+
+            doc = self.get_plugin_doc(name)
+            doc.extract_metadata("examples")
+
+            desc_string = f"## Mogrifier: **{name}**\n"
+            if doc.get_short_help(default=None):
+                desc_string += doc.get_short_help() + "\n\n"
+
+            desc_string += f"\n## Input Arguments\n\nThis is the list of arguments the *{name}* mogrifier accepts as input:\n"
+            desc = Markdown(
+                desc_string,
+                style=bring_style,
+                code_theme=bring_code_theme,
+                justify="left",
+            )
+            all.append(desc)
+
+            plugin = self.get_plugin(name)
+            if hasattr(plugin, "_requires"):
+                args = plugin._requires
+            else:
+                args = plugin.requires(None)
+            record_arg = self._arg_hive.create_record_arg(childs=args)
+            arg_table = to_rich_table(record_arg)
+            all.append(arg_table)
+
+            desc_string = f"\n## Output Arguments\n\nThis is the list of arguments the *{name}* mogrifier provides as output:\n"
+            desc = Markdown(
+                desc_string,
+                style=bring_style,
+                code_theme=bring_code_theme,
+                justify="left",
+            )
+            all.append(desc)
+
+            if hasattr(plugin, "_provides"):
+                args = plugin._provides
+            else:
+                args = plugin.provides(None)
+            record_arg = self._arg_hive.create_record_arg(childs=args)
+            arg_table = to_rich_table(record_arg)
+            all.append(arg_table)
+
+            desc_string = await create_pkg_type_markdown_string(
+                bring=self.bring, plugin_doc=doc
+            )
+
+            desc = Markdown(
+                desc_string,
+                style=bring_style,
+                code_theme=bring_code_theme,
+                justify="left",
+            )
+            all.append(desc)
+
+            group = RenderGroup(*all)
+            console.print(Panel(Panel(group, box=box.SIMPLE)))
 
         return plugin_command

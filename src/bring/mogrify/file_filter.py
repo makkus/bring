@@ -6,12 +6,21 @@ from bring.utils.paths import copy_filtered_files
 
 
 class FileFilterMogrifier(SimpleMogrifier):
+    """Filters files in a folder using glob patterns.
+
+    Examples:
+        - binaries.hugo
+        - kube-install-manifests.ingress-nginx
+    """
 
     _plugin_name: str = "file_filter"
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string", "include": "list", "flatten": "boolean?"}
+    _requires: Mapping[str, str] = {
+        "folder_path": "string",
+        "include": "list",
+        "flatten": "boolean?",
+    }
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
@@ -25,10 +34,6 @@ class FileFilterMogrifier(SimpleMogrifier):
             result = result + ", then flatten all files into a single folder"
 
         return result
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

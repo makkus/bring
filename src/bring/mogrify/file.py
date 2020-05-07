@@ -10,17 +10,12 @@ class FileMogrifier(SimpleMogrifier):
 
     _plugin_name = "file"
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {"file_path": "string"}
+    _requires = {"file_path": "string"}
+    _provides = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
         return "moving file into new temporary folder"
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

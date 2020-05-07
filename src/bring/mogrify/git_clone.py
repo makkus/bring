@@ -11,9 +11,8 @@ class GitCloneMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "git_clone"
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {"url": "string", "version": "string"}
+    _requires: Mapping[str, str] = {"url": "string", "version": "string"}
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
@@ -26,10 +25,6 @@ class GitCloneMogrifier(SimpleMogrifier):
             result = result + f" (version: {version})"
 
         return result
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

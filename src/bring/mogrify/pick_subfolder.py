@@ -14,18 +14,16 @@ log = logging.getLogger("bring")
 class PickSubfolderMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "pick_subfolder"
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string", "subfolder": "string", "flatten": "boolean?"}
+    _requires: Mapping[str, str] = {
+        "folder_path": "string",
+        "subfolder": "string",
+        "flatten": "boolean?",
+    }
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
         return "pick a subfolder and use as new root"
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

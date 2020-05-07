@@ -16,6 +16,8 @@ log = logging.getLogger("bring")
 class YamlPatchMogrifier(SimpleMogrifier):
 
     _plugin_name = "yaml_patch"
+    _requires = {"folder_path": "string", "patch_map": "dict"}
+    _provides = {"folder_path": "string"}
 
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None) -> None:
 
@@ -24,14 +26,6 @@ class YamlPatchMogrifier(SimpleMogrifier):
     def get_msg(self) -> str:
 
         return "patching dict"
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string", "patch_map": "dict"}
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

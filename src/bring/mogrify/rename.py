@@ -14,17 +14,12 @@ class RenameMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "rename"
 
+    _requires: Mapping[str, str] = {"rename_map": "dict", "folder_path": "string"}
+    _provides: Mapping[str, str] = {"folder_path": "string"}
+
     def get_msg(self) -> str:
 
         return "renaming files"
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"rename_map": "dict", "folder_path": "string"}
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

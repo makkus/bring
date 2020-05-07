@@ -5,17 +5,17 @@ from bring.mogrify import SimpleMogrifier
 from bring.utils.merging import FolderMerge
 
 
-class MergeFolderMogrifier(SimpleMogrifier):
+class MergeFoldersMogrifier(SimpleMogrifier):
+    """Merge multiple folders into a single one, using one of the available merge strategies.
+
+    This mogrifier is used internally, and, for now, can't be used in user-created mogrifier lists.
+    """
 
     _plugin_name: str = "merge_folders"
 
-    def provides(self) -> Mapping[str, str]:
+    _requires: Mapping[str, str] = {"folder_paths": "list", "merge_strategy": "dict?"}
 
-        return {"folder_path": "string"}
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"folder_paths": "list", "merge_strategy": "dict?"}
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 

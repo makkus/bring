@@ -17,6 +17,8 @@ log = logging.getLogger("bring")
 class DownloadMogrifier(SimpleMogrifier):
 
     _plugin_name = "download"
+    _requires = {"url": "string", "target_file_name": "string"}
+    _provides = {"file_path": "string"}
 
     def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None) -> None:
 
@@ -31,14 +33,6 @@ class DownloadMogrifier(SimpleMogrifier):
             result = result + f": {url}"
 
         return result
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {"url": "string", "target_file_name": "string"}
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"file_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

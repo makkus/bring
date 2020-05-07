@@ -165,16 +165,7 @@ class IndexInfoTingCommand(Command):
                 "config": self._data["config"],
                 "pkgs": pkg_slug_map,
             }
-        # to_print["info"] = info["info"]
-        # to_print["labels"] = info["labels"]
-        # to_print["metadata snapshot"] = age.humanize()
-        # to_print["args"] = metadata["pkg_args"]
-        # to_print["aliases"] = metadata["aliases"]
-        #
-        # if full:
-        #     to_print["version list"] = metadata["version_list"]
-        #
-        # click.echo()
+
         click.echo(serialize(to_print, format="yaml", ignore_aliases=True))
 
 

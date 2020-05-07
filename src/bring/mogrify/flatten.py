@@ -13,9 +13,8 @@ class FlattenFolderMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "flatten"
 
-    def requires(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string", "duplicate": "string?"}
+    _requires: Mapping[str, str] = {"folder_path": "string", "duplicate": "string?"}
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
@@ -23,10 +22,6 @@ class FlattenFolderMogrifier(SimpleMogrifier):
         return (
             f"flattening all files into root folder (duplicate strategy: {duplicate})"
         )
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

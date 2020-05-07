@@ -17,6 +17,14 @@ log = logging.getLogger("bring")
 class TemplateMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "template"
+    _requires: Mapping[str, str] = {
+        "repl_dict": "dict",
+        "folder_path": "string",
+        "include": "list?",
+        "flatten": "boolean?",
+        "template_type": "string?",
+    }
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
@@ -29,20 +37,6 @@ class TemplateMogrifier(SimpleMogrifier):
             result += f" matching: {', '.join(incl)}"
 
         return result
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {
-            "repl_dict": "dict",
-            "folder_path": "string",
-            "include": "list?",
-            "flatten": "boolean?",
-            "template_type": "string?",
-        }
-
-    def provides(self):
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

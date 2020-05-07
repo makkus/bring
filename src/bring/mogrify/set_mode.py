@@ -10,24 +10,18 @@ from bring.utils.paths import find_matches
 class SetModeMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "set_mode"
-
-    def requires(self) -> Mapping[str, str]:
-
-        return {
-            "folder_path": "string",
-            "set_executable": "boolean?",
-            "set_readable": "boolean?",
-            "set_writeable": "boolean?",
-            "include": "list?",
-        }
+    _requires: Mapping[str, str] = {
+        "folder_path": "string",
+        "set_executable": "boolean?",
+        "set_readable": "boolean?",
+        "set_writeable": "boolean?",
+        "include": "list?",
+    }
+    _provides: Mapping[str, str] = {"folder_path": "string"}
 
     def get_msg(self) -> str:
 
         return "setting file mode"
-
-    def provides(self) -> Mapping[str, str]:
-
-        return {"folder_path": "string"}
 
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 

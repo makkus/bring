@@ -7,7 +7,7 @@ The purpose of `bring` is to copy files and file-sets onto the local system, in 
 
 In short, a *package* is a specific file or file-set, usually versioned in some way (via git, releases, etc.), and a *index* is a space that contains one or several *packages*, usually of one category (single-file binaries, templates, etc...) or otherwise belonging together.
 
-By default, `bring` comes with a set of default *indexes* which are deemed of interest for a general audience. Even though this is not covered in this quick-start guide, it is easily possible to create and share your own *indexes*. Check out the [usage documentation](/docs/usage) for more details.
+By default, `bring` comes with a set of default *indexes* which are deemed of interest for a general audience. Even though this is not covered in this quick-start guide -- and it is indeed the main use-case for *bring* -- it is easily possible to create and share your own *indexes*. Check out the [usage documentation](/docs/usage) for more details.
 
 ## List indexes and packages
 
@@ -25,7 +25,7 @@ You can limit the results to a single index by providing it's name:
 
 In order to get more information about a index or package, you can use the ``info`` sub-command. It takes one string as argument, if the string matches the name of a index, it'll display information about it, otherwise it will search all packages for a match. Packages are usually specified in the form of ``[index_name].[package_name]``, which means that there should not be any overlap in namespaces between indexes and packages.
 
-### Context metadata
+### Index metadata
 
 This is how to get metadata for the ``binaries`` index:
 
