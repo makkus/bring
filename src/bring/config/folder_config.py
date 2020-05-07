@@ -46,7 +46,13 @@ class FolderConfigProfilesTing(SimpleTing):
         self._profiles: Optional[SubscripTings] = None
 
         self._initialized = False
-        self._init_lock = anyio.create_lock()
+        self._init_lock = None
+
+    async def _get_init_lock(self):
+
+        if self._init_lock is None:
+            self._init_lock = anyio.create_lock()
+        return self._init_lock
 
     def requires(self) -> Mapping[str, str]:
 
@@ -75,7 +81,7 @@ class FolderConfigProfilesTing(SimpleTing):
     ) -> Mapping[str, ConfigTing]:
         """Get all available config profiles."""
 
-        async with self._init_lock:
+        async with await self._get_init_lock():
             if self._profiles is None:
 
                 self._profiles = self._tingistry_obj.create_singleting(  # type: ignore

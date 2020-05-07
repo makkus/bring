@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
+from typing import Optional
+
 from rich.console import Console
 from rich.style import Style
 from rich.theme import Theme
@@ -16,4 +19,11 @@ LIGHT_THEME = Theme(
         "key2": Style.parse("grey42"),
     }
 )
-console = Console(theme=LIGHT_THEME)
+
+width = os.environ.get("BRING_CONSOLE_WIDTH", None)
+if width is not None:
+    _width: Optional[int] = int(width)
+else:
+    _width = None
+
+console = Console(theme=LIGHT_THEME, width=_width)

@@ -16,7 +16,14 @@ async def create_pkg_type_markdown_string_from_plugin_name(bring: Bring, name: s
     return create_pkg_type_markdown_string(bring=bring, plugin_doc=doc)
 
 
-async def create_pkg_type_markdown_string(bring: Bring, plugin_doc: Doc):
+async def create_pkg_type_markdown_string(
+    bring: Bring,
+    plugin_doc: Doc,
+    header_level: int = 2,
+    add_description_header: bool = True,
+):
+
+    header = "#" * header_level
 
     plugin_doc.extract_metadata("examples")
 
@@ -24,7 +31,11 @@ async def create_pkg_type_markdown_string(bring: Bring, plugin_doc: Doc):
         help_str = plugin_doc.get_help()
     else:
         help_str = "No description available."
-    markdown_string = "## Description\n" + help_str + "\n\n"
+
+    if add_description_header:
+        markdown_string = f"{header} Description\n" + help_str + "\n\n"
+    else:
+        markdown_string = help_str + "\n\n"
 
     examples: Optional[Mapping[str, Any]] = plugin_doc.get_metadata_value("examples")
     if examples:
@@ -47,7 +58,7 @@ async def create_pkg_type_markdown_string(bring: Bring, plugin_doc: Doc):
             for example in examples:
                 await tg.spawn(add_example, example)
 
-        markdown_string += "## Examples\n\n"
+        markdown_string += f"{header} Examples\n\n"
         for example in examples:
             metadata = examples_md[example]
             markdown_string += f"Package: **{example}**\n\n"

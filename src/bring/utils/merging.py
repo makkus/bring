@@ -343,7 +343,7 @@ class BringTarget(object):
         ms_cls = pm.get_plugin(ms_type)
         if ms_cls is None:
             raise FrklException(
-                msg=f"Can't create BringTarget.",
+                msg="Can't create BringTarget.",
                 reason=f"Invalid merge strategy, valid: {', '.join(pm.plugin_names)}",
             )
         self._merge_strategy: MergeStrategy = ms_cls(**strategy)
