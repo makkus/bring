@@ -13,6 +13,33 @@ from frtls.types.utils import is_instance_or_subclass
 
 
 class BringPkgsResolver(SimplePkgType):
+    """A package type that allows to create a single package out of two or more other packages.
+
+    Currently, there are not many use-cases for this, so you can ignore this type. There are some more advanced use-cases
+    that will be documented in the future.
+
+    The value for the 'pkgs' variable is a list of dictionaries, with a required '*name*' value, as well as optional '*index*', '*vars*', and '*mogrify*' keys.
+
+    Here's an example that 'installs' two different kubernetes manifest folders into a subfolder each:
+
+    ``` yaml
+        source:
+          type: bring-pkgs
+
+           pkgs:
+             - name: kube-install-manifests.ingress-nginx
+               mogrify:
+                 - type: move_to_subfolder
+                   subfolder: ingress-nginx
+             - name: kube-install-manifests.cert-manager
+               vars:
+                 version: 0.13.0
+               mogrify:
+                 - type: move_to_subfolder
+                   subfolder: cert-manager
+
+    ```
+    """
 
     _plugin_name: str = "bring_pkgs"
 

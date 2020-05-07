@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 import logging
+from typing import Optional
 
 import asyncclick as click
-from bring.mogrify import Mogrifier
+from bring.bring import Bring
+from bring.config.bring_config import BringConfig
+from bring.interfaces.cli import bring_code_theme, bring_style, console
 from bring.pkg_types import PkgType
-from frtls.args.hive import ArgHive
+from bring.utils.doc import create_pkg_type_markdown_string
+from frtls.args.renderers.rich import to_rich_table
 from frtls.cli.group import FrklBaseCommand
-from frtls.types.plugins import TypistryPluginManager
 from frtls.types.typistry import Typistry
+from rich import box
+from rich.console import RenderGroup
+from rich.markdown import Markdown
+from rich.panel import Panel
 from tings.tingistry import Tingistry
 
 
@@ -24,6 +31,8 @@ class BringDocGroup(FrklBaseCommand):
         self._tingistry: Tingistry = tingistry
         self._typistry: Typistry = self._tingistry.typistry
         kwargs["help"] = PLUGIN_HELP
+
+        self._bring: Optional[Bring] = None
 
         # self._plugin_managers: Dict[str, TypistryPluginManager] = None
 
@@ -44,6 +53,14 @@ class BringDocGroup(FrklBaseCommand):
     #
     #     return self._plugin_managers
 
+    @property
+    def bring(self) -> Bring:
+
+        if self._bring is None:
+            bring_config = BringConfig(tingistry=self._tingistry)
+            self._bring = bring_config.get_bring()
+        return self._bring
+
     async def _list_commands(self, ctx):
 
         return ["pkg-type", "mogrifier"]
@@ -52,30 +69,34 @@ class BringDocGroup(FrklBaseCommand):
 
         command = None
         if name == "pkg-type":
-            plugin_manager = self._typistry.get_plugin_manager(PkgType)
-            command = PkgTypePluginGroup(
-                plugin_manager=plugin_manager, arg_hive=self._tingistry.arg_hive
-            )
+            command = PkgTypePluginGroup(tingistry=self._tingistry)
 
         elif name == "mogrifier":
-            plugin_manager = self._typistry.get_plugin_manager(Mogrifier)
-            command = MogrifyPluginGroup(
-                plugin_manager=plugin_manager, arg_hive=self._tingistry.arg_hive
-            )
+            command = MogrifyPluginGroup(tingistry=self._tingistry)
 
         return command
 
 
 class BringPluginGroup(FrklBaseCommand):
-    def __init__(self, plugin_manager: TypistryPluginManager, arg_hive: ArgHive):
+    def __init__(self, tingistry: Tingistry):
 
-        self._plugin_manager = plugin_manager
+        self._tingistry: Tingistry = tingistry
+        self._plugin_manager = self._tingistry.get_plugin_manager(PkgType)
 
+        self._bring: Optional[Bring] = None
         super(BringPluginGroup, self).__init__(
             name=self._plugin_manager.manager_name,
-            arg_hive=arg_hive,
+            arg_hive=self._tingistry.arg_hive,
             subcommand_metavar="PLUGIN",
         )
+
+    @property
+    def bring(self) -> Bring:
+
+        if self._bring is None:
+            bring_config = BringConfig(tingistry=self._tingistry, name="doc")
+            self._bring = bring_config.get_bring()
+        return self._bring
 
     async def _list_commands(self, ctx):
 
@@ -90,19 +111,47 @@ class PkgTypePluginGroup(BringPluginGroup):
 
         @click.command()
         @click.pass_context
-        def plugin_command(ctx):
+        async def plugin_command(ctx):
+
+            all = []
 
             pm = self._plugin_manager
-            desc = pm.get_plugin_description(name)
-            plugin = pm.get_plugin(name)
+            doc = pm.get_plugin_doc(name)
+            doc.extract_metadata("examples")
 
+            desc_string = f"## Package type: **{name}**\n"
+            if doc.get_short_help(default=None):
+                desc_string += doc.get_short_help() + "\n\n"
+
+            desc_string += f"\n## Arguments\n\nThis is the list of arguments that can be used to describe a package of the *{name}* type:\n"
+            desc = Markdown(
+                desc_string,
+                style=bring_style,
+                code_theme=bring_code_theme,
+                justify="left",
+            )
+            all.append(desc)
+
+            plugin = pm.get_plugin(name)
             args = plugin.get_args()
-            print(desc)
-            print(args)
-            # import pp
-            #
-            # pp(desc)
-            # pp(args)
+            record_arg = self._arg_hive.create_record_arg(childs=args)
+            arg_table = to_rich_table(record_arg)
+            all.append(arg_table)
+
+            desc_string = await create_pkg_type_markdown_string(
+                bring=self.bring, plugin_doc=doc
+            )
+
+            desc = Markdown(
+                desc_string,
+                style=bring_style,
+                code_theme=bring_code_theme,
+                justify="left",
+            )
+            all.append(desc)
+
+            group = RenderGroup(*all)
+            console.print(Panel(Panel(group, box=box.SIMPLE)))
 
         return plugin_command
 
@@ -115,9 +164,9 @@ class MogrifyPluginGroup(BringPluginGroup):
 
             pm = self._plugin_manager
             plugin = pm.get_plugin(name)
-            desc = pm.get_plugin_description(name)
-
-            print(desc)
+            # doc = pm.get_plugin_doc(name)
+            #
+            # print(desc)
             print(plugin)
 
         return plugin_command

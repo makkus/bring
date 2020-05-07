@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
-from typing import Any, Iterable, Mapping, MutableMapping
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
 
 import git
 from bring.pkg_index import BringIndexTing
@@ -10,6 +10,15 @@ from pydriller import Commit, GitRepository
 
 
 class GitRepo(SimplePkgType):
+    """A package that represents a git repository (or contents thereof).
+
+    By default, all tags and branches will be used as version names. If '*use_commits_as_versions*' is set to '*true*',
+    also the commit hashes will be used. An alias '*latest*' will be added, pointing to the latest tag, or, in case no
+    tags exist, to the 'master' branch.
+
+    Examples:
+      - kube-install-manifests.ingress-nginx
+    """
 
     _plugin_name: str = "git"
 
@@ -26,7 +35,15 @@ class GitRepo(SimplePkgType):
 
     def get_args(self) -> Mapping[str, Any]:
 
-        return {"url": {"type": "string", "required": True, "doc": "The git repo url."}}
+        return {
+            "url": {"type": "string", "required": True, "doc": "The git repo url."},
+            "use_commits_as_versions": {
+                "type": "boolean",
+                "required": False,
+                "default": False,
+                "doc": "Whether to use commit hashes as version strings.",
+            },
+        }
 
     def get_unique_source_id(
         self, source_details: Mapping, bring_index: BringIndexTing
@@ -48,14 +65,21 @@ class GitRepo(SimplePkgType):
         for c in gr.get_list_commits():
             commits[c.hash] = c
 
-        for t in gr.repo.tags:
+        for t in reversed(
+            sorted(gr.repo.tags, key=lambda t: t.commit.committed_datetime)
+        ):
             tags[t.name] = t.commit
 
         for b in gr.repo.branches:
             branches[b.name] = b.commit
 
         versions = []
-        for k in sorted(tags.keys(), reverse=True):
+
+        latest: Optional[str] = None
+        for k in tags.keys():
+
+            if latest is None:
+                latest = k
 
             if tags[k].hexsha not in commits.keys():
                 await self._update_commits(gr, commits, k)
@@ -76,6 +100,8 @@ class GitRepo(SimplePkgType):
             )
 
         if "master" in branches.keys():
+            if latest is None:
+                latest = "master"
             c = commits[branches["master"].hexsha]
             timestamp = str(c.author_date)
             versions.append(
@@ -94,6 +120,7 @@ class GitRepo(SimplePkgType):
         for b in branches.keys():
             if b == "master":
                 continue
+
             if branches[b].hexsha not in commits.keys():
                 await self._update_commits(gr, commits, b)
             c = commits[branches[b].hexsha]
@@ -129,7 +156,14 @@ class GitRepo(SimplePkgType):
                     }
                 )
 
-        return {"versions": versions}
+        result: Dict[str, Any] = {"versions": versions}
+
+        if latest is not None:
+            aliases: Dict[str, Any] = {"version": {}}
+            aliases["version"]["latest"] = latest
+            result["aliases"] = aliases
+
+        return result
 
     async def _update_commits(
         self,

@@ -8,6 +8,10 @@ from pydriller import GitRepository
 
 
 class Folder(SimplePkgType):
+    """A package type to represent a local folder.
+
+    This is mostly used in local development, documentation still to be done...
+    """
 
     _plugin_name: str = "folder"
 

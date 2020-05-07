@@ -4,6 +4,11 @@ from rich.style import Style
 from rich.theme import Theme
 
 
+bring_style = Style(color="black", blink=False, bold=False, bgcolor=None)
+
+bring_code_theme = "friendly"
+bring_code_theme = "solarized-light"
+
 LIGHT_THEME = Theme(
     {
         "title": Style.parse("bold bright_black"),

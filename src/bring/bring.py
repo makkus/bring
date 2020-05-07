@@ -60,7 +60,10 @@ class Bring(SimpleTing):
 
         if prototings:
             for pt in prototings:
-                self._tingistry_obj.register_prototing(**pt)
+                pt_name = pt["prototing_name"]
+                existing = self._tingistry_obj.get_ting(pt_name)
+                if existing is None:
+                    self._tingistry_obj.register_prototing(**pt)
 
         if tings:
             for t in tings:

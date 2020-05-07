@@ -12,7 +12,10 @@ from frtls.types.utils import is_instance_or_subclass
 
 
 class BringPkgResolver(SimplePkgType):
-    """A package that inherits from another, lower-level package.
+    """A package type that creates a package that inherits from another, lower-level package in the same or another index.
+
+    Currently, there are not many use-cases for this, so you can ignore this type. There are some more advanced use-cases
+    that will be documented in the future.
 
     If no 'index_name' property is specified, it is assumed the package to use lives in the same index. Otherwise, the
     index must be valid in the configuration profile that is currently used.

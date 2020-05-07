@@ -10,6 +10,16 @@ from frtls.templating import process_string_template
 
 
 class TemplateUrlResolver(SimplePkgType):
+    """A package type to resolve packages whose artifacts are published with static urls that can be templated.
+
+    All values of all template variables are combined with each of the other template variables to create a matrix of possible combinations.
+    In some cases some of those combinations are not valid, and lead to a url that does not resolve to a file to download. At this time,
+    there is nothing that can be done about it and the user will see an error message.
+
+    Examples:
+        - binaries.kubectl
+        - binaries.mitmproxy
+    """
 
     _plugin_name: str = "template_url"
 

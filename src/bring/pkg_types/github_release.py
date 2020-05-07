@@ -23,15 +23,49 @@ from httpx import Headers
 
 
 DEFAULT_URL_REGEXES = [
-    "https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$"
+    "https://github.com/.*/releases/download/v*(?P<version>.*)/.*-v*(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
+    # "https://github.com/.*/releases/download/(?P<version>.*)/.*-(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
 ]
 
 # "https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\.(?P<type>.*)$"
 
 log = logging.getLogger("bring")
 
+# noqa: W605
+
 
 class GithubRelease(SimplePkgType):
+    """A package type that tracks GitHub release artefacts.
+
+    To be able to get a list of all releases and their metadata, a package needs to specify the github user- and repo-names,
+    as well as a regex to parse the release urls and compute the variables (version, architecture, os, etc.) involved to
+    assemble a list of versions for a package.
+
+    This is a barebones example for a *source* definition for the [fd](https://github.com/sharkdp/fd) application:
+
+    ``` yaml
+      source:
+        type: github-release
+        user_name: sharkdp
+        repo_name: fd
+
+        url_regex: 'https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\..*$'
+    ```
+    More than one such regular expressions can be provided (in which case the value for *url_regex* should be a list), all matches for all regexes will be added to the resulting list.
+
+    Most of the regexes for different packages look fairly similar, but unfortunately Github release-urls don't follow a standard),
+    so it's impossible to come up with one that works for all of them. *bring* comes with a default regex that works for quite
+    a few Github projects, and almost for a lot of others. In fact, the regex in the example above is the default regex that will
+    be used if no '*url_regex*' value is provided, and it so happens that it works for '*fd*' (which means we could have omitted it for that particular application).
+
+    Nonetheless, whoever creates a new package manifest needs to manually verify whether the default regex works, and then adjust or create a totally different one if necessary.
+
+    examples:
+      - binaries.k3d
+      - kube-install-manifests.cert-manager
+
+
+    """
 
     last_github_limit_details: Optional[Mapping] = None
 
@@ -127,8 +161,9 @@ class GithubRelease(SimplePkgType):
             },
             "url_regex": {
                 "type": "string",
-                "required": True,
+                "required": False,
                 "doc": "The url regex to parse the release urls.",
+                "default": "<see documentation>",
             },
         }
 
@@ -194,15 +229,20 @@ class GithubRelease(SimplePkgType):
         log.debug(f"Regexes for {github_user}/{repo_name}: {url_regexes}")
 
         result: List[Mapping] = []
+        prereleases: List[Mapping] = []
         aliases: Dict[str, MutableMapping] = {}
         for release in releases:
 
             version_data = self.parse_release_data(release, url_regexes, aliases)
             if version_data:
-                result.extend(version_data)
+                for vd in version_data:
+                    if vd.get("_meta", {}).get("prerelease", False):
+                        prereleases.append(vd)
+                    else:
+                        result.append(vd)
 
         # args = copy.deepcopy(DEFAULT_ARGS_DICT)
-        return {"versions": result, "aliases": aliases}
+        return {"versions": result + prereleases, "aliases": aliases}
 
     def parse_release_data(
         self,
@@ -255,6 +295,7 @@ class GithubRelease(SimplePkgType):
                         aliases["version"]["stable"] = vers
                     if "latest" not in aliases.setdefault("version", {}).keys():
                         aliases["version"]["latest"] = vers
+
                 else:
                     if "pre-release" not in aliases.setdefault("version", {}).keys():
                         aliases["version"]["pre-release"] = vers

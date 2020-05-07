@@ -6,15 +6,14 @@ import arrow
 from anyio import create_task_group
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import find_version, replace_var_aliases
+from bring.utils.args import create_table_from_pkg_args
 from colorama import Fore, Style
 from frtls.async_helpers import wrap_async_task
-from frtls.doc import Doc
 from frtls.formats.output_formats import create_two_column_table, serialize
 from rich import box
 from rich.box import Box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
 from rich.panel import Panel
-from rich.table import Table
 from sortedcontainers import SortedDict
 from tings.exceptions import TingTaskException
 
@@ -301,85 +300,7 @@ class PkgInfoDisplay(object):
             title_str = f"[title]Arguments for[/title]: [bold dark_red]{self._pkg.bring_index.name}[/bold dark_red].[bold blue]{self._pkg.name}[/bold blue] (metadata snapshot: {info['metadata snapshot']})"
             base_info.append(title_str)
 
-        table = Table(box=box.SIMPLE)
-        table.add_column("Name", no_wrap=True, style="bold dark_orange")
-        table.add_column("Description", no_wrap=False, style="italic")
-        table.add_column("Type", no_wrap=True)
-        table.add_column("Required", no_wrap=True)
-        table.add_column("Default", no_wrap=True, style="green")
-        table.add_column("Allowed", no_wrap=True)
-        table.add_column("Alias", no_wrap=True)
-
-        for k, v in sorted(info["args"].items()):
-
-            aliases = info["aliases"].get(k, {})
-            aliases_reverse: Dict[str, List[str]] = {}
-            allowed_no_alias = []
-
-            allowed = v["allowed"]
-            if k != "version":
-                allowed = sorted(allowed)
-            for a in allowed:
-                if a in aliases.keys():
-                    aliases_reverse.setdefault(aliases[a], []).append(a)
-                else:
-                    allowed_no_alias.append(a)
-
-            if v["default"] is not None:
-                default = v["default"]
-            else:
-                default = ""
-
-            if allowed_no_alias:
-                allowed_first = allowed_no_alias[0]
-            else:
-                allowed_first = ""
-            doc = Doc(v.get("doc", {}))
-            if info.get("required", True):
-                req = "yes"
-            else:
-                req = "no"
-
-            if (
-                allowed_first in aliases_reverse.keys()
-                and aliases_reverse[allowed_first]
-            ):
-                alias = aliases_reverse[allowed_first][0]
-            else:
-                alias = ""
-
-            table.add_row(
-                k,
-                doc.get_short_help(use_help=True),
-                v["type"],
-                req,
-                default,
-                allowed_first,
-                alias,
-            )
-            if (
-                allowed_first in aliases_reverse.keys()
-                and len(aliases_reverse[allowed_first]) > 1
-            ):
-                for alias in aliases_reverse[allowed_first][1:]:
-                    table.add_row("", "", "", "", "", "", alias)
-
-            if len(allowed_no_alias) > 1:
-                for item in allowed_no_alias[1:]:
-                    if item in aliases_reverse.keys() and aliases_reverse[item]:
-                        alias = aliases_reverse[item][0]
-                    else:
-                        alias = ""
-                    table.add_row("", "", "", "", "", item, alias)
-
-                    if (
-                        item in aliases_reverse.keys()
-                        and len(aliases_reverse[item]) > 1
-                    ):
-                        for alias in aliases_reverse[item][1:]:
-                            table.add_row("", "", "", "", "", "", alias)
-
-            table.add_row("", "", "", "", "", "", "")
+        table = create_table_from_pkg_args(args=info["args"], aliases=info["aliases"])
         base_info.append(table)
 
         base_info_panel = Panel(RenderGroup(*base_info), box=box.SIMPLE)

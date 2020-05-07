@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable, List, Mapping, Optional, Union
 
 from anyio import aopen
+from bring.defaults import BRING_TEMP_FOLDER_MARKER
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -303,3 +304,56 @@ class FolderMerge(object):
         self._target.ensure_exists()
 
         self.merge_strategy.merge(self._target, *sources)
+
+
+class BringTarget(object):
+    @classmethod
+    def create(
+        cls,
+        typistry: Typistry,
+        target: Optional[Union[str, Path, Mapping[str, Any], "BringTarget"]] = None,
+    ) -> "BringTarget":
+
+        if target is None or target == BRING_TEMP_FOLDER_MARKER:
+            raise NotImplementedError()
+
+        if is_instance_or_subclass(target, BringTarget):
+            return target  # type: ignore
+
+        return cls(typistry=typistry, target=target)  # type: ignore
+
+    def __init__(self, typistry: Typistry, target: Union[str, Path, Mapping[str, Any]]):
+
+        self._typistry: Typistry = typistry
+
+        if isinstance(target, collections.Mapping):
+            strategy = dict(target)
+            if "path" not in strategy.keys():
+                raise ValueError(
+                    f"Can't create BringTarget, no 'path' value provided: {strategy}"
+                )
+            _target = strategy.pop("path")
+        else:
+            strategy = {}
+            _target = target
+
+        self._target_folder: TargetFolder = TargetFolder(path=_target)
+        ms_type = strategy.pop("type", "default")
+        pm = self._typistry.get_plugin_manager(MergeStrategy)
+        ms_cls = pm.get_plugin(ms_type)
+        if ms_cls is None:
+            raise FrklException(
+                msg=f"Can't create BringTarget.",
+                reason=f"Invalid merge strategy, valid: {', '.join(pm.plugin_names)}",
+            )
+        self._merge_strategy: MergeStrategy = ms_cls(**strategy)
+
+    @property
+    def target_folder(self) -> TargetFolder:
+
+        return self._target_folder
+
+    @property
+    def merge_strategy(self) -> "MergeStrategy":
+
+        return self._merge_strategy
