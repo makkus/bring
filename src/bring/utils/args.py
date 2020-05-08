@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Optional
 
 from frtls.doc import Doc
 from rich import box
@@ -7,7 +7,9 @@ from rich.table import Table
 
 
 def create_table_from_pkg_args(
-    args: Mapping[str, Any], aliases: Mapping[str, Any]
+    args: Mapping[str, Any],
+    aliases: Mapping[str, Any],
+    limit_allowed: Optional[int] = None,
 ) -> Table:
 
     table = Table(box=box.SIMPLE)
@@ -26,6 +28,9 @@ def create_table_from_pkg_args(
         allowed_no_alias = []
 
         allowed = v.get("allowed", [])
+        if limit_allowed is not None and len(allowed) > limit_allowed:
+            allowed = allowed[0:limit_allowed] + ["..."]
+
         if k != "version":
             allowed = sorted(allowed)
         for a in allowed:

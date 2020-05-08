@@ -2,17 +2,15 @@
 import logging
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
-import arrow
 from anyio import create_task_group
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import find_version, replace_var_aliases
-from bring.utils.args import create_table_from_pkg_args
 from colorama import Fore, Style
 from frtls.async_helpers import wrap_async_task
-from frtls.formats.output_formats import create_two_column_table, serialize
+from frtls.formats.output_formats import create_two_column_table
 from rich import box
 from rich.box import Box
-from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
+from rich.console import Console, ConsoleOptions, RenderResult
 from rich.panel import Panel
 from sortedcontainers import SortedDict
 from tings.exceptions import TingTaskException
@@ -191,117 +189,3 @@ async def explain_version_data(
     result["steps"] = steps
 
     return result
-
-
-class PkgInfoDisplay(object):
-    def __init__(self, pkg: PkgTing, update: bool = False, only_args: bool = False):
-
-        self._pkg: PkgTing = pkg
-        self._update: bool = update
-        self._only_args: bool = only_args
-
-        self._info: Optional[Mapping[str, Any]] = None
-
-    @property
-    def update(self) -> bool:
-
-        return self._update
-
-    @update.setter
-    def update(self, update: bool) -> None:
-
-        self._update = update
-
-    @property
-    def display_only_args(self) -> bool:
-
-        return self._only_args
-
-    @display_only_args.setter
-    def display_only_args(self, only_args: bool) -> None:
-
-        self._only_args = only_args
-
-    @property
-    def base_metadata(self) -> Mapping[str, Any]:
-
-        if self._info is None:
-            self._info = wrap_async_task(
-                self._pkg.get_value, "info", _raise_exception=True
-            )
-        return self._info
-
-    @property
-    def slug(self) -> str:
-
-        slug = self.base_metadata.get("slug", "n/a")
-        if slug.endswith("."):
-            slug = slug[0:-1]
-        return slug
-
-    @property
-    def short_help(self) -> str:
-
-        short_help = f"{self.slug} (from: {self._pkg.bring_index.name})"
-        return short_help
-
-    @property
-    def desc(self) -> Optional[str]:
-
-        desc = self.base_metadata.get("desc", None)
-        return desc
-
-    async def retrieve_info(self) -> Mapping[str, Any]:
-
-        args: Dict[str, Any] = {"include_metadata": True}
-        if self.update:
-            args["retrieve_config"] = {"metadata_max_age": 0}
-
-        info = await self._pkg.get_info(**args)
-
-        metadata = info["metadata"]
-        age = arrow.get(metadata["timestamp"])
-
-        result = {}
-        result["info"] = info["info"]
-        result["labels"] = info["labels"]
-        result["tags"] = info["tags"]
-        result["metadata snapshot"] = age.humanize()
-        result["args"] = metadata["pkg_args"]
-        result["aliases"] = metadata["aliases"]
-        result["version list"] = metadata["version_list"]
-
-        return result
-
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
-
-        base_info: List[Any] = []
-
-        info = wrap_async_task(self.retrieve_info)
-
-        if not self.display_only_args:
-
-            package_str = f"[title]Package[/title]: [bold dark_red]{self._pkg.bring_index.name}[/bold dark_red].[bold blue]{self._pkg.name}[/bold blue] (metadata snapshot: {info['metadata snapshot']})"
-            base_info.append(package_str)
-
-            base_metadata_str = "\n" + serialize(info["info"], format="yaml", indent=2)
-            base_info.append(base_metadata_str)
-            if info["labels"]:
-                base_info.append("[title]Labels[/title]")
-                labels_str = "\n" + serialize(info["labels"], format="yaml", indent=2)
-                base_info.append(labels_str)
-            if info["tags"]:
-                base_info.append("[title]Tags[/title]")
-                labels_str = "\n" + serialize(info["tags"], format="yaml", indent=2)
-                base_info.append(labels_str)
-
-            base_info.append("[title]Arguments[/title]")
-        else:
-            title_str = f"[title]Arguments for[/title]: [bold dark_red]{self._pkg.bring_index.name}[/bold dark_red].[bold blue]{self._pkg.name}[/bold blue] (metadata snapshot: {info['metadata snapshot']})"
-            base_info.append(title_str)
-
-        table = create_table_from_pkg_args(args=info["args"], aliases=info["aliases"])
-        base_info.append(table)
-
-        base_info_panel = Panel(RenderGroup(*base_info), box=box.SIMPLE)
-        yield base_info_panel

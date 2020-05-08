@@ -3,6 +3,7 @@ import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
+from bring.display.info import PkgInfoDisplay
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import (
     log,
@@ -11,7 +12,6 @@ from bring.interfaces.cli.utils import (
 )
 from bring.pkg_index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from bring.utils.pkgs import PkgInfoDisplay
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
 from frtls.formats.output_formats import serialize
@@ -195,7 +195,13 @@ class PkgInfoTingCommand(Command):
                 ),
                 Option(
                     ["--args", "-a"],
-                    help="display only arguments for package",
+                    help="display only full arguments for package",
+                    is_flag=True,
+                    required=False,
+                ),
+                Option(
+                    ["--full", "-f"],
+                    help="display full information for package",
                     is_flag=True,
                     required=False,
                 ),
@@ -209,10 +215,13 @@ class PkgInfoTingCommand(Command):
         super().__init__(name=name, callback=self.info, params=params, **kwargs)
 
     @click.pass_context
-    async def info(ctx, self, update: bool = False, args: bool = False):
+    async def info(
+        ctx, self, update: bool = False, full: bool = False, args: bool = False
+    ):
 
         self._pkg_info.update = update
-        self._pkg_info.display_only_args = args
+        self._pkg_info.display_args = args
+        self._pkg_info.display_full = full
         console.print(self._pkg_info)
 
         # args: Dict[str, Any] = {"include_metadata": True}
