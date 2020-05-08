@@ -2,8 +2,7 @@
 import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
-from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
-from bring.display.info import PkgInfoDisplay
+from bring.display.info import IndexInfoDisplay, PkgInfoDisplay
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import (
     log,
@@ -14,7 +13,6 @@ from bring.pkg_index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
-from frtls.formats.output_formats import serialize
 
 
 INFO_HELP = """Display information about a index or package.
@@ -91,33 +89,28 @@ class IndexInfoTingCommand(Command):
     ):
 
         self._index: BringIndexTing = index
-
+        self._index_info: IndexInfoDisplay = IndexInfoDisplay(index=self._index)
         try:
-            val_names = ["config", "info"]
-            self._data = wrap_async_task(
-                self._index.get_values, *val_names, _raise_exception=True
-            )
-            slug = self._data["info"].get("slug", "n/a")
-            if slug.endswith("."):
-                slug = slug[0:-1]
-            short_help = slug
+
+            # slug = self._pkg_info.slug
+            short_help = self._index_info.short_help
 
             kwargs["short_help"] = short_help
-            desc = self._data["info"].get("desc", None)
-            help = f"Display info for the '{self._index.name}' package."
+            desc = self._index_info.desc
+            help = f"Display info for index '{self._index.name}'"
             if desc:
                 help = f"{help}\n\n{desc}"
 
             params = [
                 Option(
                     ["--update", "-u"],
-                    help="update index metadata",
+                    help="update index metadata before display",
                     is_flag=True,
                     required=False,
                 ),
                 Option(
                     ["--full", "-f"],
-                    help="display full info",
+                    help="display full information for index",
                     is_flag=True,
                     required=False,
                 ),
@@ -125,7 +118,7 @@ class IndexInfoTingCommand(Command):
 
             kwargs["help"] = help
         except (Exception) as e:
-            log.debug(f"Can't create PkgInstallTingCommand object: {e}", exc_info=True)
+            log.debug(f"Can't create IndexInfoTingCommand object: {e}", exc_info=True)
             raise e
 
         super().__init__(name=name, callback=self.info, params=params, **kwargs)
@@ -133,40 +126,10 @@ class IndexInfoTingCommand(Command):
     @click.pass_context
     async def info(ctx, self, update: bool = False, full: bool = False):
 
-        # args: Dict[str, Any] = {"include_metadata": True}
-        # if update:
-        #     args["retrieve_config"] = {"metadata_max_age": 0}
-        #
-        # info = await self._pkg.get_info(**args)
-        #
-        # metadata = info["metadata"]
-        # age = arrow.get(metadata["timestamp"])
+        self._index_info.update = update
+        self._index_info.display_full = full
 
-        if not full:
-            to_print = self._data
-        else:
-            metadata_timestamp = await self._index.get_metadata_timestamp(
-                return_format="human"
-            )
-
-            if metadata_timestamp == BRING_NO_METADATA_TIMESTAMP_MARKER:
-                metadata_timestamp = "unknown"
-            pkgs = await self._index.get_all_pkg_values("info")
-            pkg_slug_map = {}
-            for pkg_name in sorted(pkgs.keys()):
-                pkg_slug_map[pkg_name] = (
-                    pkgs[pkg_name]
-                    .get("info", {})
-                    .get("slug", "no description available")
-                )
-
-            to_print = {
-                "metadata snapshot": metadata_timestamp,
-                "config": self._data["config"],
-                "pkgs": pkg_slug_map,
-            }
-
-        click.echo(serialize(to_print, format="yaml", ignore_aliases=True))
+        console.print(self._index_info)
 
 
 class PkgInfoTingCommand(Command):
@@ -223,25 +186,3 @@ class PkgInfoTingCommand(Command):
         self._pkg_info.display_args = args
         self._pkg_info.display_full = full
         console.print(self._pkg_info)
-
-        # args: Dict[str, Any] = {"include_metadata": True}
-        # if update:
-        #     args["retrieve_config"] = {"metadata_max_age": 0}
-        #
-        # info = await self._pkg.get_info(**args)
-        #
-        # metadata = info["metadata"]
-        # age = arrow.get(metadata["timestamp"])
-        #
-        # to_print = {}
-        # to_print["info"] = info["info"]
-        # to_print["labels"] = info["labels"]
-        # to_print["metadata snapshot"] = age.humanize()
-        # to_print["args"] = metadata["pkg_args"]
-        # to_print["aliases"] = metadata["aliases"]
-        #
-        # if full:
-        #     to_print["version list"] = metadata["version_list"]
-        #
-        # click.echo()
-        # click.echo(serialize(to_print, format="yaml"))

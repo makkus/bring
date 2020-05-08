@@ -37,6 +37,8 @@ class BringIndexTing(InheriTing, SimpleTing):
             self._parent_key: "string?",
             "info": "dict",
             "pkgs": "dict",
+            "tags": "list",
+            "labels": "dict",
             "config": "dict",
             "defaults": "dict",
             "metadata_timestamp": "string",
@@ -73,6 +75,12 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         if "info" in value_names:
             result["info"] = config.get("info", {})
+
+        if "labels" in value_names:
+            result["labels"] = config.get("labels", {})
+
+        if "tags" in value_names:
+            result["tags"] = config.get("tags", [])
 
         if "metadata_timestamp" in value_names:
             result["metadata_timestamp"] = await self.get_metadata_timestamp()
