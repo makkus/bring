@@ -147,6 +147,8 @@ class IndexInfoDisplay(object):
         # arg_allowed_items: int = 0
         # display_version_list: bool = False
 
+        desc_section = Doc(_info_data, short_help_key="slug", help_key="desc")
+
         if self._display_config:
             display_config = True
 
@@ -169,9 +171,12 @@ class IndexInfoDisplay(object):
 
             all.append(title)
             all.append("")
+            help_str = desc_section.get_help(use_short_help=True, default=None)
+            if help_str:
+                all.append(help_str)
+                all.append("")
 
         if display_metadata:
-            desc_section = Doc(_info_data, short_help_key="slug", help_key="desc")
             if desc_section.metadata:
                 all.append(desc_section)
                 all.append("")
