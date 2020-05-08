@@ -170,7 +170,7 @@ class PkgInfoDisplay(object):
 
         if display_args:
             if self._display_full or not self._display_args:
-                title_str = f"[title]Arguments[/title]"
+                title_str = "[title]Arguments[/title]"
                 all.append(title_str)
 
             table = create_table_from_pkg_args(
