@@ -109,6 +109,18 @@ class IndexInfoTingCommand(Command):
                     required=False,
                 ),
                 Option(
+                    ["--pkgs", "-p"],
+                    help="display packages of this index",
+                    is_flag=True,
+                    required=False,
+                ),
+                Option(
+                    ["--config", "-c"],
+                    help="display index configuration",
+                    is_flag=True,
+                    required=False,
+                ),
+                Option(
                     ["--full", "-f"],
                     help="display full information for index",
                     is_flag=True,
@@ -124,10 +136,19 @@ class IndexInfoTingCommand(Command):
         super().__init__(name=name, callback=self.info, params=params, **kwargs)
 
     @click.pass_context
-    async def info(ctx, self, update: bool = False, full: bool = False):
+    async def info(
+        ctx,
+        self,
+        update: bool = False,
+        full: bool = False,
+        config: bool = False,
+        pkgs: bool = False,
+    ):
 
         self._index_info.update = update
         self._index_info.display_full = full
+        self._index_info.display_config = config
+        self._index_info.display_packages = pkgs
 
         console.print(self._index_info)
 
