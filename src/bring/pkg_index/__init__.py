@@ -12,7 +12,7 @@ from frtls.dicts import dict_merge
 from frtls.exceptions import FrklException
 from frtls.tasks import Task
 from frtls.types.utils import is_instance_or_subclass
-from tings.ting import SimpleTing
+from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
 
@@ -20,12 +20,7 @@ log = logging.getLogger("bring")
 
 
 class BringIndexTing(InheriTing, SimpleTing):
-    def __init__(
-        self,
-        name: str,
-        parent_key: str = "parent",
-        meta: Optional[Mapping[str, Any]] = None,
-    ):
+    def __init__(self, name: str, meta: TingMeta, parent_key: str = "parent"):
 
         self._parent_key: str = parent_key
         self._initialized: bool = False
@@ -171,7 +166,6 @@ class BringIndexTing(InheriTing, SimpleTing):
         pass
 
     async def get_pkg(self, name: str) -> PkgTing:
-
         pkgs = await self.get_pkgs()
 
         pkg = pkgs.get(name, None)

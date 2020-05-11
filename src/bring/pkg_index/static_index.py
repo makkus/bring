@@ -15,18 +15,14 @@ from bring.utils import BringTaskDesc
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
 from frtls.tasks import SingleTaskAsync, Task
+from tings.ting import TingMeta
 
 
 log = logging.getLogger("bring")
 
 
 class BringStaticIndexTing(BringIndexTing):
-    def __init__(
-        self,
-        name: str,
-        parent_key: str = "parent",
-        meta: Optional[Mapping[str, Any]] = None,
-    ):
+    def __init__(self, name: str, meta: TingMeta, parent_key: str = "parent"):
         self._urls: List[str] = []
         self._pkgs: Optional[Dict[str, PkgTing]] = None
         self._config: Optional[Mapping[str, Any]] = None
@@ -110,7 +106,7 @@ class BringStaticIndexTing(BringIndexTing):
                     )
                     ting.bring_index = self
 
-                ting.input.set_values(**pkg_data)
+                ting.set_input(**pkg_data)
                 # ting._set_result(data)
                 pkgs[pkg_name] = ting
 

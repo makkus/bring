@@ -16,7 +16,7 @@ from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.plugins import TypistryPluginManager
 from tings.exceptions import TingException
-from tings.ting import SimpleTing
+from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
 
 
@@ -36,9 +36,9 @@ DEFAULT_ARG_DICT = {
 
 
 class PkgTing(SimpleTing):
-    def __init__(self, name, meta: Dict[str, Any]):
+    def __init__(self, name, meta: TingMeta):
 
-        self._tingistry_obj: Tingistry = meta["tingistry"]
+        self._tingistry_obj: Tingistry = meta.tingistry
         self._transmogritory: Transmogritory = self._tingistry_obj.get_ting(  # type: ignore
             "bring.transmogritory", raise_exception=True
         )
@@ -367,7 +367,7 @@ class PkgTing(SimpleTing):
 
 
 class StaticPkgTing(PkgTing):
-    def __init__(self, name, meta: Dict[str, Any]):
+    def __init__(self, name, meta: TingMeta):
 
         super().__init__(name=name, meta=meta)
 
@@ -414,7 +414,7 @@ class StaticPkgTing(PkgTing):
 
 
 class DynamicPkgTing(PkgTing):
-    def __init__(self, name, meta: Dict[str, Any]):
+    def __init__(self, name, meta: TingMeta):
 
         super().__init__(name=name, meta=meta)
 

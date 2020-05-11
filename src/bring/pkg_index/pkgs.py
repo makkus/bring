@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Mapping
 
 from anyio import create_task_group
 from bring.pkg_index.pkg import PkgTing
-from tings.ting import Ting
+from tings.ting import Ting, TingMeta
 from tings.ting.tings import SubscripTings
 
 
@@ -16,18 +16,13 @@ class Pkgs(SubscripTings):
     def __init__(
         self,
         name: str,
+        meta: TingMeta,
         subscription_namespace: str,
         bring_index: "BringIndexTing",
-        meta: Dict[str, Any] = None,
     ):
 
-        if meta is None:
-            raise Exception(
-                f"Can't create Pkgs '{name}'. No metadata provided, so can't get tingistry."
-            )
-
         self._pkgs: Dict[str, PkgTing] = {}
-        self._tingistry_obj: "Tingistry" = meta["tingistry"]
+        self._tingistry_obj: "Tingistry" = meta.tingistry
         self._bring_index = bring_index
         super().__init__(
             name=name,
@@ -110,7 +105,6 @@ class Pkgs(SubscripTings):
         return pkg
 
     async def get_pkg_values(self, pkg_name: str):
-
         pkg = self.get_pkg(pkg_name)
         pkg_vals = await pkg.get_values()
         return pkg_vals

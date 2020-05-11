@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
 from frtls.dicts import dict_merge
-from tings.ting import SimpleTing
+from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
 
@@ -19,9 +19,9 @@ class ConfigTing(InheriTing, SimpleTing):
     def __init__(
         self,
         name: str,
+        meta: TingMeta,
         parent_key: str = "parent",
         info_key: str = "info",
-        meta: Optional[Mapping[str, Any]] = None,
     ):
 
         self._parent_key = parent_key

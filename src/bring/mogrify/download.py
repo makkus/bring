@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 import httpx
 from anyio import aopen
@@ -19,10 +19,6 @@ class DownloadMogrifier(SimpleMogrifier):
     _plugin_name = "download"
     _requires = {"url": "string", "target_file_name": "string"}
     _provides = {"file_path": "string"}
-
-    def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None) -> None:
-
-        super().__init__(name=name, meta=meta)
 
     def get_msg(self) -> str:
 

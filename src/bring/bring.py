@@ -16,7 +16,7 @@ from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import SerialTasksAsync
-from tings.ting import SimpleTing
+from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
 
 
@@ -30,10 +30,7 @@ DEFAULT_TRANSFORM_PROFILES = {
 
 class Bring(SimpleTing):
     def __init__(
-        self,
-        name: str = None,
-        bring_config: BringConfig = None,
-        meta: Optional[Mapping[str, Any]] = None,
+        self, meta: TingMeta, name: str = None, bring_config: BringConfig = None
     ):
 
         prototings: Iterable[Mapping] = BRINGISTRY_INIT["prototings"]  # type: ignore
@@ -53,7 +50,7 @@ class Bring(SimpleTing):
                 "Can't create 'bring' object: 'meta' argument not provided, this is a bug"
             )
 
-        self._tingistry_obj: Tingistry = meta["tingistry"]
+        self._tingistry_obj: Tingistry = meta.tingistry
 
         self._tingistry_obj.add_module_paths(*modules)
         self._tingistry_obj.add_classes(*classes)
@@ -129,11 +126,11 @@ class Bring(SimpleTing):
 
         return self._tingistry_obj.arg_hive
 
-    def provides(self) -> Mapping[str, str]:
+    def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {}
 
-    def requires(self) -> Mapping[str, str]:
+    def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {}
 
@@ -382,6 +379,9 @@ class Bring(SimpleTing):
             pkgs = await self.get_alias_pkg_map(add_default_index_pkg_names=True)
 
         pkg = pkgs.get(_pkg_name, None)
+
+        # vals = await pkg.get_values()
+
         if pkg is None and raise_exception:
             raise FrklException(msg=f"Can't retrieve pkg '{name}': no such package")
 

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 from anyio import create_task_group
 from bring.mogrify import Mogrifier, Transmogrificator
 from frtls.tasks import Tasks
+from tings.ting import TingMeta
 
 
 log = logging.getLogger("bring")
@@ -16,7 +17,7 @@ class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
     _provides: Mapping[str, str] = {"folder_path": "string"}
     _requires: Mapping[str, str] = {"pipeline_id": "string", "merge": "any"}
 
-    def __init__(self, name: str, meta: Optional[Mapping[str, Any]], **kwargs):
+    def __init__(self, name: str, meta: TingMeta, **kwargs):
 
         self._mogrificators: List[Transmogrificator] = []
         self._merge_task: Optional[Mogrifier] = None
@@ -60,6 +61,7 @@ class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
             folder = tm._last_item.current_state["folder_path"]  # type: ignore
             folders.append(folder)
 
-        self._merge_task.input.set_values(**{"folder_paths": folders})
+        inp: Dict[str, Any] = {"folder_paths": folders}
+        self._merge_task.set_input(**inp)
         vals = await self._merge_task.run_async()
         return vals

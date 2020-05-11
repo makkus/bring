@@ -321,7 +321,7 @@ class FolderIndexConfig(BringIndexConfig):
         _ind = [_path]
         ctx_config = await self.to_dict()
         ctx_config["indexes"] = _ind
-        ctx.input.set_values(  # type: ignore
+        ctx.set_input(  # type: ignore
             ting_dict=ctx_config
         )
 
@@ -347,7 +347,7 @@ class IndexIndexConfig(BringIndexConfig):
 
         ctx_config = await self.to_dict()
 
-        ctx.input.set_values(ting_dict=ctx_config)
+        ctx.set_input(ting_dict=ctx_config)
         await ctx.get_values("config")
 
         return ctx

@@ -8,15 +8,11 @@ from bring.pkg_index.pkgs import Pkgs
 from bring.utils import BringTaskDesc
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker
+from tings.ting import TingMeta
 
 
 class BringDynamicIndexTing(BringIndexTing):
-    def __init__(
-        self,
-        name: str,
-        parent_key: str = "parent",
-        meta: Optional[Mapping[str, Any]] = None,
-    ):
+    def __init__(self, name: str, meta: TingMeta, parent_key: str = "parent"):
 
         super().__init__(name=name, parent_key=parent_key, meta=meta)
 

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Mapping, MutableMapping, Optional, Union
 
 import anyio
 from anyio import create_task_group
 from bring.config import ConfigTing
 from tings.makers.file import TextFileTingMaker
-from tings.ting import SimpleTing
+from tings.ting import SimpleTing, TingMeta
 from tings.ting.tings import SubscripTings
 from tings.tingistry import Tingistry
 
@@ -14,17 +14,13 @@ class FolderConfigProfilesTing(SimpleTing):
     def __init__(
         self,
         name: str,
+        meta: TingMeta,
         config_path: str,
         config_file_ext: str = "config",
-        meta: Optional[Mapping[str, Any]] = None,
     ):
         """A class to hold a set of ConfigTings, and gives access to them and their config dicts."""
 
-        if meta is None:
-            raise Exception(
-                "Can't create ting FolderConfigProfilesTing, 'meta' parameter not provided. This is a bug."
-            )
-        self._tingistry_obj: Tingistry = meta["tingistry"]
+        self._tingistry_obj: Tingistry = meta.tingistry
 
         self._config_path = config_path
         self._config_file_ext = config_file_ext
@@ -54,11 +50,11 @@ class FolderConfigProfilesTing(SimpleTing):
             self._init_lock = anyio.create_lock()
         return self._init_lock
 
-    def requires(self) -> Mapping[str, str]:
+    def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {}
 
-    def provides(self) -> Mapping[str, str]:
+    def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {"profiles": "dict", "config_dicts": "dict"}
 

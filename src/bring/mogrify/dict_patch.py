@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from dictdiffer import patch
@@ -18,10 +18,6 @@ class YamlPatchMogrifier(SimpleMogrifier):
     _plugin_name = "yaml_patch"
     _requires = {"folder_path": "string", "patch_map": "dict"}
     _provides = {"folder_path": "string"}
-
-    def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None) -> None:
-
-        super().__init__(name=name, meta=meta)
 
     def get_msg(self) -> str:
 

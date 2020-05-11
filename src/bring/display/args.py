@@ -110,7 +110,7 @@ def create_table_from_pkg_args(
 
             _allowed_strings = []
             for _arg, _aliases in _allowed.items():
-                if not aliases:
+                if not _aliases:
                     a = _arg
                 elif len(_aliases) == 1:
                     a = f"{_arg} (alias: {_aliases[0]})"

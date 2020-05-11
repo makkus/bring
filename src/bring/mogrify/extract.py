@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from frtls.exceptions import FrklException
@@ -25,9 +25,9 @@ class ExtractMogrifier(SimpleMogrifier):
     _requires = {"file_path": "string", "remove_root": "boolean?"}
     _provides = {"folder_path": "string"}
 
-    def __init__(self, name: str, meta: Optional[Mapping[str, Any]] = None):
-
-        super().__init__(name=name, meta=meta)
+    # def __init__(self, name: str, meta: TingMeta):
+    #
+    #     super().__init__(name=name, meta=meta)
 
     def get_msg(self) -> str:
 
