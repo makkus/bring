@@ -227,6 +227,7 @@ class BringIndexTing(InheriTing, SimpleTing):
         all_values = await self.get_all_pkg_values(
             "source", "metadata", "aliases", "info", "labels", "tags"
         )
+
         _all_values: Dict[str, Any] = dict(all_values)
 
         config_dict = dict(await self.get_value("config"))

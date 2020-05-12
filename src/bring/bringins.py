@@ -22,8 +22,8 @@ from bring.defaults import (
     BRING_RESULTS_FOLDER,
     BRING_TEMP_FOLDER_MARKER,
 )
+from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.pkg_index.pkg import PkgTing
-from bring.utils.merging import FolderMerge, MergeStrategy
 from frtls.dicts import get_seeded_dict
 from frtls.doc import Doc
 from frtls.exceptions import FrklException

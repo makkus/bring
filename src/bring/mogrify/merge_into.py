@@ -3,8 +3,8 @@ import logging
 from typing import Any, Mapping, MutableMapping, Optional, Union
 
 from bring.defaults import BRING_TEMP_FOLDER_MARKER
+from bring.merge_strategy import FolderMerge
 from bring.mogrify import SimpleMogrifier
-from bring.utils.merging import FolderMerge
 
 
 log = logging.getLogger("bring")
