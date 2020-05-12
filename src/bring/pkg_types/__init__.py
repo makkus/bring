@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import copy
 import json
 import logging
 import os
@@ -352,9 +353,8 @@ class SimplePkgType(PkgType):
             versions: List[Mapping] = result["versions"]
             aliases: MutableMapping[str, str] = result.get("aliases", None)
             pkg_args: Mapping[str, Mapping] = result.get("args", None)
-            pkg_args = get_seeded_dict(
-                DEFAULT_ARGS_DICT, pkg_args, merge_strategy="update"
-            )
+            default_args = copy.deepcopy(DEFAULT_ARGS_DICT)
+            pkg_args = get_seeded_dict(default_args, pkg_args, merge_strategy="update")
 
         except (Exception) as e:
             log.debug(f"Can't retrieve versions for pkg: {e}")
