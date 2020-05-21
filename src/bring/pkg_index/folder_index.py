@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Mapping, Optional
+from typing import Mapping, Optional
 
 import arrow
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.pkgs import Pkgs
 from bring.utils import BringTaskDesc
+from bring.utils.git import ensure_repo_cloned
+from frtls.strings import is_git_repo_url
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker
 from tings.ting import TingMeta
 
 
 class BringDynamicIndexTing(BringIndexTing):
-    def __init__(self, name: str, meta: TingMeta, parent_key: str = "parent"):
+    def __init__(self, name: str, meta: TingMeta):
 
-        super().__init__(name=name, parent_key=parent_key, meta=meta)
+        super().__init__(name=name, meta=meta)
 
         self._pkg_namespace = f"bring.indexes.{self.name}.pkgs"
         self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(  # type: ignore
@@ -23,14 +25,19 @@ class BringDynamicIndexTing(BringIndexTing):
             subscription_namespace=self._pkg_namespace,
             bring_index=self,
         )
-        self._maker_config: Optional[Mapping[str, Any]] = None
+        self._maker_path: Optional[str] = None
         self._maker: Optional[TingMaker] = None
 
         self._metadata_timestamp: Optional[str] = None
 
-    async def init(self, config: Mapping[str, Any]) -> None:
+    async def init(self, uri: str) -> None:
 
-        maker = await self.get_maker(config)
+        if is_git_repo_url(uri):
+            _local_path = await ensure_repo_cloned(url=uri, update=False)
+        else:
+            _local_path = uri
+
+        maker = await self.get_maker(_local_path)
         await maker.sync()
         self._metadata_timestamp = str(arrow.Arrow.now())
 
@@ -60,16 +67,16 @@ class BringDynamicIndexTing(BringIndexTing):
 
         return tasks
 
-    async def get_maker(self, config) -> TingMaker:
+    async def get_maker(self, uri: str) -> TingMaker:
 
         # TODO: revisit typing here
         if self._maker is not None:
-            if config != self._maker_config:
-                raise Exception("Maker config changed, this is not supported yet...")
+            if uri != self._maker_path:
+                raise Exception("Maker uri changed, this is not supported yet...")
             return self._maker  # type: ignore
 
         maker_name = f"bring.pkg_maker.{self.name}"
-        self._maker_config = config
+        self._maker_path = uri
         self._maker = self._tingistry_obj.create_singleting(  # type: ignore
             name=maker_name,
             ting_class="text_file_ting_maker",
@@ -79,8 +86,6 @@ class BringDynamicIndexTing(BringIndexTing):
             file_matchers=[{"type": "extension", "regex": ".*\\.br.pkg"}],
         )
 
-        indexes = config.get("indexes", [])
-        for index in indexes:
-            self._maker.add_base_paths(index)  # type: ignore
+        self._maker.add_base_paths(uri)  # type: ignore
 
         return self._maker  # type: ignore

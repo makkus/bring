@@ -20,10 +20,10 @@ class BringUpdateCommand(click.Command):
             click.echo()
             click.echo(f"Updating metadata for index '{index}'...")
             click.echo()
-            await self._bring.update(index_names=[index])
+            await self._tingistry.update(index_names=[index])
 
         else:
             click.echo()
             click.echo("Updating metadata for all registered indexes...")
             click.echo()
-            await self._bring.update()
+            await self._tingistry.update()

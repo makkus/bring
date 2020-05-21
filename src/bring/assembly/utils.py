@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
-from typing import Any, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
+from bring.assembly import PkgAssembly
 from bring.bring import Bring
-from bring.bringins import BringIns
 from bring.defaults import BRING_TEMP_FOLDER_MARKER
-from bring.pkg_index import PkgTing
 from bring.utils.pkgs import PkgVersionExplanation
 from frtls.async_helpers import wrap_async_task
 from rich import box
@@ -13,17 +12,21 @@ from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
 from rich.panel import Panel
 
 
-class BringInsExplanation(object):
+if TYPE_CHECKING:
+    from bring.pkg_index.pkg import PkgTing
+
+
+class PkgAssemblyExplanation(object):
     def __init__(
         self,
         bring: Bring,
-        bring_ins: BringIns,
+        pkg_assembly: PkgAssembly,
         target: Optional[str] = None,
         **vars: Any,
     ):
 
         self._bring: Bring = bring
-        self._bring_ins: BringIns = bring_ins
+        self._pkg_assembly: PkgAssembly = pkg_assembly
         if target is None:
             target = BRING_TEMP_FOLDER_MARKER
         self._target: str = target
@@ -38,12 +41,12 @@ class BringInsExplanation(object):
             return self._explanations
 
         self._explanations = []
-        for item in self._bring_ins.childs:
+        for item in self._pkg_assembly.childs:
 
             _vars = item.process_vars(self._vars)
             _mogrify = item.process_mogrify(self._vars)
 
-            pkg: PkgTing = await item.get_pkg(self._bring)
+            pkg: "PkgTing" = await item.get_pkg(self._bring)
             expl = PkgVersionExplanation(
                 pkg,
                 target=BRING_TEMP_FOLDER_MARKER,
@@ -68,7 +71,7 @@ class BringInsExplanation(object):
 
         all: List[Any] = []
         all.append(
-            f"[title]Bring manifest[/title]: [bold]{self._bring_ins.id}[/bold]\n\n[title]Tasks[/title]\n\n[title]⮞ install packages into temporary folders[/title]"
+            f"[title]Bring manifest[/title]: [bold]{self._pkg_assembly.id}[/bold]\n\n[title]Tasks[/title]\n\n[title]⮞ install packages into temporary folders[/title]"
         )
         all.extend(pkg_panels)
 

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
 import os
-import tempfile
 import uuid
 from pathlib import Path
 from typing import (
@@ -16,14 +15,8 @@ from typing import (
     Union,
 )
 
-from anyio import create_task_group
-from bring.defaults import (
-    BRING_AUTO_ARG,
-    BRING_RESULTS_FOLDER,
-    BRING_TEMP_FOLDER_MARKER,
-)
-from bring.merge_strategy import FolderMerge, MergeStrategy
-from bring.pkg_index.pkg import PkgTing
+from bring.defaults import BRING_AUTO_ARG
+from bring.merge_strategy import MergeStrategy
 from frtls.dicts import get_seeded_dict
 from frtls.doc import Doc
 from frtls.exceptions import FrklException
@@ -37,13 +30,14 @@ from frtls.templating import (
 
 if TYPE_CHECKING:
     from bring.bring import Bring
+    from bring.pkg_index.pkg import PkgTing  # noqa
 
 BRING_IN_DEFAULT_DELIMITER = create_var_regex()
 
 
-class BringIn(object):
+class AssemblyItem(object):
     @classmethod
-    def create(cls, item: Union[str, Mapping[str, Any]]) -> "BringIn":
+    def create(cls, item: Union[str, Mapping[str, Any]]) -> "AssemblyItem":
 
         if isinstance(item, str):
             result: Mapping[str, Any] = {"name": item}
@@ -55,7 +49,7 @@ class BringIn(object):
             )
 
         try:
-            bring_item = BringIn(**result)
+            bring_item = AssemblyItem(**result)
             return bring_item
         except Exception as e:
             raise ValueError(f"Can't create bring item with input '{item}': {e}")
@@ -123,9 +117,9 @@ class BringIn(object):
     def vars(self) -> Mapping[str, Any]:
         return self._vars
 
-    async def get_pkg(self, bring: "Bring") -> Optional[PkgTing]:
+    async def get_pkg(self, bring: "Bring") -> Optional["PkgTing"]:
 
-        pkg: Optional[PkgTing] = await bring.get_pkg(name=self.name, index=self.index)
+        pkg: Optional["PkgTing"] = await bring.get_pkg(name=self.name, index=self.index)
 
         return pkg
 
@@ -165,9 +159,9 @@ class BringIn(object):
         return self._var_names
 
 
-class BringIns(object):
+class PkgAssembly(object):
     @classmethod
-    async def from_file(cls, path: Union[str, Path]) -> "BringIns":
+    async def from_file(cls, path: Union[str, Path]) -> "PkgAssembly":
 
         si = SmartInput(path)
 
@@ -184,7 +178,7 @@ class BringIns(object):
         data: Union[Mapping[str, Any], Iterable[Mapping[str, Any]]],
         defaults: Optional[Mapping[str, Any]] = None,
         id: Optional[str] = None,
-    ) -> "BringIns":
+    ) -> "PkgAssembly":
 
         if not isinstance(data, collections.abc.Mapping):
             _data: Mapping[str, Any] = {"items": data}
@@ -193,14 +187,14 @@ class BringIns(object):
 
         items = []
         for item in _data.get("items", []):
-            bi = BringIn.create(item)
+            bi = AssemblyItem.create(item)
             items.append(bi)
 
-        return BringIns(*items, defaults=defaults, id=id)
+        return PkgAssembly(*items, defaults=defaults, id=id)
 
     def __init__(
         self,
-        *items: BringIn,
+        *items: AssemblyItem,
         defaults: Optional[Mapping[str, Any]] = None,
         args: Optional[Mapping[str, Any]] = None,
         doc: Optional[Union[str, Mapping[str, Any]]] = None,
@@ -212,7 +206,7 @@ class BringIns(object):
 
         self._id: str = id
 
-        self._childs: Iterable[BringIn] = items
+        self._childs: Iterable[AssemblyItem] = items
         self._defaults = defaults
 
         self._doc = Doc(doc)
@@ -229,7 +223,7 @@ class BringIns(object):
         return self._id
 
     @property
-    def childs(self) -> Iterable[BringIn]:
+    def childs(self) -> Iterable[AssemblyItem]:
 
         return self._childs
 
@@ -286,52 +280,54 @@ class BringIns(object):
         flatten: bool = False,
     ) -> str:
 
-        item_list = []
+        # item_list: List[Mapping[str, Any]] = []
+        #
+        # async def retrieve_pkg(_item: AssemblyItem, _vars: Mapping[str, Any]):
+        #
+        #     pkg: Optional["PkgTing"] = await _item.get_pkg(bring)
+        #
+        #     if pkg is None:
+        #         if _item.index:
+        #             _msg = f" from index ({_item.index})"
+        #         else:
+        #             _msg = ""
+        #         raise FrklException(msg=f"Can't retrieve pkg '{_item.name}'{_msg}.")
+        #
+        #     data = {"pkg": pkg, "item": _item}
 
-        async def retrieve_pkg(_item: BringIn, _vars: Mapping[str, Any]):
+        raise NotImplementedError()
 
-            pkg: Optional[PkgTing] = await _item.get_pkg(bring)
-
-            if pkg is None:
-                if _item.index:
-                    _msg = f" from index ({_item.index})"
-                else:
-                    _msg = ""
-                raise FrklException(msg=f"Can't retrieve pkg '{_item.name}'{_msg}.")
-
-            data = {"pkg": pkg, "item": _item}
-
-            t = await pkg.create_version_folder(
-                target=BRING_TEMP_FOLDER_MARKER,
-                vars=_item.process_vars(repl_dict=_vars),
-                extra_mogrifiers=_item.process_mogrify(repl_dict=_vars),
-            )
-            data["target"] = t
-            item_list.append(data)
-
-        if vars is None:
-            vars = {}
-
-        async with create_task_group() as tg:
-            for i in self._childs:
-                await tg.spawn(retrieve_pkg, i, vars)
-
-        if target is None:
-            target = tempfile.mkdtemp(prefix="install_", dir=BRING_RESULTS_FOLDER)
-
-        merge_obj = FolderMerge(
-            typistry=bring.typistry,
-            target=target,
-            merge_strategy=strategy,
-            flatten=flatten,
-        )
-        sources = []
-        for pkg in item_list:
-            source: str = pkg["target"]  # type: ignore
-            sources.append(source)
-
-        merge_obj.merge_folders(*sources)
-
-        if isinstance(target, Path):
-            target = target.resolve().as_posix()
-        return target
+        #     t = await pkg.create_version_folder(
+        #         target=BRING_TEMP_FOLDER_MARKER,
+        #         vars=_item.process_vars(repl_dict=_vars),
+        #         extra_mogrifiers=_item.process_mogrify(repl_dict=_vars),
+        #     )
+        #     data["target"] = t
+        #     item_list.append(data)
+        #
+        # if vars is None:
+        #     vars = {}
+        #
+        # async with create_task_group() as tg:
+        #     for i in self._childs:
+        #         await tg.spawn(retrieve_pkg, i, vars)
+        #
+        # if target is None:
+        #     target = tempfile.mkdtemp(prefix="install_", dir=BRING_RESULTS_FOLDER)
+        #
+        # merge_obj = FolderMerge(
+        #     typistry=bring.typistry,
+        #     target=target,
+        #     merge_strategy=strategy,
+        #     flatten=flatten,
+        # )
+        # sources = []
+        # for pkg in item_list:
+        #     source: str = pkg["target"]  # type: ignore
+        #     sources.append(source)
+        #
+        # await merge_obj.merge_folders(*sources)
+        #
+        # if isinstance(target, Path):
+        #     target = target.resolve().as_posix()
+        # return target

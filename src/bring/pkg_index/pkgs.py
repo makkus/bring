@@ -8,7 +8,7 @@ from tings.ting.tings import SubscripTings
 
 
 if TYPE_CHECKING:
-    from bring.pkg_index import BringIndexTing
+    from bring.pkg_index.index import BringIndexTing
     from tings.tingistry import Tingistry
 
 

@@ -3,7 +3,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 from bring.bring import Bring
 from bring.mogrify import assemble_mogrifiers
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import SimplePkgType
 from bring.utils import find_version, replace_var_aliases
@@ -110,7 +110,7 @@ class BringPkgsResolver(SimplePkgType):
 
             ctx = await self._bring.get_index(pkg_index)
             if ctx is None:
-                ctx_names = await self._bring.index_names
+                ctx_names = self._bring.index_names
                 raise FrklException(
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
                     reason=f"Requested index '{pkg_index}' not among available indexes: {', '.join(ctx_names)}",

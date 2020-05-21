@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
-import json
 import logging
-import os
-import zlib
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Dict, Mapping, Optional
 
 import arrow
-from anyio import Lock, aopen
+from anyio import Lock
 from arrow import Arrow
-from bring.defaults import BRING_INDEX_FILES_CACHE
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing, retrieve_index_content
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
-from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
 from frtls.tasks import SingleTaskAsync, Task
 from tings.ting import TingMeta
@@ -22,20 +17,20 @@ log = logging.getLogger("bring")
 
 
 class BringStaticIndexTing(BringIndexTing):
-    def __init__(self, name: str, meta: TingMeta, parent_key: str = "parent"):
-        self._urls: List[str] = []
+    def __init__(self, name: str, meta: TingMeta):
+        self._uri: Optional[str] = None
         self._pkgs: Optional[Dict[str, PkgTing]] = None
-        self._config: Optional[Mapping[str, Any]] = None
+        # self._config: Optional[Mapping[str, Any]] = None
 
         self._pkg_lock: Optional[Lock] = None
         self._metadata_timestamp: Optional[Arrow] = None
         self._timestamp_queried = False
-        super().__init__(name=name, parent_key=parent_key, meta=meta)
+        super().__init__(name=name, meta=meta)
 
-    def add_urls(self, *urls: str):
-
-        self._urls.extend(urls)
-        self.invalidate()
+    # def add_urls(self, *urls: str):
+    #
+    #     self._urls.extend(urls)
+    #     self.invalidate()
 
     async def _get_metadata_timestamp(self) -> Optional[str]:
 
@@ -58,21 +53,7 @@ class BringStaticIndexTing(BringIndexTing):
             nonlocal all_timestamps
             nonlocal timestamps
 
-            if os.path.exists(index_url):
-                async with await aopen(index_url, "rb") as f:
-                    content = await f.read()
-            else:
-
-                content = await download_cached_binary_file_async(
-                    url=index_url,
-                    update=update,
-                    cache_base=BRING_INDEX_FILES_CACHE,
-                    return_content=True,
-                )
-
-            json_string = zlib.decompress(content, 16 + zlib.MAX_WBITS)  # type: ignore
-
-            data = json.loads(json_string)
+            data = await retrieve_index_content(index_url, _update)
 
             if "_bring_metadata_timestamp" not in data.keys():
                 all_timestamps = False
@@ -110,10 +91,10 @@ class BringStaticIndexTing(BringIndexTing):
                 # ting._set_result(data)
                 pkgs[pkg_name] = ting
 
-        # async with create_task_group() as tg:
-        for url in self._urls:
-            # await tg.spawn(add_index, url)
-            await add_index(url, _update=update)
+        if self._uri is None:
+            raise Exception("Can't load packages: index uri not set. This is a bug.")
+
+        await add_index(self._uri, _update=update)
 
         if timestamps and all_timestamps:
             oldest_timestamp = timestamps[0]
@@ -152,7 +133,7 @@ class BringStaticIndexTing(BringIndexTing):
 
         return task
 
-    async def init(self, config: Mapping[str, Any]) -> None:
+    async def init(self, uri: str) -> None:
 
-        self._config = config
-        self.add_urls(*config["indexes"])
+        self._uri = uri
+        self.invalidate()

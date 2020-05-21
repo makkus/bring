@@ -24,13 +24,15 @@ class MergeFoldersMogrifier(SimpleMogrifier):
     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
         strategy: MutableMapping[str, Any] = requirements.get(
-            "merge_strategy", {"type": "default", "move_method": "move"}
+            "merge_strategy", {"type": "default", "config": {"move_method": "move"}}
         )
         if isinstance(strategy, str):
-            strategy = {"type": strategy, "move_method": "move"}
+            strategy = {"type": strategy, "config": {"move_method": "move"}}
 
-        if "move_method" not in strategy.keys():
-            strategy["move_method"] = "move"
+        if "config" not in strategy.keys():
+            strategy["config"] = {}
+        if "move_method" not in strategy["config"].keys():
+            strategy["config"]["move_method"] = "copy"
 
         folder_paths = requirements["folder_paths"]
         if not folder_paths:
@@ -44,6 +46,6 @@ class MergeFoldersMogrifier(SimpleMogrifier):
             merge_strategy=strategy,
         )
 
-        merge_obj.merge_folders(*folder_paths)
+        await merge_obj.merge_folders(*folder_paths)
 
         return {"folder_path": target_path}

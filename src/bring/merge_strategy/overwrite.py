@@ -1,26 +1,19 @@
 # -*- coding: utf-8 -*-
-import os
-
-from bring.merge_strategy import MergeStrategy
-from bring.target_folder import TargetFolder
+from bring.merge_strategy import LocalFolderItem, MergeStrategy
 
 
 class OverwriteMergeStrategy(MergeStrategy):
 
     _plugin_name = "overwrite"
 
-    def merge_source(
-        self,
-        source_base: str,
-        source_file: str,
-        target_folder: TargetFolder,
-        target_file: str,
+    async def merge_source(
+        self, source_file: LocalFolderItem, target_file: LocalFolderItem
     ) -> None:
 
-        source = os.path.join(source_base, source_file)
-        target = target_folder.get_full_path(target_file)
+        pass
 
-        if os.path.exists(target):
-            os.unlink(target)
-
-        self.move(source, target)
+        # source = os.path.join(source_folder, source_file)
+        #
+        # target_file.unlink()
+        #
+        # self._move_or_copy_file(source, target_file.full_path)

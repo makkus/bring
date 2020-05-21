@@ -7,7 +7,7 @@ from asyncclick import HelpFormatter
 from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from frtls.async_helpers import wrap_async_task
 
 
@@ -35,7 +35,7 @@ async def print_config_list_for_help(bring_config: BringConfig, formatter):
 
 async def create_index_list_for_help(bring: Bring) -> List[Tuple[str, str]]:
 
-    indexes = await bring.indexes
+    indexes = bring.indexes
 
     infos = {}
 
@@ -83,7 +83,7 @@ async def create_pkg_list_for_help(
     after the options.
     """
 
-    default_index_name = wrap_async_task(bring.config.get_default_index_name)
+    default_index_name = wrap_async_task(bring.config.get_default_index)
 
     pkgs = await bring.get_pkg_property_map("info", "index_name")
 

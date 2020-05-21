@@ -31,9 +31,9 @@ class BringExportIndexCommand(click.Command):
         click.echo()
 
         if not index:
-            index_obj = await self._bring.get_index()
+            index_obj = await self._tingistry.get_index()
         else:
-            index_obj = await self._bring.get_index(index)
+            index_obj = await self._tingistry.get_index(index)
 
         all_values = await index_obj.export_index()
 

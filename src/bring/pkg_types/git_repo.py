@@ -3,7 +3,7 @@ from collections import OrderedDict
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
 
 import git
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from bring.utils.git import ensure_repo_cloned
 from pydriller import Commit, GitRepository

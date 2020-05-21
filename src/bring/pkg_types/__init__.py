@@ -27,7 +27,7 @@ from frtls.templating import get_template_schema, template_schema_to_args
 
 
 if TYPE_CHECKING:
-    from bring.pkg_index import BringIndexTing
+    from bring.pkg_index.index import BringIndexTing
 
 log = logging.getLogger("bring")
 

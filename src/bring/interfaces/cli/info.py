@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
+import os
+
 import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
+from bring.bring_target.local_folder import LocalFolderTarget
 from bring.display.info import IndexInfoDisplay, PkgInfoDisplay
 from bring.interfaces.cli import console
-from bring.interfaces.cli.utils import (
-    log,
-    print_index_list_for_help,
-    print_pkg_list_help,
-)
-from bring.pkg_index import BringIndexTing
+from bring.interfaces.cli.utils import log
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -41,20 +39,10 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             **kwargs,
         )
 
-    def format_commands(self, ctx, formatter):
-        """Extra format methods for multi methods that adds all the commands
-        after the options.
-        """
-
-        wrap_async_task(
-            print_index_list_for_help, bring=self._bring, formatter=formatter
-        )
-        wrap_async_task(print_pkg_list_help, bring=self._bring, formatter=formatter)
-
     async def _list_commands(self, ctx):
 
         ctx.obj["list_info_commands"] = True
-        return []
+        return ["target", "index", "package"]
 
     async def _get_command(self, ctx, name):
 
@@ -63,24 +51,87 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         # _ctx_name = await ensure_index(self._bring, name=index_name)
         # await self._bring.get_index(_ctx_name)
 
-        load_details = not ctx.obj.get("list_info_commands", False)
+        # load_details = not ctx.obj.get("list_info_commands", False)
+        #
+        # if not load_details:
+        #     return None
 
-        if not load_details:
-            return None
+        if name == "target":
 
-        index = await self._bring.get_index(index_name=name, raise_exception=False)
-        if index is not None:
-            command = IndexInfoTingCommand(
-                name=name, index=index, load_details=load_details
-            )
+            @click.command()
+            @click.argument("path", nargs=1, required=False)
+            @click.pass_context
+            async def command(ctx, path):
+                if path is None:
+                    path = os.getcwd()
+                target = LocalFolderTarget(bring=self._bring, path=path)
+
+                tf = target.target_folder
+                print(tf)
+
             return command
 
-        pkg = await self._bring.get_pkg(name=name, raise_exception=False)
-        if pkg is None:
-            return None
+        elif name == "index":
 
-        command = PkgInfoTingCommand(name=name, pkg=pkg, load_details=load_details)
-        return command
+            @click.command()
+            @click.argument("index", nargs=1, required=False)
+            @click.option(
+                "--update",
+                "-u",
+                help="update index before retrieving info",
+                is_flag=True,
+            )
+            @click.option(
+                "--full", "-f", help="display extended information", is_flag=True
+            )
+            @click.option(
+                "--packages", "-p", help="display packages of this index", is_flag=True
+            )
+            @click.pass_context
+            async def command(ctx, index, update, full, packages):
+                if index is None:
+                    index = os.getcwd()
+
+                idx = await self._bring.get_index(index_name=index)
+
+                display = IndexInfoDisplay(
+                    index=idx,
+                    update=update,
+                    display_full=full,
+                    display_packages=packages,
+                )
+                console.print(display)
+
+            return command
+
+        elif name in ["package", "pkg"]:
+
+            @click.command()
+            @click.argument("package", nargs=1, required=True)
+            @click.option(
+                "--update",
+                "-u",
+                help="update index before retrieving info",
+                is_flag=True,
+            )
+            @click.option(
+                "--full", "-f", help="display extended information", is_flag=True
+            )
+            @click.option("--args", "-a", help="display package args", is_flag=True)
+            @click.pass_context
+            async def command(ctx, package, update, full, args):
+
+                await self._bring.add_indexes("kubernetes", "binaries")
+                pkg = await self._bring.get_pkg(name=package)
+
+                pkg_info: PkgInfoDisplay = PkgInfoDisplay(
+                    pkg=pkg, update=update, display_full=full, display_args=args
+                )
+                console.print(pkg_info)
+
+            return command
+
+        return None
 
 
 class IndexInfoTingCommand(Command):

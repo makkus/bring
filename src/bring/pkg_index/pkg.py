@@ -2,10 +2,18 @@
 import copy
 import logging
 from abc import abstractmethod
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Union,
+)
 
-from bring.defaults import BRING_TEMP_FOLDER_MARKER
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_types import PkgType
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
@@ -21,7 +29,7 @@ from tings.tingistry import Tingistry
 
 
 if TYPE_CHECKING:
-    from bring.pkg_index import BringIndexTing
+    from bring.pkg_index.index import BringIndexTing
 
 log = logging.getLogger("bring")
 
@@ -80,6 +88,11 @@ class PkgTing(SimpleTing):
 
         metadata = await self.get_metadata()
         return self._get_aliases(metadata)
+
+    async def get_pkg_args(self) -> RecordArg:
+
+        metadata = await self.get_value("metadata")
+        return await self._calculate_args(metadata)
 
     async def _calculate_args(self, metadata) -> RecordArg:
 
@@ -178,45 +191,65 @@ class PkgTing(SimpleTing):
 
         return result
 
-    def create_transmogrificator(
+    async def find_version_data(
         self,
-        vars: Mapping[str, Any],
-        metadata: Mapping[str, Any],
+        vars: Optional[Mapping[str, Any]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
+    ) -> Optional[Mapping[str, Any]]:
+        """Find a matching version item for the provided vars dictionary.
+
+        Returns:
+            A tuple consisting of the version that was found (or None), and the 'exploded' vars that were used
+        """
+
+        if vars is None:
+            vars = {}
+        if metadata is None:
+            metadata = {}
+        version = find_version(vars=vars, metadata=metadata, var_aliases_replaced=True)
+        return version
+
+    async def create_transmogrificator(
+        self,
+        vars: Optional[Mapping[str, Any]] = None,
         extra_mogrifiers: Iterable[Union[str, Mapping[str, Any]]] = None,
-        target: Union[str, Path, Mapping[str, Any]] = None,
         parent_task_desc: TaskDesc = None,
     ) -> Transmogrificator:
 
-        _vars = replace_var_aliases(vars=vars, metadata=metadata)
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
+            "metadata", resolve=True
+        )
+        metadata = vals["metadata"]
 
-        version = find_version(vars=_vars, metadata=metadata, var_aliases_replaced=True)
+        # _vars = await self.calculate_full_vars(_pkg_metadata=metadata, **vars)
+
+        if vars is None:
+            vars = {}
+
+        version = await self.find_version_data(vars=vars, metadata=metadata)
 
         if not version:
             raise FrklException(
                 msg=f"Can't process pkg '{self.name}'.",
-                reason=f"Can't find version match for vars: {_vars}",
+                reason=f"Can't find version match for vars: {vars}",
             )
         mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version["_mogrify"])
         if extra_mogrifiers:
             mogrify_list.extend(extra_mogrifiers)
-        # import pp
-        # pp(metadata['pkg_vars'].keys())
-
-        # if self._bring is None:
-        #     raise Exception("'bring' attribute not set yet, this is a bug")
-        # transmogritory: Transmogritory = self._bring._transmogritory
 
         task_desc = BringTaskDesc(
             name=f"install pkg '{self.name}'", msg=f"installing pkg {self.name}"
         )
 
+        mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
+
         tm = self._transmogritory.create_transmogrificator(
             mogrify_list,
-            vars=_vars,
-            args=metadata["pkg_vars"]["mogrify_vars"],
+            vars=vars,
+            args=mogrify_vars,
             name=self.name,
             task_desc=task_desc,
-            target=target,
+            # target=target,
         )
         if parent_task_desc is not None:
             tm.task_desc.parent = parent_task_desc
@@ -237,23 +270,30 @@ class PkgTing(SimpleTing):
         hashes = DeepHash(_dict)
         return hashes[_dict]
 
-    async def calculate_full_vars(self, **vars: Any) -> Mapping[str, Any]:
+    async def calculate_full_vars(self, **vars: Any) -> MutableMapping[str, Any]:
 
-        args: RecordArg = await self.get_value("args")  # type: ignore
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
+            "metadata", "args", resolve=True
+        )
+        _pkg_metadata: Mapping[str, Any] = vals["metadata"]
+        args: RecordArg = vals["args"]
 
         pkg_defaults = args.get_defaults()
-        index_vars: Dict[str, Any] = dict(
-            await self.bring_index.get_default_vars()
-        )  # type: ignore
+        # index_vars: Dict[str, Any] = dict(
+        #     await self.bring_index.get_default_vars()
+        # )  # type: ignore
 
-        _vars = get_seeded_dict(pkg_defaults, index_vars, vars, merge_strategy="update")
+        _vars = get_seeded_dict(pkg_defaults, vars, merge_strategy="update")
 
-        filtered = {}
+        filtered: Dict[str, Any] = {}
         for k, v in _vars.items():
             if k in args.arg_names:
                 filtered[k] = v
 
-        return filtered
+        _vars_replaced = replace_var_aliases(vars=filtered, metadata=_pkg_metadata)
+
+        validated = args.validate(_vars_replaced, raise_exception=True)
+        return validated
 
     async def explain_full_vars(self, **vars: Any) -> Mapping[str, Mapping[str, Any]]:
 
@@ -286,84 +326,66 @@ class PkgTing(SimpleTing):
 
         return result
 
-    async def create_version_folder_transmogrificator(
-        self,
-        vars: Optional[Mapping[str, Any]] = None,
-        target: Union[str, Path, Mapping[str, Any]] = None,
-        extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
-        parent_task_desc: TaskDesc = None,
-    ) -> Transmogrificator:
-
-        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
-            "source", "metadata", resolve=True
-        )
-        metadata = vals["metadata"]
-
-        # if target is not None:
-        #     extra_modifiers = [{"type": "merge_into", "target": target}]
-
-        if not target:
-            index_defaults = await self.bring_index.get_value("defaults")
-            target = index_defaults.get("target", None)
-
-        if target is None:
-            target = BRING_TEMP_FOLDER_MARKER
-
-        if vars is None:
-            vars = {}
-
-        _vars = await self.calculate_full_vars(**vars)
-
-        tm = self.create_transmogrificator(
-            vars=_vars,
-            metadata=metadata,
-            extra_mogrifiers=extra_mogrifiers,
-            target=target,
-            parent_task_desc=parent_task_desc,
-        )
-
-        return tm
-
-    async def create_version_folder(
-        self,
-        vars: Optional[Mapping[str, Any]] = None,
-        target: Union[str, Path, Mapping[str, Any]] = None,
-        extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
-        parent_task_desc: TaskDesc = None,
-    ) -> str:
-        """Create a folder that contains the version specified via the provided 'vars'.
-
-        If a target is provided, the result folder will be deleted unless 'delete_result' is set to False. If no target
-        is provided, the path to a randomly named temp folder will be returned.
-        """
-
-        tm: Transmogrificator = await self.create_version_folder_transmogrificator(
-            vars=vars,
-            target=target,
-            extra_mogrifiers=extra_mogrifiers,
-            parent_task_desc=parent_task_desc,
-        )
-
-        # run_watcher = TerminalRunWatch(sort_task_names=False)
-        vals = await tm.transmogrify()
-        log.debug(f"finsished transmogrification: {vals}")
-
-        if not tm._is_root_transmogrifier and tm.target_path is None:
-            raise Exception("Root transmogrifier result is None, this is a bug")
-
-        return tm.target_path  # type: ignore
-
-    # def copy_file(self, source, target, force=False, method="move"):
+    # def create_processor(self, processor_type: str, target: Union[BringTarget, str]) -> PkgProcessor:
     #
-    #     os.makedirs(os.path.dirname(target), exist_ok=True)
-    #     # if force and os.path.exists(target):
-    #     #     os.unlink(target)
+    #     pm = self._tingistry_obj.typistry.get_plugin_manager(PkgProcessor)
     #
-    #     if method == "copy":
-    #         shutil.copyfile(source, target, follow_symlinks=False)
-    #         # TODO: file attributes
-    #     elif method == "move":
-    #         shutil.move(source, target)
+    #     pkg_proc_cls: Type = pm.get_plugin(processor_type, raise_exception=True)
+    #
+    #     pkg_proc: PkgProcessor = pkg_proc_cls(pkg=self, bring_target=target)
+    #     return pkg_proc
+    #
+    # async def process(self, processor_type: str, **vars) -> Mapping[str, Any]:
+    #
+    #     pkg_proc = self.create_processor(processor_type=processor_type, **vars)
+    #     result = await pkg_proc.process(**vars)
+    #     return result
+
+    # async def create_version_folder_transmogrificator(
+    #     self,
+    #     vars: Optional[Mapping[str, Any]] = None,
+    #     # target: Union[str, Path, Mapping[str, Any]] = None,
+    #     extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
+    #     parent_task_desc: TaskDesc = None,
+    # ) -> Transmogrificator:
+    #
+    #     tm = await self.create_transmogrificator(
+    #         vars=vars,
+    #         extra_mogrifiers=extra_mogrifiers,
+    #         # target=target,
+    #         parent_task_desc=parent_task_desc,
+    #     )
+    #
+    #     return tm
+
+    # async def create_version_folder(
+    #     self,
+    #     vars: Optional[Mapping[str, Any]] = None,
+    #     target: Union[str, Path, Mapping[str, Any]] = None,
+    #     extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
+    #     parent_task_desc: TaskDesc = None,
+    # ) -> Mapping[str, Any]:
+    #     """Create a folder that contains the version specified via the provided 'vars'.
+    #
+    #     If no target is provided, the path to a randomly named temp folder will be returned.
+    #     """
+    #
+    #     if target is None:
+    #         path = None
+    #         merge_strategy = None
+    #     elif isinstance(target, str):
+    #         path = target
+    #         merge_strategy = {"type": "default"}
+    #     elif isinstance(target, collections.Mapping):
+    #         merge_strategy = dict(target)
+    #         path = merge_strategy.pop("path")
+    #
+    #     ip = self.create_processor("install", target="local_folder")
+    #     ip.set_input(path=path, merge_strategy=merge_strategy)
+    #
+    #     result = await ip.process()
+    #
+    #     return "RESULT"
 
 
 class StaticPkgTing(PkgTing):

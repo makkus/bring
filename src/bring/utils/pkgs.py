@@ -97,7 +97,7 @@ class PkgVersionExplanation(object):
         if self._data is None:
             self._data = await explain_version_data(
                 pkg=self._pkg,
-                target=self._target,
+                # target=self._target,
                 extra_mogrifiers=self._extra_mogrifiers,
                 **self._vars,
             )
@@ -158,7 +158,7 @@ class PkgVersionExplanation(object):
 
 async def explain_version_data(
     pkg: PkgTing,
-    target: Optional[str] = None,
+    # target: Optional[str] = None,
     extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
     **vars,
 ) -> Mapping[str, Any]:
@@ -180,8 +180,8 @@ async def explain_version_data(
     result["version"] = version
 
     steps = []
-    tm = await pkg.create_version_folder_transmogrificator(
-        vars=vars, target=target, extra_mogrifiers=extra_mogrifiers
+    tm = await pkg.create_transmogrificator(
+        vars=vars, extra_mogrifiers=extra_mogrifiers
     )
     for msg in tm.explain_steps():
         steps.append(msg)

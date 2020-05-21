@@ -16,7 +16,7 @@ class GitCloneMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        vals = self.input_values
+        vals = self.user_input
         url = vals.get("url", "[dynamic url]")
         version = vals.get("version", None)
 

@@ -28,7 +28,7 @@ class TemplateMogrifier(SimpleMogrifier):
 
     def get_msg(self) -> str:
 
-        vals = self.input_values
+        vals = self.user_input
         incl = vals.get("include", None)
 
         result = "processing template(s)"

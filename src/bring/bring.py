@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
+import logging
 import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from anyio import Lock, create_lock, create_task_group
+from bring.bring_target import BringTarget
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory
-from bring.pkg_index import BringIndexTing
-from bring.pkg_index.index_config import BringIndexConfig
+from bring.pkg_index.config import IndexConfig
+from bring.pkg_index.factory import IndexFactory
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_processing import BringProcessor
 from bring.utils import BringTaskDesc
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
@@ -18,6 +22,9 @@ from frtls.files import ensure_folder
 from frtls.tasks import SerialTasksAsync
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
+
+
+log = logging.getLogger("bring")
 
 
 DEFAULT_TRANSFORM_PROFILES = {
@@ -96,6 +103,8 @@ class Bring(SimpleTing):
         self._indexes: Dict[str, BringIndexTing] = {}
         self._all_indexes_created: bool = False
 
+        self._index_factory = IndexFactory(tingistry=self._tingistry_obj)
+
     async def _get_index_lock(self) -> Lock:
 
         if self._index_lock is None:
@@ -138,76 +147,75 @@ class Bring(SimpleTing):
 
         return {}
 
-    async def _create_all_indexes(self):
-
-        async with await self._get_index_lock():
-
-            if self._all_indexes_created:
-                return
-
-            async def create_index(_index_config: BringIndexConfig):
-                ctx = await _index_config.get_index()
-                self._indexes[ctx.name] = ctx
-
-            async with create_task_group() as tg:
-                all_index_configs = await self.config.get_all_index_configs()
-                for index_name, index_config in all_index_configs.items():
-                    if index_name not in self._indexes.keys():
-                        await tg.spawn(create_index, index_config)
-
-            self._all_indexes_created = True
-
     @property
-    async def indexes(self) -> Mapping[str, BringIndexTing]:
+    def indexes(self) -> Mapping[str, BringIndexTing]:
 
-        await self._create_all_indexes()
+        # await self._create_all_indexes()
         return self._indexes
 
     @property
-    async def index_names(self) -> Iterable[str]:
+    def index_names(self) -> Iterable[str]:
 
-        all_index_configs = await self.config.get_all_index_configs()
-        return all_index_configs.keys()
+        return self._indexes.keys()
+
+    async def add_indexes(
+        self, *index_items: Union[str, Mapping[str, Any], IndexConfig]
+    ) -> Mapping[str, BringIndexTing]:
+
+        if not index_items:
+            return {}
+
+        added = {}
+
+        async def add(_ii):
+            _idx = await self.add_index(_ii)
+            added[_idx.id] = _idx
+
+        async with create_task_group() as tg:
+
+            for ii in index_items:
+                await tg.spawn(add, ii)
+
+        # make sure we preserve the order of the items
+        result = {}
+        for ii in index_items:
+            _idx = added[ii]
+            result[_idx.id] = _idx
+
+        return result
+
+    async def add_index(
+        self, index_data: Union[str, Mapping[str, Any], IndexConfig]
+    ) -> BringIndexTing:
+
+        index = await self._index_factory.create_index(index_data=index_data)
+        if index.id in self._indexes.keys():
+            raise FrklException(
+                f"Can't add index '{index.id}'.",
+                reason="Index with this id already added.",
+            )
+
+        self._indexes[index.id] = index
+
+        return index
 
     async def get_index(
         self, index_name: Optional[str] = None, raise_exception=True
-    ) -> Optional[BringIndexTing]:
+    ) -> BringIndexTing:
 
         if index_name is None:
-            index_name = await self.config.get_default_index_name()
+            index_name = await self.config.get_default_index()
 
-        # indexes = await self.indexes
-        # idx = indexes.get(index_name)
-        async with await self._get_index_lock():
-            idx = self._indexes.get(index_name, None)
+        if index_name not in self._indexes:
+            idx = await self.add_index(index_data=index_name)
+            index_name = idx.id
 
-            if idx is not None:
-                return idx
-
-            index_config: BringIndexConfig = await self.config.get_index_config(  # type: ignore
-                index_name=index_name, raise_exception=raise_exception
-            )
-
-            if index_config is None:
-
-                if raise_exception:
-                    raise FrklException(
-                        msg=f"Can't access bring index '{index_name}'.",
-                        reason="No index with that name.",
-                        solution=f"Create index, or choose one of the existing ones: {', '.join(await self.index_names)}",
-                    )
-                else:
-                    return None
-
-            idx = await index_config.get_index()
-            self._indexes[index_name] = idx
-
-        return idx
+        return self._indexes[index_name]
 
     async def update(self, index_names: Optional[Iterable[str]] = None):
 
         if index_names is None:
-            index_names = await self.index_names
+            index_names = self.index_names
 
         td = BringTaskDesc(
             name="update metadata", msg="updating metadata for all indexes"
@@ -228,23 +236,23 @@ class Bring(SimpleTing):
 
         await tasks.run_async()
 
-    async def get_pkg_map(
-        self, indexes: Optional[Iterable[str]] = None
-    ) -> Mapping[str, Mapping[str, PkgTing]]:
+    async def get_pkg_map(self, *indexes) -> Mapping[str, Mapping[str, PkgTing]]:
         """Get all pkgs, per available (or requested) indexes."""
 
-        if indexes is None:
-            ctxs: Iterable[BringIndexTing] = (await self.indexes).values()
+        if not indexes:
+            idxs: Iterable[str] = self.index_names
         else:
-            ctxs = []
-            for c in indexes:
-                ctx = await self.get_index(c)
-                if ctx is None:
-                    raise FrklException(
-                        msg=f"Can't get packages for index '{c}.",
-                        reason="No such index found.",
-                    )
-                ctxs.append(ctx)
+            idxs = list(indexes)
+
+        ctxs = []
+        for c in idxs:
+            ctx = await self.get_index(c)
+            if ctx is None:
+                raise FrklException(
+                    msg=f"Can't get packages for index '{c}.",
+                    reason="No such index found.",
+                )
+            ctxs.append(ctx)
 
         pkg_map: Dict[str, Dict[str, PkgTing]] = {}
 
@@ -252,7 +260,7 @@ class Bring(SimpleTing):
 
             pkgs = await _index.get_pkgs()
             for pkg in pkgs.values():
-                pkg_map[_index.name][pkg.name] = pkg
+                pkg_map[_index.id][pkg.name] = pkg
 
         for index in ctxs:
 
@@ -261,7 +269,7 @@ class Bring(SimpleTing):
                     msg=f"Can't assemble packages for index '{index.name}'",
                     reason="Duplicate index name.",
                 )
-            pkg_map[index.name] = {}
+            pkg_map[index.id] = {}
 
         async with create_task_group() as tg:
 
@@ -270,23 +278,11 @@ class Bring(SimpleTing):
 
         return pkg_map
 
-    async def get_alias_pkg_map(
-        self,
-        indexes: Optional[Iterable[str]] = None,
-        add_default_index_pkg_names: bool = False,
-    ) -> Mapping[str, PkgTing]:
+    async def get_alias_pkg_map(self, *indexes: str) -> Mapping[str, PkgTing]:
 
-        pkg_map = await self.get_pkg_map(indexes=indexes)
+        pkg_map = await self.get_pkg_map(*indexes)
 
         result: Dict[str, PkgTing] = {}
-        if add_default_index_pkg_names:
-
-            default_index_name = await self.config.get_default_index_name()
-            pkgs = pkg_map.get(default_index_name, {})
-
-            for pkg_name in sorted(pkgs.keys()):
-                if pkg_name not in result.keys():
-                    result[pkg_name] = pkgs[pkg_name]
 
         for index_name in sorted(pkg_map.keys()):
 
@@ -303,7 +299,10 @@ class Bring(SimpleTing):
         pkg_filter: Union[str, Iterable[str]] = None,
     ):
 
-        alias_pkg_map = await self.get_alias_pkg_map(indexes=indexes)
+        if not indexes:
+            indexes = self.index_names
+
+        alias_pkg_map = await self.get_alias_pkg_map(*indexes)
 
         if isinstance(pkg_filter, str):
             pkg_filter = [pkg_filter]
@@ -325,28 +324,6 @@ class Bring(SimpleTing):
 
         return result
 
-    async def get_all_pkgs(
-        self, indexes: Optional[Iterable[str]] = None
-    ) -> Iterable[PkgTing]:
-
-        pkg_map = await self.get_pkg_map(indexes=indexes)
-
-        result = []
-        for index_map in pkg_map.values():
-            for pkg in index_map.values():
-                result.append(pkg)
-
-        return result
-
-    # def create_pkg_plugin(self, plugin: str, pkg: PkgTing, pkg_include: Optional[Iterable[str]]=None, **pkg_vars: Any) -> BringPlugin:
-    #
-    #     if pkg_vars is None:
-    #         pkg_vars = {}
-    #
-    #     _plugin = TemplatePlugin(bring=self, pkg=pkg, pkg_include=pkg_include, **pkg_vars)
-    #
-    #     return _plugin
-
     async def get_pkg(
         self, name: str, index: Optional[str] = None, raise_exception: bool = False
     ) -> Optional[PkgTing]:
@@ -357,30 +334,40 @@ class Bring(SimpleTing):
             )
 
         elif "." in name:
-            tokens = name.split(".")
-            if len(tokens) != 2:
-                raise ValueError(
-                    f"Invalid pkg name: {name}, needs to be format '[index_name.]pkg_name'"
-                )
+            tokens = name.rsplit(".", maxsplit=1)
             _index_name: Optional[str] = tokens[0]
+            _pkg_name = tokens[1]
+            # _full_name = f"{_index_name}.{_pkg_name}"
+        else:
             _pkg_name = name
-        else:
-            _index_name = index
-            if _index_name:
-                _pkg_name = f"{_index_name}.{name}"
-            else:
-                _pkg_name = name
 
-        if _index_name:
-            pkgs = await self.get_alias_pkg_map(
-                indexes=[_index_name], add_default_index_pkg_names=True
-            )
-        else:
-            pkgs = await self.get_alias_pkg_map(add_default_index_pkg_names=True)
+            _index_name = None
+            if index is None:
+                _index_name = await self.config.get_default_index()
 
-        pkg = pkgs.get(_pkg_name, None)
+            if _index_name is None:
+                for idx in self.indexes.values():
+                    pkg_names = await idx.pkg_names
+                    if _pkg_name in pkg_names:
+                        _index_name = idx.id
+                        break
 
-        # vals = await pkg.get_values()
+            if _index_name is None:
+                if raise_exception:
+                    raise FrklException(
+                        f"No index provided, and none of the registered ones contains a pkg named '{_pkg_name}'."
+                    )
+                else:
+                    return None
+
+            if isinstance(not _index_name, str):
+                raise NotImplementedError()
+
+            # _full_name = f"{_index_name}.{name}"
+
+        result_index: BringIndexTing = await self.get_index(_index_name)
+
+        pkg = await result_index.get_pkg(_pkg_name, raise_exception=raise_exception)
 
         if pkg is None and raise_exception:
             raise FrklException(msg=f"Can't retrieve pkg '{name}': no such package")
@@ -393,95 +380,26 @@ class Bring(SimpleTing):
 
         return pkg is not None
 
-    # async def find_pkg(
-    #     self, pkg_name: str, indexes: Optional[Iterable[str]] = None
-    # ) -> PkgTing:
-    #     """Finds one pkg with the specified name in all the available/specified indexes.
-    #
-    #     If more than one package is found, and if 'indexes' are provided, those are looked up in the order provided
-    #     to find the first match. If not indexes are provided, first the default indexes are searched, then the
-    #     extra ones. In this case, the result is not 100% predictable, as the order of those indexes might vary
-    #     from invocation to invocation.
-    #
-    #     Args:
-    #         - *pkg_name*: the package name
-    #         - *indexes*: the indexes to look in (or all available ones, if set to 'None')
-    #
-    #     """
-    #
-    #     pkgs = await self.find_pkgs(pkg_name=pkg_name, indexes=indexes)
-    #
-    #     if len(pkgs) == 1:
-    #         return pkgs[0]
-    #
-    #     if indexes is None:
-    #         _indexes: List[BringIndexTing] = []
-    #         for cc in await self.get_index_configs():
-    #             n = cc["name"]
-    #             ctx = await self.get_index(n)
-    #             _indexes.append(ctx)
-    #     else:
-    #         _indexes = []
-    #         # TODO: make this parallel
-    #         for c in indexes:
-    #             ctx_2 = await self.get_index(c)
-    #             if ctx_2 is None:
-    #                 raise FrklException(
-    #                     msg=f"Can't search for pkg '{pkg_name}'.",
-    #                     reason=f"Requested index '{c}' not available.",
-    #                 )
-    #             _indexes.append(ctx_2)
-    #
-    #     for ctx in _indexes:
-    #
-    #         for pkg in pkgs:
-    #             if pkg.bring_index == ctx:
-    #                 return pkg
-    #
-    #     raise FrklException(
-    #         msg=f"Can't find pkg '{pkg_name}' in the available/specified indexes."
-    #     )
-    #
-    # async def find_pkgs(
-    #     self, pkg_name: str, indexes: Optional[Iterable[str]] = None
-    # ) -> List[PkgTing]:
-    #
-    #     pkgs: List[PkgTing] = []
-    #
-    #     async def find_pkg(_index: BringIndexTing, _pkg_name: str):
-    #
-    #         _pkgs = await _index.get_pkgs()
-    #         _pkg = _pkgs.get(_pkg_name, None)
-    #         if _pkg is not None:
-    #             pkgs.append(_pkg)
-    #
-    #     async with create_task_group() as tg:
-    #         if indexes is None:
-    #             ctxs: Iterable[BringIndexTing] = (await self.indexes).values()
-    #         else:
-    #             ctxs = []
-    #             for c in indexes:
-    #                 ctx = await self.get_index(c)
-    #                 if ctx is None:
-    #                     raise FrklException(
-    #                         msg=f"Can't find pkgs with name '{pkg_name}'.",
-    #                         reason=f"Requested index '{c}' not available.",
-    #                     )
-    #                 ctxs.append(ctx)
-    #
-    #         for index in ctxs:
-    #             await tg.spawn(find_pkg, index, pkg_name)
-    #
-    #     return pkgs
+    def create_processor(self, processor_type: str, **input_vars) -> BringProcessor:
 
-    async def get_defaults(self) -> Mapping[str, Any]:
+        pm = self._tingistry_obj.get_plugin_manager(BringProcessor)
 
-        config = await self.config.get_config_dict()
+        plugin_class = pm.get_plugin(processor_type, raise_exception=True)
+        proc = plugin_class(self, **input_vars)
+        return proc
 
-        return config["defaults"]
+    async def process(self, processor_type: str, **input_vars) -> Mapping[str, Any]:
 
-    async def get_default_vars(self) -> Mapping[str, Any]:
+        proc = self.create_processor(processor_type, **input_vars)
 
-        config = await self.get_defaults()
+        result = await proc.process()
+        return result
 
-        return config["vars"]
+    async def create_target(self, target_type: str, **input_vars: Any) -> BringTarget:
+
+        pm = self._tingistry_obj.get_plugin_manager(BringTarget)
+
+        plugin_class = pm.get_plugin(target_type, raise_exception=True)
+        target = plugin_class(self, **input_vars)
+
+        return target

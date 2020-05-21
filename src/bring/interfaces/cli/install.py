@@ -4,12 +4,12 @@ from typing import Dict, Optional, Union
 
 import asyncclick as click
 from asyncclick import Command
+from bring.assembly import PkgAssembly
+from bring.assembly.utils import PkgAssemblyExplanation
 from bring.bring import Bring
-from bring.bringins import BringIns
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import log, print_pkg_list_help
 from bring.pkg_index.pkg import PkgTing
-from bring.utils.bring_ins import BringInsExplanation
 from bring.utils.pkgs import PkgVersionExplanation
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
@@ -129,11 +129,11 @@ class BringInstallGroup(FrklBaseCommand):
 
         if os.path.isfile(name):
 
-            bring_ins = await BringIns.from_file(name)
+            pkg_assembly = await PkgAssembly.from_file(name)
 
             command = PkgBringInsCommand(
                 name,
-                bring_ins=bring_ins,
+                pkg_assembly=pkg_assembly,
                 bring=self._bring,
                 target=target,
                 strategy=strategy,
@@ -145,11 +145,11 @@ class BringInstallGroup(FrklBaseCommand):
 
         else:
 
-            pkg = await self._bring.get_pkg(name=name, raise_exception=True)
+            # pkg = await self._bring.get_pkg(name=name, raise_exception=True)
 
             command = PkgInstallTingCommand(
                 name,
-                pkg=pkg,
+                bring=self._bring,
                 target=target,
                 strategy=strategy,
                 explain=explain,
@@ -163,7 +163,7 @@ class PkgBringInsCommand(Command):
     def __init__(
         self,
         name: str,
-        bring_ins: BringIns,
+        pkg_assembly: PkgAssembly,
         bring: Bring,
         target: str,
         strategy: str,
@@ -172,7 +172,7 @@ class PkgBringInsCommand(Command):
         **kwargs,
     ):
 
-        self._bring_ins: BringIns = bring_ins
+        self._pkg_assembly: PkgAssembly = pkg_assembly
         self._bring = bring
 
         self._target = target
@@ -183,10 +183,10 @@ class PkgBringInsCommand(Command):
         self._args: Optional[RecordArg] = None
 
         try:
-            doc = self._bring_ins.doc
+            doc = self._pkg_assembly.doc
 
             if load_details:
-                arg_map = self._bring_ins.args
+                arg_map = self._pkg_assembly.args
                 self._args = self._bring.arg_hive.create_record_arg(arg_map)
                 params = self._args.to_cli_options(
                     add_defaults=False, remove_required_when_default=True
@@ -209,9 +209,9 @@ class PkgBringInsCommand(Command):
         if self._explain:
             click.echo()
 
-            explanation = BringInsExplanation(
+            explanation = PkgAssemblyExplanation(
                 bring=self._bring,
-                bring_ins=self._bring_ins,
+                pkg_assembly=self._pkg_assembly,
                 target=self._target,
                 **_vars,
             )
@@ -219,7 +219,7 @@ class PkgBringInsCommand(Command):
 
         else:
 
-            path = await self._bring_ins.install(bring=self._bring, vars=_vars)
+            path = await self._pkg_assembly.install(bring=self._bring, vars=_vars)
             print(path)
 
 
@@ -227,7 +227,7 @@ class PkgInstallTingCommand(Command):
     def __init__(
         self,
         name: str,
-        pkg: PkgTing,
+        bring: Bring,
         target: str,
         strategy: str,
         explain: bool = False,
@@ -235,7 +235,10 @@ class PkgInstallTingCommand(Command):
         **kwargs,
     ):
 
-        self._pkg: PkgTing = pkg
+        self._bring: Bring = bring
+        self._pkg: PkgTing = wrap_async_task(
+            self._bring.get_pkg, name=name, raise_exception=True
+        )
 
         self._target = target
         self._strategy = strategy
@@ -297,7 +300,15 @@ class PkgInstallTingCommand(Command):
             # click.echo(explanation)
         else:
 
-            path = await self._pkg.create_version_folder(
-                vars=_vars, target=self._target
+            target = await self._bring.create_target("local_folder", path="/tmp/markus")
+
+            pkg: PkgTing = await self._bring.get_pkg(self.name, raise_exception=True)
+
+            result = await target.apply(
+                "install", pkg_name=pkg.name, pkg_index=pkg.bring_index.id
             )
-            print(path)
+            # result = await self._bring.process("install", pkg_name=self.name)
+            # path = await self._pkg.create_version_folder(
+            #     vars=_vars, target=self._target
+            # )
+            print(result)

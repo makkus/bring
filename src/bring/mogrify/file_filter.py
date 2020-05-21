@@ -25,7 +25,7 @@ class FileFilterMogrifier(SimpleMogrifier):
     def get_msg(self) -> str:
 
         result = "filtering files"
-        vals = self.input_values
+        vals = self.user_input
 
         if vals.get("include", None):
             result = result + f" matching: {', '.join(vals['include'])}"

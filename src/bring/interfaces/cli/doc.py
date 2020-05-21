@@ -200,7 +200,7 @@ class MogrifyPluginGroup(BringPluginGroup):
             if hasattr(plugin, "_requires"):
                 args = plugin._requires
             else:
-                args = plugin.requires(None)
+                args = plugin._requires(None)
             record_arg = self._arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)
             all.append(arg_table)

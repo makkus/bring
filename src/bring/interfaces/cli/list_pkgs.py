@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Iterable, MutableMapping, Optional
+from typing import MutableMapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkgs import create_pkg_info_table_string
 from frtls.cli.group import FrklBaseCommand
@@ -19,10 +19,10 @@ class BringListPkgsGroup(FrklBaseCommand):
         super(BringListPkgsGroup, self).__init__(
             name=name,
             invoke_without_command=True,
-            no_args_is_help=False,
+            no_args_is_help=True,
             chain=False,
             result_callback=None,
-            callback=self.all_info,
+            # callback=self.all_info,
             arg_hive=bring.arg_hive,
             subcommand_metavar="CONTEXT",
             **kwargs,
@@ -63,18 +63,18 @@ class BringListPkgsGroup(FrklBaseCommand):
             return
 
         print()
-        all: Iterable[PkgTing] = await self._bring.get_all_pkgs()
+        # all: Iterable[PkgTing] = await self._tingistry.get_all_pkgs()
         pkgs: MutableMapping[BringIndexTing, PkgTing] = {}
 
         for pkg in all:
             pkgs.setdefault(pkg.bring_index, []).append(pkg)
 
-        all_indexes = await self._bring.indexes
+        all_indexes = self._bring.indexes
         for c in all_indexes.values():
             if c not in pkgs.keys():
                 pkgs[c] = []
 
-        default_index = await self._bring.config.get_default_index_name()
+        default_index = await self._tingistry.config.get_default_index()
 
         for _index, _pkgs in pkgs.items():
             if _index.name == default_index:
@@ -92,7 +92,7 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        return sorted(await self._bring.index_names)
+        return sorted(self._bring.index_names)
 
     async def _get_command(self, ctx, name):
 

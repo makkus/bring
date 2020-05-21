@@ -3,7 +3,6 @@ import collections
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Iterable,
     List,
     Mapping,
@@ -21,9 +20,6 @@ from bring.defaults import (
     BRING_DEFAULT_CONFIG_PROFILE,
     BRING_TASKS_BASE_TOPIC,
 )
-from bring.pkg_index import BringIndexTing
-from bring.pkg_index.index_config import BringIndexConfig
-from bring.utils.system_info import get_current_system_info
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.introspection.pkg_env import AppEnvironment
@@ -69,10 +65,7 @@ class BringConfig(object):
 
         self._default_index_name: Optional[str] = None
 
-        # self._extra_index_configs: List[BringIndexConfig] = []
-        self._all_index_configs: Optional[Dict[str, BringIndexConfig]] = None
         self._bring: Optional["Bring"] = None
-        # self._use_config_indexes: bool = True
         self._config_dict_lock: Optional[Lock] = None
 
         twm = AppEnvironment().get_global("task_watcher")
@@ -105,9 +98,6 @@ class BringConfig(object):
     def invalidate(self):
 
         self._config_dict = None
-        # self._index_configs = None
-        self._all_index_configs = None
-        # self._auto_default_index_name = None
 
         if self._bring is not None:
             self._bring.invalidate()
@@ -182,47 +172,7 @@ class BringConfig(object):
 
             profile_dict = await self.calculate_config(self.config_input)
 
-            self._all_index_configs = {}
-            default_index_name = self._default_index_name
-            if default_index_name is None:
-                default_index_name = profile_dict.get("default_index", None)
-
-            profile_index_configs_first = None
-
-            profile_index_configs = profile_dict.get("indexes", None)
-
-            if not profile_index_configs:
-                raise FrklException(
-                    msg="Invalid configuration: no package indexes specified"
-                )
-
-            for index_config in profile_index_configs:
-
-                index = BringIndexConfig.create(
-                    tingistry_obj=self._tingistry_obj, init_data=index_config
-                )
-                # index = BringIndexConfig(
-                #     tingistry_obj=self._tingistry_obj, init_data=index_config
-                # )
-                if index.name in self._all_index_configs.keys():
-                    raise FrklException(
-                        msg=f"Can't add index '{index.name}'",
-                        reason="Duplicate index name.",
-                    )
-                if profile_index_configs_first is None:
-                    profile_index_configs_first = index.name
-                self._all_index_configs[index.name] = index
-
-            if default_index_name is None:
-                default_index_name = profile_index_configs_first
-
-            exploded_index_configs = []
-            for c in self._all_index_configs.values():
-                config_dict = await c.to_dict()
-                exploded_index_configs.append(config_dict)
-
-            profile_dict["indexes"] = exploded_index_configs
-            profile_dict["default_index"] = default_index_name
+            profile_dict.setdefault("default_index", None)
 
             if "defaults" not in profile_dict.keys():
                 profile_dict["defaults"] = {}
@@ -230,18 +180,6 @@ class BringConfig(object):
                 raise FrklException(
                     f"Invalid config, 'defaults' value needs to be a mapping: {profile_dict['defaults']}"
                 )
-
-            if "vars" not in profile_dict["defaults"].keys():
-                profile_dict["defaults"]["vars"] = {}
-            elif not isinstance(profile_dict["defaults"]["vars"], collections.Mapping):
-                raise FrklException(
-                    f"Invalid config, 'vars' key in 'defaults' value needs to be a mapping: {profile_dict['defaults']['vars']}"
-                )
-
-            if profile_dict.get("add_sysinfo_to_default_vars", False):
-                for k, v in get_current_system_info().items():
-                    if k not in profile_dict["defaults"]["vars"].keys():
-                        profile_dict["defaults"]["vars"][k] = v
 
             self._config_dict = profile_dict
 
@@ -264,55 +202,11 @@ class BringConfig(object):
 
             return self._config_dict
 
-    async def get_default_index_name(self) -> str:
+    async def get_default_index(self) -> str:
 
         config_dict = await self.get_config_dict()
 
         return config_dict["default_index"]
-
-    async def set_default_index_name(self, index_name: str) -> None:
-
-        acc = await self.get_all_index_configs()
-        if index_name not in acc.keys():
-            raise FrklException(
-                msg=f"Can't set default index to '{index_name}'",
-                reason="No index with that name.",
-            )
-
-        self._default_index_name = index_name
-        self.invalidate()
-
-    async def get_all_index_configs(self) -> Mapping[str, BringIndexConfig]:
-
-        if self._all_index_configs is None:
-            await self.get_config_dict()
-        return self._all_index_configs  # type: ignore
-
-    async def get_index_config(
-        self, index_name: str, raise_exception: bool = True
-    ) -> Optional[BringIndexConfig]:
-
-        all_indexes = await self.get_all_index_configs()
-
-        index_config = all_indexes.get(index_name, None)
-
-        if index_config is None:
-            if raise_exception:
-                raise FrklException(
-                    msg=f"Can't retrieve config for index '{index_name}'.",
-                    reason="No index with that name registered.",
-                )
-            else:
-                return None
-
-        return index_config
-
-    async def get_index(self, index_name: str) -> BringIndexTing:
-
-        index_config: BringIndexConfig = await self.get_index_config(
-            index_name, raise_exception=True
-        )  # type: ignore
-        return await index_config.get_index()
 
     def get_bring(self) -> "Bring":
 

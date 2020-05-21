@@ -2,7 +2,7 @@
 import os
 from typing import Any, Iterable, Mapping, MutableMapping
 
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from pydriller import GitRepository
 
@@ -23,15 +23,15 @@ class Folder(SimplePkgType):
 
         return "folder"
 
-    def get_args(self) -> Mapping[str, Any]:
-
-        return {
-            "path": {
-                "type": "string",
-                "required": True,
-                "doc": "The path to the local folder that represents the package.",
-            }
-        }
+    # def get_args(self) -> Mapping[str, Any]:
+    #
+    #     return {
+    #         "path": {
+    #             "type": "string",
+    #             "required": True,
+    #             "doc": "The path to the local folder that represents the package.",
+    #         }
+    #     }
 
     def _supports(self) -> Iterable[str]:
         return ["folder"]

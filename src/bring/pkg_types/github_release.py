@@ -16,7 +16,7 @@ from typing import (
 
 import arrow
 import httpx
-from bring.pkg_index import BringIndexTing
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_types import SimplePkgType
 from frtls.exceptions import FrklException
 from httpx import Headers

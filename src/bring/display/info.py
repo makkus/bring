@@ -4,14 +4,12 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 import arrow
 from bring.display.args import create_table_from_pkg_args
-from bring.interfaces.cli import bring_code_theme, bring_style
-from bring.pkg_index import BringIndexTing, PkgTing
+from bring.pkg_index.index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.doc import Doc
-from frtls.formats.output_formats import serialize
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
@@ -25,14 +23,12 @@ class IndexInfoDisplay(object):
         index: BringIndexTing,
         update: bool = False,
         display_full: bool = False,
-        display_config: bool = False,
         display_packages: bool = False,
     ):
 
         self._index: BringIndexTing = index
         self._update: bool = update
         self._display_full: bool = display_full
-        self._display_config: bool = display_config
         self._display_packages: bool = display_packages
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
@@ -53,14 +49,6 @@ class IndexInfoDisplay(object):
     @display_full.setter
     def display_full(self, display_full: bool):
         self._display_full = display_full
-
-    @property
-    def display_config(self) -> bool:
-        return self._display_config
-
-    @display_config.setter
-    def display_config(self, display_config: bool) -> None:
-        self._display_config = display_config
 
     @property
     def display_packages(self) -> bool:
@@ -141,7 +129,7 @@ class IndexInfoDisplay(object):
 
         display_title: bool = True
         display_metadata: bool = True
-        display_config: bool = False
+        # display_config: bool = False
         display_packages: bool = False
         # display_args: bool = True
         # arg_allowed_items: int = 0
@@ -149,15 +137,14 @@ class IndexInfoDisplay(object):
 
         desc_section = Doc(_info_data, short_help_key="slug", help_key="desc")
 
-        if self._display_config:
-            display_config = True
+        # if self._display_config:
+        #     display_config = True
 
         if self._display_packages:
             display_packages = True
 
         if self._display_full:
             display_title = True
-            display_config = True
             display_packages = True
             display_metadata = True
             # display_args = True
@@ -167,7 +154,7 @@ class IndexInfoDisplay(object):
         if display_title:
 
             md_ts = arrow.get(info_data["metadata_timestamp"]).humanize()
-            title = f"Index: '[bold dark_red]{self._index.name}[/bold dark_red]' (metadata snapshot: {md_ts})"
+            title = f"Index: '[bold dark_red]{self._index.id}[/bold dark_red]' (metadata snapshot: {md_ts})"
 
             all.append(title)
             all.append("")
@@ -175,39 +162,41 @@ class IndexInfoDisplay(object):
             if help_str:
                 all.append(help_str)
                 all.append("")
+            all.append(f"url: {info_data['uri']}")
+            all.append("")
 
         if display_metadata:
             if desc_section.metadata:
                 all.append(desc_section)
                 all.append("")
 
-        if display_config:
-            config = info_data["config"]
-            _config = {}
-            for k, v in config.items():
-                if k.startswith("_"):
-                    continue
-                _config[k] = v
-
-            if _config:
-                config = []
-                config.append("[bold]Config[/bold]")
-                config.append("")
-
-                config_yaml_string = serialize(
-                    _config, format="yaml", indent=4, strip=True
-                )
-                config_markdown_string = f"``` yaml\n{config_yaml_string}\n```"
-                config_markdown = Markdown(
-                    config_markdown_string,
-                    style=bring_style,
-                    code_theme=bring_code_theme,
-                    justify="left",
-                )
-                config.append(config_markdown)
-                config.append("")
-
-                all.append(Panel(RenderGroup(*config)))
+        # if display_config:
+        #     config = info_data["config"]
+        #     _config = {}
+        #     for k, v in config.items():
+        #         if k.startswith("_"):
+        #             continue
+        #         _config[k] = v
+        #
+        #     if _config:
+        #         config = []
+        #         config.append("[bold]Config[/bold]")
+        #         config.append("")
+        #
+        #         config_yaml_string = serialize(
+        #             _config, format="yaml", indent=4, strip=True
+        #         )
+        #         config_markdown_string = f"``` yaml\n{config_yaml_string}\n```"
+        #         config_markdown = Markdown(
+        #             config_markdown_string,
+        #             style=bring_style,
+        #             code_theme=bring_code_theme,
+        #             justify="left",
+        #         )
+        #         config.append(config_markdown)
+        #         config.append("")
+        #
+        #         all.append(Panel(RenderGroup(*config)))
 
         if display_packages:
 

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
-import os
-import shutil
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
-from bring.defaults import BRING_PLUGIN_CACHE
 from bring.pkg_index.pkg import PkgTing
 from frtls.exceptions import FrklException
 from tings.common.templating import TemplaTing, TemplaTingRepo
@@ -62,27 +59,28 @@ class BringTemplate(object):
 
     async def get_version_folder(self) -> str:
 
-        if self._version_folder is None:
-
-            pkg = await self.get_templates_pkg()
-            version_hash = await pkg.create_version_hash(**self._templates_pkg_vars)
-            self._version_folder = os.path.join(
-                BRING_PLUGIN_CACHE, self.__class__.__name__, str(version_hash)
-            )
-
-            if not os.path.exists(self._version_folder):
-                try:
-                    await pkg.create_version_folder(
-                        vars=self._templates_pkg_vars, target=self._version_folder
-                    )
-                except Exception as e:
-                    log.debug(
-                        f"Error when creating plugin pkg folder: {self._version_folder}",
-                        exc_info=True,
-                    )
-                    shutil.rmtree(self._version_folder)
-                    self._version_folder = None
-                    raise e
+        raise NotImplementedError()
+        # if self._version_folder is None:
+        #
+        #     pkg = await self.get_templates_pkg()
+        #     version_hash = await pkg.create_version_hash(**self._templates_pkg_vars)
+        #     self._version_folder = os.path.join(
+        #         BRING_PLUGIN_CACHE, self.__class__.__name__, str(version_hash)
+        #     )
+        #
+        #     if not os.path.exists(self._version_folder):
+        #         try:
+        #             await pkg.create_version_folder(
+        #                 vars=self._templates_pkg_vars, target=self._version_folder
+        #             )
+        #         except Exception as e:
+        #             log.debug(
+        #                 f"Error when creating plugin pkg folder: {self._version_folder}",
+        #                 exc_info=True,
+        #             )
+        #             shutil.rmtree(self._version_folder)
+        #             self._version_folder = None
+        #             raise e
 
         return self._version_folder
 

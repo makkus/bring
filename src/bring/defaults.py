@@ -37,6 +37,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring",
     "bring.pkg_types.*",
     "bring.mogrify.*",
+    "bring.bring_target.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
     "bring.pkg_index.*",
@@ -48,48 +49,44 @@ BRINGISTRY_PRELOAD_MODULES = [
 BRING_CONTEXT_NAMESPACE = "bring.indexes"
 BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 
-BRING_DEFAULT_CONTEXTS = {
-    "binaries": {
-        "type": "index",
-        "indexes": [
-            "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx"
-        ],
-        "defaults": {"target": "~/.local/bring", "vars": {}},
-        "add_sysinfo_to_default_vars": True,
+BRING_DEFAULT_INDEXES = [
+    {
+        "id": "binaries",
+        "type": "index_file",
+        "uri": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx",
+        # "defaults": {"target": "~/.local/bring", "vars": {}},
+        # "add_sysinfo_to_default_vars": True,
         "info": {"slug": "Single file, compiled applications."},
     },
-    "scripts": {
-        "type": "index",
-        "indexes": [
-            "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx"
-        ],
-        "defaults": {"target": "~/.local/bring", "vars": {}},
-        "add_sysinfo_to_default_vars": True,
+    {
+        "id": "scripts",
+        "type": "index_file",
+        "uri": "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx",
+        # "defaults": {"target": "~/.local/bring", "vars": {}},
+        # "add_sysinfo_to_default_vars": True,
         "info": {"slug": "Shell scripts."},
     },
-    "collections": {
-        "type": "index",
-        "indexes": [
-            "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx"
-        ],
+    {
+        "id": "collections",
+        "type": "index_file",
+        "uri": "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx",
         "info": {"slug": "Miscellaneous collections of files."},
     },
-    "kube-install-manifests": {
-        "type": "index",
-        "indexes": [
-            "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx"
-        ],
+    {
+        "id": "kubernetes",
+        "type": "index_file",
+        "uri": "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx",
         "info": {"slug": "Install manifests for Kubernetes apps."},
     },
-}
+]
 
 BRING_DEFAULT_CONFIG = {
-    "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
+    # "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
     # "default_index": "binaries",
     "task_log": [],
-    "defaults": {"vars": {}},
+    "defaults": {},
     "output": "default",
-    "add_sysinfo_to_default_vars": False,
+    # "add_sysinfo_to_default_vars": False,
 }
 
 BRING_DEFAULT_CONFIG_PROFILE = {
@@ -154,7 +151,7 @@ BRINGISTRY_INIT = {
 
 PKG_RESOLVER_DEFAULTS: Dict[str, Any] = {"metadata_max_age": 3600 * 24}
 
-BRING_METADATA_FOLDER_NAME = ".bring"
+
 BRING_ALLOWED_MARKER_NAME = "bring_allowed"
 
 BRING_TASKS_BASE_TOPIC = "bring.tasks"
@@ -171,3 +168,9 @@ DEFAULT_ARGS_DICT = {
     "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
     "version": {"doc": "The version of the package."},
 }
+BRING_METADATA_FOLDER_NAME = ".bring"
+BRING_METADATA_FILE_NAME = "meta.json"
+BRING_METADATA_REL_PATH = os.path.join(
+    BRING_METADATA_FOLDER_NAME, BRING_METADATA_FILE_NAME
+)
+BRING_ITEM_METADATA_FOLDER_NAME = "items"

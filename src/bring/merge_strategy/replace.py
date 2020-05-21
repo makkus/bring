@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
-from bring.merge_strategy import MergeStrategy
-from bring.target_folder import TargetFolder
+from bring.merge_strategy import LocalFolderItem, MergeStrategy
 
 
 class ReplaceMergeStrategy(MergeStrategy):
 
     _plugin_name = "replace"
 
-    def merge_source(
-        self,
-        source_base: str,
-        source_file: str,
-        target_folder: TargetFolder,
-        target_file: str,
+    async def merge_source(
+        self, source_file: LocalFolderItem, target_file: LocalFolderItem
     ) -> None:
 
         pass
