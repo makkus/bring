@@ -16,10 +16,13 @@ from anyio import Lock
 from bring.config.folder_config import FolderConfigProfilesTing
 from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
-    BRING_DEFAULT_CONFIG,
+    BRING_CORE_CONFIG,
     BRING_DEFAULT_CONFIG_PROFILE,
     BRING_TASKS_BASE_TOPIC,
 )
+from bring.merge_strategy import MergeStrategyArgType, MergeStrategyClickType
+from frtls.args.hive import ArgHive
+from frtls.async_helpers import wrap_async_task
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.introspection.pkg_env import AppEnvironment
@@ -29,6 +32,18 @@ from tings.tingistry import Tingistry
 
 if TYPE_CHECKING:
     from bring.bring import Bring
+
+
+def register_args(arg_hive: ArgHive):
+
+    arg_hive.register_arg_type(
+        arg=MergeStrategyArgType,
+        id="merge_strategy",
+        arg_type="dict",
+        required=False,
+        default=["bring"],
+        click_type=MergeStrategyClickType,
+    )
 
 
 class BringConfig(object):
@@ -46,6 +61,8 @@ class BringConfig(object):
 
         self._name = name
         self._tingistry_obj = tingistry
+
+        register_args(self._tingistry_obj.arg_hive)
 
         self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
             BRING_CONFIG_PROFILES_NAME, raise_exception=False
@@ -94,6 +111,7 @@ class BringConfig(object):
         if self._bring is not None:
             raise Exception("Bring object already set for this config, this is a bug.")
         self._bring = bring
+        self._bring.invalidate()
 
     def invalidate(self):
 
@@ -113,11 +131,12 @@ class BringConfig(object):
     def set_config(self, *config_input: Union[str, Mapping[str, Any]]):
 
         _config_input: List[Union[str, Mapping[str, Any]]] = []
-        if not config_input or config_input[0] != "__init_dict__":
-            _config_input.append("__init_dict__")
+        # if not config_input or config_input[0] != "__init_dict__":
+        #     _config_input.append("__init_dict__")
 
         for config in config_input:
-            _config_input.append(config)
+            if config:
+                _config_input.append(config)
 
         differs: bool = self._config_input != _config_input
 
@@ -126,7 +145,7 @@ class BringConfig(object):
             self.invalidate()
 
     async def calculate_config(
-        self, config_list: Iterable[Union[str, Mapping[str, Any]]]
+        self, _config_list: Iterable[Union[str, Mapping[str, Any]]]
     ) -> MutableMapping[str, Any]:
 
         # TODO: this could be made more efficient by only loading the config dicts that are required
@@ -136,13 +155,15 @@ class BringConfig(object):
 
         result: List[Mapping[str, Any]] = []
 
+        config_list: List[Union[str, Mapping[str, Any]]] = ["__init_dict__", "default"]
+        config_list.extend(_config_list)
+
         for c in config_list:
 
             temp_dict: Optional[Mapping[str, Any]] = None
             if isinstance(c, str):
                 if c == "__init_dict__":
-                    temp_dict = BRING_DEFAULT_CONFIG
-
+                    temp_dict = BRING_CORE_CONFIG
                 elif "=" in c:
                     k, v = c.split("=", maxsplit=1)
                     temp_dict = {k: v}
@@ -160,6 +181,7 @@ class BringConfig(object):
                 )
 
             result.append(temp_dict)
+
         result_dict = get_seeded_dict(*result, merge_strategy="merge")
 
         return result_dict
@@ -201,6 +223,17 @@ class BringConfig(object):
                 self._task_watcher_ids.append(id)
 
             return self._config_dict
+
+    def get_config_value(self, key: str) -> Any:
+
+        if self._config_dict is None:
+            wrap_async_task(self.get_config_dict)
+
+        return self._config_dict.get(key, None)  # type: ignore
+
+    async def get_config_value_async(self, key: str) -> Any:
+
+        return (await self.get_config_dict()).get(key, None)
 
     async def get_default_index(self) -> str:
 

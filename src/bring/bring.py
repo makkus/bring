@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
+import collections
 import logging
 import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
@@ -16,6 +17,7 @@ from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_processing import BringProcessor
 from bring.utils import BringTaskDesc
+from bring.utils.defaults import calculate_defaults
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -59,6 +61,8 @@ class Bring(SimpleTing):
 
         self._tingistry_obj: Tingistry = meta.tingistry
 
+        self._defaults: Optional[Mapping[str, Any]] = None
+
         self._tingistry_obj.add_module_paths(*modules)
         self._tingistry_obj.add_classes(*classes)
 
@@ -100,8 +104,7 @@ class Bring(SimpleTing):
         if self._bring_config is not None:
             self._bring_config.set_bring(self)
 
-        self._indexes: Dict[str, BringIndexTing] = {}
-        self._all_indexes_created: bool = False
+        self._indexes: Dict[str, Optional[BringIndexTing]] = {}
 
         self._index_factory = IndexFactory(tingistry=self._tingistry_obj)
 
@@ -120,10 +123,28 @@ class Bring(SimpleTing):
 
         return self._bring_config
 
-    def _invalidate(self):
+    def _invalidate(self) -> None:
 
         self._indexes = {}
-        self._all_indexes_created = False
+        self._defaults = None
+
+        if self._bring_config is not None:
+            indexes = self.config.get_config_value("indexes")
+            if not indexes:
+                return
+            else:
+                for idx in indexes:
+                    if isinstance(idx, str):
+                        idx_id = idx
+                    elif isinstance(idx, collections.Mapping):
+                        idx_id = idx.get("id", None)
+                        if idx_id is None:
+                            raise FrklException(
+                                f"Can't add index config: {idx}",
+                                reason="No 'id' value provided.",
+                            )
+
+                    self._indexes[idx_id] = None
 
     @property
     def typistry(self):
@@ -147,19 +168,27 @@ class Bring(SimpleTing):
 
         return {}
 
-    @property
-    def indexes(self) -> Mapping[str, BringIndexTing]:
+    async def get_indexes(self) -> Mapping[str, BringIndexTing]:
 
-        # await self._create_all_indexes()
-        return self._indexes
+        missing = []
+        for k, v in self._indexes.items():
+            if v is None:
+                missing.append(k)
+
+        if missing:
+            await self.add_indexes(*missing, allow_existing=True)
+
+        return self._indexes  # type: ignore
 
     @property
-    def index_names(self) -> Iterable[str]:
+    def index_ids(self) -> Iterable[str]:
 
         return self._indexes.keys()
 
     async def add_indexes(
-        self, *index_items: Union[str, Mapping[str, Any], IndexConfig]
+        self,
+        *index_items: Union[str, Mapping[str, Any], IndexConfig],
+        allow_existing: bool = False,
     ) -> Mapping[str, BringIndexTing]:
 
         if not index_items:
@@ -167,14 +196,14 @@ class Bring(SimpleTing):
 
         added = {}
 
-        async def add(_ii):
-            _idx = await self.add_index(_ii)
+        async def add(_ii, _ae):
+            _idx = await self.add_index(_ii, _ae)
             added[_idx.id] = _idx
 
         async with create_task_group() as tg:
 
             for ii in index_items:
-                await tg.spawn(add, ii)
+                await tg.spawn(add, ii, allow_existing)
 
         # make sure we preserve the order of the items
         result = {}
@@ -185,37 +214,91 @@ class Bring(SimpleTing):
         return result
 
     async def add_index(
-        self, index_data: Union[str, Mapping[str, Any], IndexConfig]
+        self,
+        index_data: Union[str, Mapping[str, Any], IndexConfig],
+        allow_existing: bool = False,
     ) -> BringIndexTing:
 
-        index = await self._index_factory.create_index(index_data=index_data)
-        if index.id in self._indexes.keys():
+        index = await self._index_factory.create_index(
+            index_data=index_data, allow_existing=allow_existing
+        )
+        if index.id in self.index_ids and not allow_existing:
             raise FrklException(
                 f"Can't add index '{index.id}'.",
                 reason="Index with this id already added.",
+            )
+
+        if (
+            index.id in self.index_ids
+            and self._indexes.get(index.id, None) is not None
+            and index != self._indexes.get(index.id)
+        ):
+            raise FrklException(
+                f"Can't add index '{index.id}'.",
+                reason="Different index with same id already exists.",
             )
 
         self._indexes[index.id] = index
 
         return index
 
-    async def get_index(
-        self, index_name: Optional[str] = None, raise_exception=True
-    ) -> BringIndexTing:
+    async def get_defaults(self) -> Mapping[str, Any]:
+
+        if self._defaults is not None:
+            return self._defaults
+
+        defaults: Mapping[str, Any] = await self.config.get_config_value_async(
+            "defaults"
+        )
+        if defaults is None:
+            defaults = {}
+
+        if defaults:
+            self._defaults = calculate_defaults(
+                typistry=self._tingistry_obj.typistry, data=defaults
+            )
+        else:
+            self._defaults = {}
+
+        return self._defaults
+
+    async def get_index(self, index_name: Optional[str] = None) -> BringIndexTing:
 
         if index_name is None:
             index_name = await self.config.get_default_index()
 
         if index_name not in self._indexes:
-            idx = await self.add_index(index_data=index_name)
+            idx = await self.add_index(index_data=index_name, allow_existing=True)
+            index_name = idx.id
+        elif self._indexes[index_name] is None:
+            idx_config = {}
+            indexes = await self.config.get_config_value_async("indexes")
+            _idx: Union[str, Mapping[str, Any]]
+            for _idx in indexes:
+                if _idx == index_name:
+                    # means no config
+                    break
+
+                if isinstance(_idx, str) or _idx["id"] != index_name:
+                    continue
+
+                idx_defaults = _idx.get("defaults", {})
+                idx_config["defaults"] = calculate_defaults(
+                    typistry=self._tingistry_obj.typistry, data=idx_defaults
+                )
+
+            idx = await self.add_index(index_data=index_name, allow_existing=True)
+
+            if idx_config:
+                idx.set_input(**idx_config)
             index_name = idx.id
 
-        return self._indexes[index_name]
+        return self._indexes[index_name]  # type: ignore
 
     async def update(self, index_names: Optional[Iterable[str]] = None):
 
         if index_names is None:
-            index_names = self.index_names
+            index_names = self.index_ids
 
         td = BringTaskDesc(
             name="update metadata", msg="updating metadata for all indexes"
@@ -240,7 +323,7 @@ class Bring(SimpleTing):
         """Get all pkgs, per available (or requested) indexes."""
 
         if not indexes:
-            idxs: Iterable[str] = self.index_names
+            idxs: Iterable[str] = self.index_ids
         else:
             idxs = list(indexes)
 
@@ -300,7 +383,7 @@ class Bring(SimpleTing):
     ):
 
         if not indexes:
-            indexes = self.index_names
+            indexes = self.index_ids
 
         alias_pkg_map = await self.get_alias_pkg_map(*indexes)
 
@@ -341,12 +424,13 @@ class Bring(SimpleTing):
         else:
             _pkg_name = name
 
-            _index_name = None
+            _index_name = index
             if index is None:
                 _index_name = await self.config.get_default_index()
 
             if _index_name is None:
-                for idx in self.indexes.values():
+                for id_n in self.index_ids:
+                    idx = await self.get_index(id_n)
                     pkg_names = await idx.pkg_names
                     if _pkg_name in pkg_names:
                         _index_name = idx.id
@@ -380,20 +464,21 @@ class Bring(SimpleTing):
 
         return pkg is not None
 
-    def create_processor(self, processor_type: str, **input_vars) -> BringProcessor:
+    def create_processor(self, processor_type: str) -> BringProcessor:
 
         pm = self._tingistry_obj.get_plugin_manager(BringProcessor)
 
         plugin_class = pm.get_plugin(processor_type, raise_exception=True)
-        proc = plugin_class(self, **input_vars)
+        proc = plugin_class(self)
         return proc
 
-    async def process(self, processor_type: str, **input_vars) -> Mapping[str, Any]:
-
-        proc = self.create_processor(processor_type, **input_vars)
-
-        result = await proc.process()
-        return result
+    # async def process(self, processor_type: str, **input_vars) -> Mapping[str, Any]:
+    #
+    #     proc = self.create_processor(processor_type)
+    #     proc.set_user_input(**input_vars)
+    #
+    #     result = await proc.process()
+    #     return result
 
     async def create_target(self, target_type: str, **input_vars: Any) -> BringTarget:
 

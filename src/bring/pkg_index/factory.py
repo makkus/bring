@@ -164,7 +164,9 @@ class IndexFactory(object):
         return IndexConfig(**_index_data)
 
     async def create_index(
-        self, index_data: Union[str, Mapping[str, Any], IndexConfig]
+        self,
+        index_data: Union[str, Mapping[str, Any], IndexConfig],
+        allow_existing: bool = False,
     ) -> BringIndexTing:
 
         index_config: IndexConfig = await self.create_index_config(
@@ -172,6 +174,13 @@ class IndexFactory(object):
         )
 
         ting_name = f"{BRING_CONTEXT_NAMESPACE}.{index_config.id}"
+
+        if allow_existing:
+            existing: BringIndexTing = self._tingistry.get_ting(
+                ting_name, raise_exception=False
+            )  # type: ignore
+            if existing is not None:
+                return existing
 
         if index_config.index_type == "index_file":
 

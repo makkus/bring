@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 from typing import Dict, Optional, Union
 
 import asyncclick as click
@@ -38,12 +37,23 @@ class BringInstallGroup(FrklBaseCommand):
             name=name,
             invoke_without_command=True,
             no_args_is_help=True,
+            callback=self.install_info,
             chain=False,
             result_callback=None,
+            add_help_option=False,
             arg_hive=bring.arg_hive,
-            subcommand_metavar="PKG",
+            subcommand_metavar="PROCESSOR",
             **kwargs,
         )
+
+    @click.pass_context
+    async def install_info(ctx, self, **kwargs):
+
+        if ctx.invoked_subcommand is not None:
+            return
+
+        help = self.get_help(ctx)
+        click.echo(help)
 
     def format_commands(self, ctx, formatter):
         """Extra format methods for multi methods that adds all the commands
@@ -54,109 +64,81 @@ class BringInstallGroup(FrklBaseCommand):
 
     def get_group_options(self) -> Union[Arg, Dict]:
 
-        return {
-            # "index": {
-            #     "doc": "The index that contains the package.",
-            #     "type": "string",
-            #     # "multiple": False,
-            #     "required": False,
-            # },
-            "target": {
-                "doc": "The target directory to install the files into.",
-                "type": "string",
-                "required": False,
-            },
-            # "merge": {
-            #     "doc": "Whether to merge the resulting files (if applicable).",
-            #     "type": "boolean",
-            #     "required": False,
-            #     "default": True,
-            #     "cli": {"param_decls": ["--merge/--no-merge"]},
-            # },
-            "strategy": {
-                "doc": "Strategy on how to deal with existing files, options: default, force",
-                "type": "string",
-                "default": "default",
-                "required": False,
-            },
-            "write_metadata": {
-                "doc": "Write metadata for this install process.",
-                "type": "boolean",
-                "default": False,
-                "required": False,
-            },
+        # target = wrap_async_task(self.get_bring_target)
+        # target_args = target.requires()
+
+        default_args = {
             "explain": {
                 "doc": "Don't perform installation, only explain steps.",
                 "type": "boolean",
                 "default": False,
                 "required": False,
+                "cli": {"is_flag": True},
+            },
+            "help": {
+                "doc": "Show this message and exit.",
+                "type": "boolean",
+                "default": False,
+                "required": False,
+                "cli": {"is_flag": True},
+            },
+            "target": {
+                "doc": "The target directory to install the files into.",
+                "type": "string",
+                "required": False,
+            },
+            "merge_strategy": {
+                "doc": "Strategy on how to deal with existing files, options",
+                "type": "merge_strategy",
+                "required": False,
             },
         }
+
+        return default_args
 
     async def _list_commands(self, ctx):
 
         return []
 
-        # pkg_index = self._group_params.get("index")
-        # if pkg_index is None:
-        #     return []
-        #
-        # ctx.obj["list_install_commands"] = True
-        #
-        # pkgs = await self._bring.get_all_pkgs(indexes=[pkg_index])
-        #
-        # result = SortedSet()
-        # for pkg in pkgs:
-        #     result.add(pkg.name)
-        #
-        # return result
-
     async def _get_command(self, ctx, name):
 
-        # index_name = self._group_params.get("index", None)
-
-        target = self._group_params.get("target")
-        strategy = self._group_params.get("strategy")
-        # merge = self._group_params.get("merge")
-        explain = self._group_params.get("explain")
-
-        # write_metadata = self._group_params.get("write_metadata")
-
+        # explain = self._group_params.get("explain")
         load_details = not ctx.obj.get("list_install_commands", False)
+        target = self._group_params_parsed.get("target", None)
+        merge_strategy = self._group_params_parsed.get("merge_strategy")
+
+        install_args = {}
+        if merge_strategy:
+            install_args["merge_strategy"] = merge_strategy
+        if target:
+            install_args["target"] = target
 
         if not load_details:
             return None
 
-        if os.path.isfile(name):
+        pkg = await self._bring.get_pkg(name, raise_exception=True)
+        processor = self._bring.create_processor("install_pkg")
 
-            pkg_assembly = await PkgAssembly.from_file(name)
+        profile_defaults = await self._bring.get_defaults()
+        index_defaults = await pkg.bring_index.get_index_defaults()
+        processor.add_constants(_constants_name="bring profile", **profile_defaults)
+        processor.add_constants(_constants_name="index defaults", **index_defaults)
+        processor.add_constants(_constants_name="install args", **install_args)
+        processor.add_constants(
+            _constants_name="pkg", pkg_name=pkg.name, pkg_index=pkg.bring_index.id
+        )
 
-            command = PkgBringInsCommand(
-                name,
-                pkg_assembly=pkg_assembly,
-                bring=self._bring,
-                target=target,
-                strategy=strategy,
-                explain=explain,
-                load_details=load_details,
-            )
+        @click.command()
+        @click.pass_context
+        async def command(ctx, **kwargs):
 
-            return command
+            result = await processor.process()
+            print(result)
 
-        else:
+        args = await processor.get_user_input_args()
+        command.params = args.to_cli_options()
 
-            # pkg = await self._bring.get_pkg(name=name, raise_exception=True)
-
-            command = PkgInstallTingCommand(
-                name,
-                bring=self._bring,
-                target=target,
-                strategy=strategy,
-                explain=explain,
-                load_details=load_details,
-            )
-
-            return command
+        return command
 
 
 class PkgBringInsCommand(Command):
@@ -166,7 +148,7 @@ class PkgBringInsCommand(Command):
         pkg_assembly: PkgAssembly,
         bring: Bring,
         target: str,
-        strategy: str,
+        merge_strategy: str,
         explain: bool = False,
         load_details: bool = False,
         **kwargs,
@@ -176,7 +158,7 @@ class PkgBringInsCommand(Command):
         self._bring = bring
 
         self._target = target
-        self._strategy = strategy
+        self._merge_strategy = merge_strategy
 
         self._explain: bool = explain
 
@@ -229,7 +211,7 @@ class PkgInstallTingCommand(Command):
         name: str,
         bring: Bring,
         target: str,
-        strategy: str,
+        merge_strategy: str,
         explain: bool = False,
         load_details: bool = False,
         **kwargs,
@@ -241,7 +223,7 @@ class PkgInstallTingCommand(Command):
         )
 
         self._target = target
-        self._strategy = strategy
+        self._merge_strategy = merge_strategy
 
         self._explain: bool = explain
 
@@ -300,12 +282,14 @@ class PkgInstallTingCommand(Command):
             # click.echo(explanation)
         else:
 
+            print(kwargs)
             target = await self._bring.create_target("local_folder", path="/tmp/markus")
 
             pkg: PkgTing = await self._bring.get_pkg(self.name, raise_exception=True)
 
+            proc = target.create_processor("install")
             result = await target.apply(
-                "install", pkg_name=pkg.name, pkg_index=pkg.bring_index.id
+                proc, pkg_name=pkg.name, pkg_index=pkg.bring_index.id
             )
             # result = await self._bring.process("install", pkg_name=self.name)
             # path = await self._pkg.create_version_folder(

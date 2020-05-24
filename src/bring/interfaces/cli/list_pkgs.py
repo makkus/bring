@@ -92,7 +92,7 @@ class BringListPkgsGroup(FrklBaseCommand):
 
     async def _list_commands(self, ctx):
 
-        return sorted(self._bring.index_names)
+        return sorted(self._bring.index_ids)
 
     async def _get_command(self, ctx, name):
 

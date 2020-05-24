@@ -21,6 +21,4 @@ class DefaultMergeStrategy(MergeStrategy):
             else:
                 return
 
-        target_file.ensure_parent_exists()
-
-        self._move_or_copy_file(source_file.full_path, target_file.full_path)
+        self._move_or_copy_file(source_file, target_file)

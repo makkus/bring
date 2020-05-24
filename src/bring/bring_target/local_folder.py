@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from bring.bring_target import BringTarget
-from bring.merge_strategy import FolderMerge, LocalFolder, MergeStrategyArgType
+from bring.merge_strategy import LocalFolder
 
 
 if TYPE_CHECKING:
@@ -14,14 +14,6 @@ class LocalFolderTarget(BringTarget):
     _plugin_name = "local_folder"
 
     def __init__(self, bring: "Bring", **input_vars: Any):
-
-        bring._tingistry_obj.arg_hive.register_arg_type(
-            arg=MergeStrategyArgType,
-            id="merge_strategy",
-            arg_type="dict",
-            required=False,
-            default={"type": "default"},
-        )
 
         self._target_folder: Optional[LocalFolder] = None
 
@@ -60,26 +52,26 @@ class LocalFolderTarget(BringTarget):
     def target_folder(self) -> LocalFolder:
 
         if self._target_folder is None:
-            path = self.current_input(validated=True)["path"]
+            path = self.current_input(validate=True)["path"]
             self._target_folder = LocalFolder(path)
         return self._target_folder
 
-    async def process_result(
-        self, input: Mapping[str, Any], result: Mapping[str, Any]
-    ) -> Mapping[str, Any]:
-
-        folder_path = result["folder_path"]
-
-        merge_strategy = {
-            "type": "bring",
-            "config": {"move_method": "move", "pkg_metadata": input},
-        }
-
-        folder_merge = FolderMerge(
-            typistry=self._bring.typistry,
-            target=self.target_folder,
-            merge_strategy=merge_strategy,
-        )
-        await folder_merge.merge_folders(folder_path)
-
-        return {"path": self.target_folder.path}
+    # async def process_result(
+    #     self, input: Mapping[str, Any], result: Mapping[str, Any]
+    # ) -> Mapping[str, Any]:
+    #
+    #     folder_path = result["folder_path"]
+    #
+    #     merge_strategy = {
+    #         "type": "bring",
+    #         "config": {"move_method": "move", "pkg_metadata": input},
+    #     }
+    #
+    #     folder_merge = FolderMerge(
+    #         typistry=self._bring.typistry,
+    #         target=self.target_folder,
+    #         merge_strategy=merge_strategy,
+    #     )
+    #     await folder_merge.merge_folders(folder_path)
+    #
+    #     return {"path": self.target_folder.path}

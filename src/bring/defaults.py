@@ -40,6 +40,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring_target.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
+    "bring.pkg_processing.*",
     "bring.pkg_index.*",
     "bring.config",
     "bring.merge_strategy.*",
@@ -80,13 +81,18 @@ BRING_DEFAULT_INDEXES = [
     },
 ]
 
-BRING_DEFAULT_CONFIG = {
+BRING_CORE_CONFIG = {
     # "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
     # "default_index": "binaries",
     "task_log": [],
     "defaults": {},
     "output": "default",
     # "add_sysinfo_to_default_vars": False,
+}
+
+BRING_DEFAULT_CONFIG = {
+    "info": {"slug": "default config for bring"},
+    "indexes": ["binaries", "scripts", "collections", "kubernetes"],
 }
 
 BRING_DEFAULT_CONFIG_PROFILE = {

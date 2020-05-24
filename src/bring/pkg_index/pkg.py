@@ -51,6 +51,8 @@ class PkgTing(SimpleTing):
             "bring.transmogritory", raise_exception=True
         )
 
+        self._pkg_args: Optional[RecordArg] = None
+
         super().__init__(name=name, meta=meta)
         self._index: Optional["BringIndexTing"] = None
 
@@ -91,8 +93,11 @@ class PkgTing(SimpleTing):
 
     async def get_pkg_args(self) -> RecordArg:
 
-        metadata = await self.get_value("metadata")
-        return await self._calculate_args(metadata)
+        if self._pkg_args is None:
+
+            metadata = await self.get_value("metadata")
+            self._pkg_args = await self._calculate_args(metadata)
+        return self._pkg_args
 
     async def _calculate_args(self, metadata) -> RecordArg:
 
@@ -206,6 +211,7 @@ class PkgTing(SimpleTing):
             vars = {}
         if metadata is None:
             metadata = {}
+
         version = find_version(vars=vars, metadata=metadata, var_aliases_replaced=True)
         return version
 
@@ -221,12 +227,12 @@ class PkgTing(SimpleTing):
         )
         metadata = vals["metadata"]
 
-        # _vars = await self.calculate_full_vars(_pkg_metadata=metadata, **vars)
-
         if vars is None:
             vars = {}
 
-        version = await self.find_version_data(vars=vars, metadata=metadata)
+        _vars = await self.calculate_full_vars(_pkg_metadata=metadata, **vars)
+
+        version = await self.find_version_data(vars=_vars, metadata=metadata)
 
         if not version:
             raise FrklException(
@@ -256,19 +262,33 @@ class PkgTing(SimpleTing):
 
         return tm
 
-    async def create_version_hash(self, **vars: Any):
+    async def create_id_dict(
+        self, _include_hash: bool = True, **vars: Any
+    ) -> Dict[str, Any]:
 
         full_vars = await self.calculate_full_vars(**vars)
-        if self._index is None:
-            raise Exception("Index not set yet, this is a bug")
+        result: Dict[str, Any] = {}
+        result["vars"] = full_vars
+        result["pkg_name"] = self.name
+        result["pkg_index"] = self.bring_index.id
 
-        _dict = {
-            "pkg_name": self.full_name,
-            "pkg_index": self._index.full_name,
-            "vars": full_vars,
-        }
-        hashes = DeepHash(_dict)
-        return hashes[_dict]
+        if _include_hash:
+            hashes = DeepHash(result)
+            h = hashes[result]
+            result["hash"] = h
+
+        return result
+
+    async def create_version_hash(self, **vars: Any) -> str:
+
+        full_vars = await self.calculate_full_vars(**vars)
+        id_dict: Dict[str, Any] = {}
+        id_dict["vars"] = full_vars
+        id_dict["pkg_name"] = self.name
+        id_dict["pkg_index"] = self.bring_index.id
+
+        hashes = DeepHash(id_dict)
+        return hashes[id_dict]
 
     async def calculate_full_vars(self, **vars: Any) -> MutableMapping[str, Any]:
 
@@ -279,9 +299,6 @@ class PkgTing(SimpleTing):
         args: RecordArg = vals["args"]
 
         pkg_defaults = args.get_defaults()
-        # index_vars: Dict[str, Any] = dict(
-        #     await self.bring_index.get_default_vars()
-        # )  # type: ignore
 
         _vars = get_seeded_dict(pkg_defaults, vars, merge_strategy="update")
 

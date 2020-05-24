@@ -35,7 +35,7 @@ async def print_config_list_for_help(bring_config: BringConfig, formatter):
 
 async def create_index_list_for_help(bring: Bring) -> List[Tuple[str, str]]:
 
-    indexes = bring.indexes
+    indexes = await bring.get_indexes()
 
     infos = {}
 
@@ -113,13 +113,20 @@ async def print_pkg_list_help(bring: Bring, formatter) -> None:
 
     short_help_map = await create_pkg_list_for_help(bring=bring)
     # allow for 3 times the default spacing
-    if len(short_help_map):
+    if short_help_map:
         limit = formatter.width - 6 - max(len(cmd[0]) for cmd in short_help_map)
 
-        rows = []
+        rows: List[Tuple] = []
+        unique: List[str] = []
         for subcommand, help in short_help_map:
+            idx, pkg_name = subcommand.rsplit(".", maxsplit=1)
+            if pkg_name not in unique:
+                unique.append(pkg_name)
+                display_name = f"[{idx}.]{pkg_name}"
+            else:
+                display_name = subcommand
             _help = make_default_short_help(help, max_length=limit)
-            rows.append((subcommand, _help))
+            rows.append((display_name, _help))
 
         if rows:
             with formatter.section("Packages"):

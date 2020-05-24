@@ -385,26 +385,26 @@ class Transmogrificator(Tasks):
         self._current = mogrifier
         self._last_item = self._current
 
-    async def is_ready(self) -> bool:
-
-        if not issubclass(self._last_item.__class__, CheckMogrifier):
-            return False
-
-        status: EnvironmentStatus = await self._last_item.get_status()  # type: ignore
-
-        if status is None:
-            return False
-        elif isinstance(status, bool):
-            return status
-        else:
-            return status.is_ready
+    # async def is_ready(self) -> bool:
+    #
+    #     if not issubclass(self._last_item.__class__, CheckMogrifier):
+    #         return False
+    #
+    #     status: EnvironmentStatus = await self._last_item.get_status()  # type: ignore
+    #
+    #     if status is None:
+    #         return False
+    #     elif isinstance(status, bool):
+    #         return status
+    #     else:
+    #         return status.is_ready
 
     async def transmogrify(self) -> Mapping[str, Any]:
 
-        if await self.is_ready():
-            if self._result is None:
-                raise Exception("No result value, this is a bug.")
-            return self._result
+        # if await self.is_ready():
+        #     if self._result is None:
+        #         raise Exception("No result value, this is a bug.")
+        #     return self._result
 
         await self.run_async()
         self._result = self._last_item.current_state  # type: ignore

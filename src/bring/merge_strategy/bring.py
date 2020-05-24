@@ -5,7 +5,6 @@ from typing import Any, Mapping
 
 from anyio import aopen
 from bring.merge_strategy import LocalFolder, LocalFolderItem, MergeStrategy
-from deepdiff import DeepHash
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 
@@ -23,8 +22,12 @@ class BringMergeStrategy(MergeStrategy):
     def pkg_metadata_hash(self) -> str:
 
         if "_pkg_hash" not in self._config.keys():
-            pkg_hash = DeepHash(self.pkg_metadata)
-            self._config["_pkg_hash"] = pkg_hash[self.pkg_metadata]
+            # if "hash" in self.pkg_metadata.keys():
+            _pkg_hash = self.pkg_metadata["hash"]
+            # else:
+            #     pkg_hash = DeepHash(self.pkg_metadata)
+            #     _pkg_hash = pkg_hash[self.pkg_metadata]
+            self._config["_pkg_hash"] = _pkg_hash
 
         return self.get_config("_pkg_hash")
 

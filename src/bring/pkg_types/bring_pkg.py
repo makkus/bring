@@ -70,7 +70,7 @@ class BringPkgResolver(SimplePkgType):
 
             ctx = await self._bring.get_index(pkg_index)
             if ctx is None:
-                ctx_names = self._bring.index_names
+                ctx_names = self._bring.index_ids
                 raise FrklException(
                     msg=f"Can't retrieve child pkg '{pkg_name}'.",
                     reason=f"Requested index '{pkg_index}' not among available indexes: {', '.join(ctx_names)}",

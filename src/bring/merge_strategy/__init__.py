@@ -15,11 +15,32 @@ from bring.defaults import (
     BRING_METADATA_FOLDER_NAME,
 )
 from frtls.args.arg import DerivedArg
+from frtls.cli.vars import DictType
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.types.typistry import Typistry
 from frtls.types.utils import is_instance_or_subclass
+
+
+def explode_merge_strategy(
+    strategy: Optional[Union[str, MutableMapping[str, Any]]] = None,
+    default_move_method: str = "copy",
+):
+
+    if not strategy:
+        strategy = {"type": "default", "config": {"move_method": default_move_method}}
+
+    if isinstance(strategy, str):
+        strategy = {"type": strategy, "config": {"move_method": default_move_method}}
+
+    if "config" not in strategy.keys():
+        strategy["config"] = {}
+
+    if "move_method" not in strategy["config"].keys():
+        strategy["config"]["move_method"] = default_move_method
+
+    return strategy
 
 
 class LocalFolder(object):
@@ -533,6 +554,7 @@ class FolderMerge(object):
     ):
 
         self._typistry = typistry
+
         if merge_strategy is None:
             merge_strategy = "default"
 
@@ -548,9 +570,8 @@ class FolderMerge(object):
         self._target: LocalFolder = target
 
         if isinstance(merge_strategy, str):
-            merge_strategy = {"type": merge_strategy, "config": {}}
+            merge_strategy = explode_merge_strategy(merge_strategy)
         if isinstance(merge_strategy, collections.Mapping):
-
             ms_type = merge_strategy.get("type", "default")
             _ms_config = merge_strategy.get("config", None)
             if _ms_config is None:
@@ -585,16 +606,33 @@ class FolderMerge(object):
     async def merge_folders(self, *sources: Union[str, Path]) -> None:
 
         self._target.ensure_exists()
-
         await self.merge_strategy.merge(self._target, *sources)
+
+
+class MergeStrategyClickType(DictType):
+
+    name = "merge_strategy_type"
+
+    def __init__(self):
+
+        super().__init__()
+
+    def convert(self, value, param, ctx):
+
+        if isinstance(value, str) and "=" in value:
+            value = super().convert(value, param, ctx)
+
+        result = explode_merge_strategy(value)
+
+        return result
 
 
 class MergeStrategyArgType(DerivedArg):
     def _pre_check_value(self, value: Any) -> Any:
 
         if isinstance(value, str):
-            result = {"type": value}
+            value = {"type": value}
         else:
-            result = value
+            value.setdefault("type", "default")
 
-        return result
+        return value

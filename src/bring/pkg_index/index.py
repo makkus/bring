@@ -76,7 +76,7 @@ class BringIndexTing(InheriTing, SimpleTing):
             "id": "string",
             "uri": "string",
             "info": "dict?",
-            # "defaults": "dict?",
+            "defaults": "dict?",
             "labels": "dict?",
             "tags": "list?",
         }
@@ -111,8 +111,11 @@ class BringIndexTing(InheriTing, SimpleTing):
         if "uri" in value_names:
             result["uri"] = uri
 
-        # if "defaults" in value_names:
-        #     result["defaults"] = requirements.get("defaults", {})
+        if "defaults" in value_names:
+            defaults = requirements.get("defaults", {})
+            if defaults is None:
+                defaults = {}
+            result["defaults"] = defaults
 
         if "info" in value_names:
             result["info"] = requirements.get("info", {})
@@ -131,6 +134,10 @@ class BringIndexTing(InheriTing, SimpleTing):
             result["pkgs"] = await self._get_pkgs()
 
         return result
+
+    async def get_index_defaults(self):
+
+        return await self.get_value("defaults")
 
     async def get_info(self) -> Dict[str, Any]:
 

@@ -67,11 +67,11 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 target = LocalFolderTarget(bring=self._bring, path=path)
 
                 tf = target.target_folder
-                print(tf)
+                print(await tf.get_managed_files())
 
             return command
 
-        elif name == "index":
+        elif name in ["index", "idx"]:
 
             @click.command()
             @click.argument("index", nargs=1, required=False)
@@ -121,8 +121,8 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, package, update, full, args):
 
-                await self._bring.add_indexes("kubernetes", "binaries")
-                pkg = await self._bring.get_pkg(name=package)
+                # await self._bring.add_indexes("kubernetes", "binaries")
+                pkg = await self._bring.get_pkg(name=package, raise_exception=True)
 
                 pkg_info: PkgInfoDisplay = PkgInfoDisplay(
                     pkg=pkg, update=update, display_full=full, display_args=args

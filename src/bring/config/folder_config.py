@@ -4,6 +4,7 @@ from typing import Any, Dict, Mapping, MutableMapping, Optional, Union
 import anyio
 from anyio import create_task_group
 from bring.config import ConfigTing
+from bring.defaults import BRING_DEFAULT_CONFIG
 from tings.makers.file import TextFileTingMaker
 from tings.ting import SimpleTing, TingMeta
 from tings.ting.tings import SubscripTings
@@ -90,6 +91,13 @@ class FolderConfigProfilesTing(SimpleTing):
             else:
                 if update:
                     await self._dynamic_config_maker.sync()
+
+            default_config_ting_name = f"{self.full_name}.configs.default"
+            if self._tingistry_obj.get_ting(default_config_ting_name) is None:
+                dt = self._tingistry_obj.create_ting(
+                    "config_ting", f"{self.full_name}.configs.default"
+                )
+                dt.set_input(ting_dict=BRING_DEFAULT_CONFIG)
 
             profiles: MutableMapping[str, ConfigTing] = {
                 k.split(".")[-1]: v  # type: ignore
