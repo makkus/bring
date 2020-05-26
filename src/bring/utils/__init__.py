@@ -84,6 +84,32 @@ def replace_var_aliases(
     return vars_final
 
 
+def find_pkg_aliases(
+    _pkg_metadata: Mapping[str, Any], **orig_vars: Any
+) -> Mapping[str, Optional[str]]:
+
+    aliases = _pkg_metadata.get("aliases", {})
+    version_vars = _pkg_metadata["pkg_vars"]["version_vars"]
+    mogrify_vars = _pkg_metadata["pkg_vars"]["mogrify_vars"]
+
+    alias_map = {}
+
+    for k, v in orig_vars.items():
+        if k in version_vars.keys():
+            alias_map[k] = v
+        elif k in mogrify_vars.keys():
+            alias_map[k] = v
+
+    vars_final: Dict[str, Any] = {}
+    for k, v in alias_map.items():
+        if not isinstance(v, str):
+            vars_final[k] = None
+        else:
+            vars_final[k] = aliases.get(k, {}).get(v, v)
+
+    return vars_final
+
+
 def find_versions(
     vars: Mapping[str, str], metadata: Mapping[str, Any], var_aliases_replaced=False
 ) -> typing.Sequence[Tuple[Mapping[str, Any], int]]:

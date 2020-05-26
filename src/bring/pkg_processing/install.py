@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterable, Mapping, Union
 from bring.defaults import BRING_RESULTS_FOLDER
 from bring.pkg_processing import PkgProcessor
 from frtls.args.arg import Arg
+from frtls.files import ensure_folder
 
 
 class InstallPkgProcessor(PkgProcessor):
@@ -13,11 +14,11 @@ class InstallPkgProcessor(PkgProcessor):
 
     async def get_pkg_name(self) -> str:
 
-        return self.current_vars.get("pkg_name", None)
+        return self._args_holder.merged_vars.get("pkg_name", None)
 
     async def get_pkg_index(self) -> str:
 
-        return self.current_vars.get("pkg_index", None)
+        return self._args_holder.merged_vars.get("pkg_index", None)
 
     async def extra_requires(self) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
         """Overwrite this method if you inherit from this class, not '_requires' directly."""
@@ -49,6 +50,7 @@ class InstallPkgProcessor(PkgProcessor):
 
         target = vars.get("target", None)
         if not target:
+            ensure_folder(BRING_RESULTS_FOLDER)
             target = tempfile.mkdtemp(dir=BRING_RESULTS_FOLDER)
 
         mogrifiers = [

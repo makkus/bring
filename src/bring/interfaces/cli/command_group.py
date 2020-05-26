@@ -190,11 +190,11 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = BringInstallGroup(bring=self.bring, name="install")
             command.short_help = "install one or a list of packages"
-        elif name == "process":
-            from bring.interfaces.cli.process import BringProcessGroup
-
-            command = BringProcessGroup(bring=self.bring, name="process")
-            command.short_help = "process on or a list of packages"
+        # elif name == "process":
+        #     from bring.interfaces.cli.process import BringProcessGroup
+        #
+        #     command = BringProcessGroup(bring=self.bring, name="process")
+        #     command.short_help = "process on or a list of packages"
         elif name == "plugin":
             from bring.interfaces.cli.plugin import BringPluginGroup
 

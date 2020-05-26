@@ -92,7 +92,25 @@ BRING_CORE_CONFIG = {
 
 BRING_DEFAULT_CONFIG = {
     "info": {"slug": "default config for bring"},
-    "indexes": ["binaries", "scripts", "collections", "kubernetes"],
+    "indexes": [
+        {
+            "id": "binaries",
+            "defaults": {
+                "target": "~/.local/bring",
+                "_system_info": True,
+                "version": "latest",
+            },
+        },
+        {
+            "id": "scripts",
+            "defaults": {
+                "target": "~/.local/bring",
+                "_system_info": True,
+                "version": "latest",
+            },
+        },
+        "collections",
+    ],
 }
 
 BRING_DEFAULT_CONFIG_PROFILE = {

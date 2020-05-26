@@ -3,6 +3,7 @@ import copy
 import logging
 import uuid
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -17,7 +18,8 @@ from typing import (
 from bring.mogrify import Transmogrificator
 from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
-from frtls.dicts import get_seeded_dict
+from frtls.async_helpers import wrap_async_task
+from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
 
 
@@ -38,6 +40,461 @@ log = logging.getLogger("bring")
 #
 
 
+class VarSetType(Enum):
+
+    CONSTANTS = 1
+    DEFAULTS = 2
+    INPUT = 3
+
+
+class VarSet(object):
+    def __init__(
+        self,
+        _name: Optional[str] = None,
+        _type: VarSetType = VarSetType.DEFAULTS,
+        _metadata: Optional[Mapping[str, Any]] = None,
+        **vars: Any,
+    ):
+
+        if _name is None:
+            _name = str(uuid.uuid4())
+
+        self._name: str = _name
+        self._type: VarSetType = _type
+        if _metadata is None:
+            self._metadata: MutableMapping[str, Any] = {}
+        else:
+            self._metadata = dict(_metadata)
+
+        self._metadata["origin"] = _name
+        self._vars: Mapping[str, Any] = vars
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def type(self) -> VarSetType:
+        return self._type
+
+    @property
+    def metadata(self) -> Mapping[str, Any]:
+        return self._metadata
+
+    @property
+    def vars(self) -> Mapping[str, Any]:
+        return self._vars
+
+    @property
+    def var_names(self) -> Iterable[str]:
+        return self._vars.keys()
+
+    def __repr__(self):
+
+        return f"[VarSet: name={self.name} vars={self.vars}]"
+
+
+class VarHolder(object):
+    def __init__(self):
+
+        self._var_sets: Dict[str, VarSet] = {}
+
+        self._aliases: Dict[Any, Any] = {}
+
+        self._merged_per_type: Optional[
+            Mapping[VarSetType, MutableMapping[str, Any]]
+        ] = None
+
+        self._var_sets_per_type: Optional[
+            Mapping[VarSetType, MutableMapping[str, VarSet]]
+        ] = None
+
+        self._merged: Optional[Mapping[str, Any]] = None
+
+    def invalidate(self) -> None:
+
+        self._merged = None
+        self._var_sets_per_type = None
+        self._merged_per_type = None
+
+    def add_var_set(self, var_set: VarSet, replace_existing: bool = False):
+
+        if var_set.name in self._var_sets.keys():
+            if not replace_existing:
+                raise FrklException(
+                    msg=f"Can't add var set '{var_set.name}'.",
+                    reason="Var set with that name already exists.",
+                )
+
+        self._var_sets[var_set.name] = var_set
+        self.invalidate()
+
+    @property
+    def merged_per_type(self):
+
+        if self._merged_per_type is not None:
+            return self._merged_per_type
+
+        self._merged_per_type = {
+            VarSetType.CONSTANTS: {},
+            VarSetType.DEFAULTS: {},
+            VarSetType.INPUT: {},
+        }
+
+        for var_set in self._var_sets.values():
+            self._merged_per_type[var_set.type].update(var_set.vars)
+        return self._merged_per_type
+
+    @property
+    def var_sets_per_type(self) -> Mapping[VarSetType, MutableMapping[str, VarSet]]:
+
+        if self._var_sets_per_type is not None:
+            return self._var_sets_per_type
+
+        self._var_sets_per_type = {
+            VarSetType.CONSTANTS: {},
+            VarSetType.DEFAULTS: {},
+            VarSetType.INPUT: {},
+        }
+        for var_set in self._var_sets.values():
+            for k in var_set.var_names:
+                self._var_sets_per_type[var_set.type][k] = var_set
+        return self._var_sets_per_type
+
+    def get_var_metadata(
+        self, var_name: str, var_set_type: Optional[VarSetType] = None
+    ) -> Optional[Mapping[str, Any]]:
+
+        metadata = {}
+        if var_set_type is not None:
+            var_set = self.var_sets_per_type[var_set_type].get(var_name, None)
+            if var_set is None:
+                metadata["is_set"] = False
+            else:
+                metadata.update(var_set.metadata)
+        elif var_name in self.var_sets_per_type[VarSetType.CONSTANTS].keys():
+            md = self.var_sets_per_type[VarSetType.CONSTANTS][var_name].metadata
+            metadata.update(md)
+        elif var_name in self.var_sets_per_type[VarSetType.INPUT].keys():
+            md = self.var_sets_per_type[VarSetType.INPUT][var_name].metadata
+            metadata.update(md)
+        elif var_name in self.var_sets_per_type[VarSetType.DEFAULTS].keys():
+            md = self.var_sets_per_type[VarSetType.DEFAULTS][var_name].metadata
+            metadata.update(md)
+        else:
+            metadata["is_set"] = False
+
+        metadata.setdefault("is_set", True)
+        return metadata
+
+    @property
+    def merged_vars(self) -> Mapping[str, Any]:
+
+        if self._merged is None:
+            self._merged = get_seeded_dict(
+                self.merged_per_type[VarSetType.DEFAULTS],
+                self.merged_per_type[VarSetType.INPUT],
+                self.merged_per_type[VarSetType.CONSTANTS],
+            )
+        return self._merged
+
+    def create_args(
+        self, arg_hive: ArgHive, **arg_descs: Union[Mapping[str, Any], Arg, str]
+    ) -> Mapping[VarSetType, RecordArg]:
+
+        constant_args = {}
+        input_args = {}
+
+        for arg_name, arg_desc in arg_descs.items():
+            if arg_name in self.merged_per_type[VarSetType.CONSTANTS].keys():
+                constant_args[arg_name] = arg_desc
+            else:
+                input_args[arg_name] = arg_desc
+
+        result = {}
+        result[VarSetType.CONSTANTS] = arg_hive.create_record_arg(childs=constant_args)
+        result[VarSetType.INPUT] = arg_hive.create_record_arg(childs=input_args)
+
+        return result
+
+
+class ArgsHolder(object):
+    def __init__(
+        self,
+        arg_hive: ArgHive,
+        vars_holder: Optional[VarHolder] = None,
+        processed_arg_names: Optional[Iterable[str]] = None,
+        args_descs: Optional[Mapping[str, Union[Mapping[str, Any], Arg, str]]] = None,
+    ):
+
+        self._arg_hive = arg_hive
+        if vars_holder is None:
+            vars_holder = VarHolder()
+        self._vars_holder: VarHolder = vars_holder
+
+        self._args: Optional[RecordArg] = None
+        self._constants_args: Optional[RecordArg] = None
+        self._input_args: Optional[RecordArg] = None
+        self._processed_args: Optional[RecordArg] = None
+
+        self._processed_arg_names: Iterable[str] = []
+        self._args_descs: Mapping[str, Union[Mapping[str, Any], Arg, str]] = {}
+
+        self._preprocessed_vars: Optional[Mapping[str, Any]] = None
+
+        self._constant_vars_validated: Optional[Mapping[str, Mapping[str, Any]]] = None
+        self._input_vars_validated: Optional[Mapping[str, Mapping[str, Any]]] = None
+        self._processed_vars_validated: Optional[Mapping[str, Mapping[str, Any]]] = None
+        self._vars_validated: Optional[Mapping[str, Mapping[str, Any]]] = None
+
+        self._value_aliases: Dict[str, Mapping[Any, Any]] = {}
+
+        self._vars: Optional[Mapping[str, Any]] = None
+        if args_descs is None:
+            args_descs = {}
+        self.set_args_descs(_processed_arg_names=processed_arg_names, **args_descs)
+
+    def invalidate(self, invalidate_args: bool = False):
+
+        self._preprocessed_vars = None
+        self._constant_vars_validated = None
+        self._input_vars_validated = None
+        self._processed_vars_validated = None
+        self._vars_validated = None
+        self._vars = None
+
+        if invalidate_args:
+            self._processed_arg_names = []
+            self._args = None
+            self._constants_args = None
+            self._input_args = None
+            self._processed_args = None
+
+    def update_value_aliases(
+        self, new_aliases: Mapping[str, Mapping[Any, Any]]
+    ) -> None:
+
+        dict_merge(self._value_aliases, new_aliases, copy_dct=False)
+
+    def clear_value_aliases(self) -> None:
+
+        self._value_aliases.clear()
+
+    def add_var_set(self, var_set: VarSet, replace_existing: bool = False):
+
+        self.vars_holder.add_var_set(var_set, replace_existing=replace_existing)
+
+        invalidate_args = var_set.type == VarSetType.CONSTANTS
+        self.invalidate(invalidate_args=invalidate_args)
+
+    @property
+    def vars_holder(self):
+        return self._vars_holder
+
+    @property
+    def args_descs(self) -> Mapping[str, Union[Mapping[str, Any], Arg, str]]:
+
+        return self._args_descs
+
+    def set_args_descs(
+        self,
+        _processed_arg_names: Optional[Iterable[str]] = None,
+        **args_descs: Mapping[str, Union[Mapping[str, Any], Arg, str]],
+    ) -> None:
+
+        self.invalidate(invalidate_args=True)
+        self._args_descs = args_descs
+        if _processed_arg_names is None:
+            _processed_arg_names = []
+        self._processed_arg_names = _processed_arg_names
+
+    @property
+    def constants_args(self) -> RecordArg:
+
+        if self._constants_args is None:
+            self._calculate_args()
+        return self._constants_args  # type: ignore
+
+    @property
+    def input_args(self) -> RecordArg:
+
+        if self._input_args is None:
+            self._calculate_args()
+        return self._input_args  # type: ignore
+
+    @property
+    def processed_args(self) -> RecordArg:
+
+        if self._processed_args is None:
+            self._calculate_args()
+        return self._processed_args  # type: ignore
+
+    @property
+    def args(self):
+
+        if self._args is None:
+            self._args = self._arg_hive.create_record_arg(childs=self._args_descs)
+        return self._args
+
+    def _calculate_args(self):
+
+        processed: Mapping[str, Arg] = {}
+        other: Mapping[str, Arg] = {}
+        for arg_name, arg in self.args.childs.items():
+            if arg_name in self._processed_arg_names:
+                processed[arg_name] = arg
+            else:
+                other[arg_name] = arg
+        args = self.vars_holder.create_args(arg_hive=self._arg_hive, **other)
+        self._constants_args = args[VarSetType.CONSTANTS]
+        self._input_args = args[VarSetType.INPUT]
+        self._processed_args = self._arg_hive.create_record_arg(childs=processed)
+
+    @property
+    def merged_vars(self) -> Mapping[str, Any]:
+
+        return self._vars_holder.merged_vars
+
+    @property
+    def preprocessed_vars(self) -> Mapping[str, Any]:
+
+        if self._preprocessed_vars is None:
+            self._preprocessed_vars = self._preprocess(**self.merged_vars)
+        return self._preprocessed_vars
+
+    def _preprocess(self, **vars: Any) -> Mapping[str, Any]:
+
+        return vars
+
+    def _get_value_alias(self, arg_name: str, value: Any) -> Optional[Any]:
+
+        aliases = self._value_aliases.get(arg_name, None)
+        if not aliases:
+            return None
+
+        return aliases.get(value, None)
+
+    @property
+    def constant_vars_validated(self) -> Mapping[str, Mapping[str, Any]]:
+
+        if self._constant_vars_validated is None:
+            validated = {}
+            for arg_name, arg in self.constants_args.childs.items():
+                value = self.preprocessed_vars[arg_name]
+                v = arg.validate(value, raise_exception=True)
+
+                validated[arg_name] = {
+                    "value": value,
+                    "metadata": self._vars_holder.get_var_metadata(
+                        arg_name, var_set_type=VarSetType.CONSTANTS
+                    ),
+                }
+
+                alias_for = self._get_value_alias(arg_name, v)
+                if alias_for is None:
+                    validated[arg_name]["validated"] = v
+                else:
+                    validated[arg_name]["validated"] = alias_for
+                    validated[arg_name]["metadata"]["from_alias"] = v
+
+            self._constant_vars_validated = validated
+        return self._constant_vars_validated
+
+    @property
+    def input_vars_validated(self) -> Mapping[str, Mapping[str, Any]]:
+
+        if self._input_vars_validated is None:
+            validated = {}
+            for arg_name, arg in self.input_args.childs.items():
+                value = self.preprocessed_vars.get(arg_name, None)
+                v = arg.validate(value, raise_exception=True)
+                validated[arg_name] = {
+                    "value": value,
+                    "metadata": self._vars_holder.get_var_metadata(arg_name),
+                }
+
+                alias_for = self._get_value_alias(arg_name, v)
+                if alias_for is None:
+                    validated[arg_name]["validated"] = v
+                else:
+                    validated[arg_name]["validated"] = alias_for
+                    validated[arg_name]["metadata"]["from_alias"] = v
+
+            self._input_vars_validated = validated
+
+        return self._input_vars_validated
+
+    @property
+    def processed_vars_validated(self) -> Mapping[str, Mapping[str, Any]]:
+
+        if self._processed_vars_validated is None:
+            validated = {}
+            for arg_name, arg in self.processed_args.childs.items():
+                value = self.preprocessed_vars[arg_name]
+                v = arg.validate(value, raise_exception=True)
+                validated[arg_name] = {"value": value, "metadata": {}}
+
+                alias_for = self._get_value_alias(arg_name, v)
+                if alias_for is None:
+                    validated[arg_name]["validated"] = v
+                else:
+                    validated[arg_name]["validated"] = alias_for
+                    validated[arg_name]["metadata"]["from_alias"] = v
+            self._processed_vars_validated = validated
+        return self._processed_vars_validated
+
+    @property
+    def vars_validated(self) -> Mapping[str, Mapping[str, Any]]:
+
+        if self._vars_validated is None:
+            self._vars_validated = get_seeded_dict(
+                self.input_vars_validated,
+                self.processed_vars_validated,
+                self.constant_vars_validated,
+            )
+        return self._vars_validated
+
+    def explain(self) -> Dict[str, Any]:
+
+        # print(self._vars_validated)
+        result: Dict[str, Any] = {}
+        for arg_name, data in sorted(self.vars_validated.items()):
+
+            result[arg_name] = {}
+
+            metadata = data["metadata"]
+            is_set = metadata["is_set"]
+
+            if not is_set:
+                result[arg_name]["is_set"] = is_set
+                continue
+
+            result[arg_name]["value"] = data["validated"]
+
+            origin = metadata["origin"]
+            result[arg_name]["origin"] = origin
+
+            alias = metadata.get("from_alias", None)
+            if alias is not None:
+                result[arg_name]["from_alias"] = alias
+
+            if data["validated"] != data["value"] and data["value"] != metadata.get(
+                "from_alias", None
+            ):
+                result[arg_name]["orig_value"] = data["value"]
+
+        return result
+
+    @property
+    def vars(self) -> Mapping[str, Any]:
+
+        if self._vars is None:
+            self._vars = {}
+            for k, v in self.vars_validated.items():
+                self._vars[k] = v["validated"]
+        return self._vars
+
+
 class BringProcessor(metaclass=ABCMeta):
 
     _plugin_type = "instance"
@@ -47,41 +504,30 @@ class BringProcessor(metaclass=ABCMeta):
         self._bring: "Bring" = bring
 
         self._arg_hive: ArgHive = self._bring._tingistry_obj.arg_hive
+        self._args_holder: ArgsHolder = ArgsHolder(arg_hive=self._arg_hive)
 
+        self._input_processed: Optional[Mapping[str, Any]] = None
         self._result: Optional[Any] = None
 
-        # if constants is None:
-        #     constants = {}
-        self._constants_list: Dict[str, Mapping[str, Any]] = {}
-        self._constants: Dict[str, Any] = {}
-        self._constants_args: Optional[RecordArg] = None
+        bring_defaults = wrap_async_task(self._bring.get_defaults)
+        self.add_defaults(
+            _defaults_name="bring_defaults",
+            _defaults_metadata={"bring": self._bring},
+            **bring_defaults,
+        )
 
-        self._user_input: MutableMapping[str, Any] = {}
-        self._user_input_args: Optional[RecordArg] = None
+    @property
+    def args_holder(self) -> ArgsHolder:
+        return self._args_holder
 
-        self._all_args: Optional[RecordArg] = None
+    def invalidate(self) -> None:
 
-        self._current_vars: Optional[MutableMapping[str, Any]] = None
-
-        self._constants_validated: Optional[Mapping[str, Any]] = None
-        self._user_input_validated: Optional[Mapping[str, Any]] = None
-
-        self._input_validated: Optional[Mapping[str, Any]] = None
-        self._input_processed: Optional[Mapping[str, Any]] = None
-
-    def invalidate(self, invalidate_args: bool = True) -> None:
-
-        self._current_vars = None
         self._input_processed = None
 
-        self._user_input_validated = None
-        self._constants_validated = None
-        self._input_validated = None
+    def add_var_set(self, var_set: VarSet, replace_existing: bool = False) -> None:
 
-        if invalidate_args:
-            self._all_args = None
-            self._user_input_args = None
-            self._constants_args = None
+        self._args_holder.add_var_set(var_set, replace_existing=replace_existing)
+        self.invalidate()
 
     def add_constants(
         self,
@@ -90,31 +536,29 @@ class BringProcessor(metaclass=ABCMeta):
         **constants: Any,
     ) -> None:
 
-        if self._result is not None:
-            raise FrklException(
-                msg="Can't set constants for pkg processor.",
-                reason="Processor already ran.",
-            )
+        var_set = VarSet(
+            _name=_constants_name,
+            _type=VarSetType.CONSTANTS,
+            _metadata=_constants_metadata,
+            **constants,
+        )
+        self.add_var_set(var_set)
 
-        # if not constants:
-        #     return
+    def add_defaults(
+        self,
+        _defaults_name: Optional[str] = None,
+        _defaults_metadata: Optional[Mapping[str, Any]] = None,
+        _replace_existing: bool = False,
+        **defaults: Any,
+    ) -> None:
 
-        if _constants_name is None:
-            _constants_name = str(uuid.uuid4())
-
-        if _constants_name in self._constants.keys():
-            raise FrklException(
-                msg=f"Can't add constants set '{_constants_name}'",
-                reason="Set with that name already exists.",
-            )
-        if _constants_metadata is None:
-            _constants_metadata = {}
-        self._constants_list[_constants_name] = {
-            "metadata": _constants_metadata,
-            "value": constants,
-        }
-        self._constants.update(constants)
-        self.invalidate()
+        var_set = VarSet(
+            _name=_defaults_name,
+            _type=VarSetType.DEFAULTS,
+            _metadata=_defaults_metadata,
+            **defaults,
+        )
+        self.add_var_set(var_set, replace_existing=_replace_existing)
 
     def set_user_input(self, **input_vars: Any):
 
@@ -129,136 +573,29 @@ class BringProcessor(metaclass=ABCMeta):
         if not input_vars:
             return
 
-        self._user_input = input_vars
-        self.invalidate(invalidate_args=False)
-
-    @property
-    def current_vars(self) -> Mapping[str, Any]:
-
-        if self._current_vars is not None:
-            return self._current_vars
-
-        self._current_vars = {}
-        self._current_vars.update(self._user_input)
-        self._current_vars.update(self._constants)
-
-        return self._current_vars
-
-    # def get_current_input(self, validate: bool = False) -> Mapping[str, Any]:
-    #
-    #     if validate:
-    #         if self._input_validated is None:
-    #             wrap_async_task(self.get_current_input_async, validate=True)
-    #         return self._input_validated  # type: ignore
-    #     else:
-    #         if self._input_processed is None:
-    #             wrap_async_task(self.get_current_input_async, validate=False)
-    #         return self._input_processed  # type: ignore
+        input_var_set = VarSet(_name="input", _type=VarSetType.INPUT, **input_vars)
+        self.add_var_set(input_var_set)
 
     async def get_processed_input_async(self) -> Mapping[str, Any]:
 
         if self._input_processed is None:
-            input_values_preprocessed = await self._preprocess_input_values()
-            self._input_processed = await self.preprocess_input(
-                input_values_preprocessed
-            )
+            all_args = await self.get_all_required_args()
+            self._args_holder.set_args_descs(**all_args)
 
-        if self._user_input_validated is None:
-            args = await self.get_user_input_args()
-            self._user_input_validated = args.validate(self._input_processed)
-
-            c_args = await self.get_constants_args()
-            self._constants_validated = c_args.validate(self._input_processed)
-
-            self._input_validated = get_seeded_dict(
-                self._user_input_validated,
-                self._constants_validated,
-                merge_strategy="update",
-            )
-            self._input_processed = await self.postprocess_input(
-                self._input_validated  # type: ignore
-            )
+            self._input_processed = self._args_holder.vars
 
         return self._input_processed  # type: ignore
 
-    async def get_args(self) -> RecordArg:
-
-        if self._all_args is not None:
-            return self._all_args
-
-        reqs = await self.get_all_required_args()
-        self._all_args = self._arg_hive.create_record_arg(reqs)
-        return self._all_args
-
-    async def get_constants_args(self) -> RecordArg:
-
-        if self._constants_args is not None:
-            return self._constants_args
-
-        reqs = await self.get_all_required_args()
-        reqs_filtered = {}
-
-        for arg_name, arg in reqs.items():
-            if arg_name not in self._constants.keys():
-                continue
-            reqs_filtered[arg_name] = arg
-        self._constants_args = self._arg_hive.create_record_arg(reqs_filtered)
-        return self._constants_args
-
     async def get_user_input_args(self) -> RecordArg:
-
-        if self._user_input_args is not None:
-            return self._user_input_args
-
-        reqs = await self.get_all_required_args()
-        reqs_filtered = {}
-
-        for arg_name, arg in reqs.items():
-            if arg_name in self._constants.keys():
-                continue
-            reqs_filtered[arg_name] = arg
-        self._user_input_args = self._arg_hive.create_record_arg(reqs_filtered)
-        return self._user_input_args
+        await self.get_processed_input_async()
+        result = self._args_holder.input_args
+        return result
 
     @abstractmethod
     async def get_all_required_args(
-        self
+        self,
     ) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
         pass
-
-    # @abstractmethod
-    # def requires(self) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
-    #     pass
-
-    async def _preprocess_input_values(self) -> Mapping[str, Any]:
-
-        result = {}
-        constants_args = await self.get_constants_args()
-        for arg_name, arg in constants_args.childs.items():
-            old_value = self._constants[arg_name]
-            new_value = await self.preprocess_value(arg_name, old_value, arg)
-            result[arg_name] = new_value
-
-        input_args = await self.get_user_input_args()
-        for arg_name, arg in input_args.childs.items():
-            old_value = self._user_input.get(arg_name, None)
-            new_value = await self.preprocess_value(arg_name, old_value, arg)
-            result[arg_name] = new_value
-
-        return result
-
-    async def preprocess_value(self, key: str, value: Any, arg: Arg):
-
-        return value
-
-    async def preprocess_input(
-        self, input_vars: Mapping[str, Any]
-    ) -> Mapping[str, Any]:
-
-        return input_vars
-
-    async def postprocess_input(self, input_vars: Mapping[str, Any]):
-        return input_vars
 
     @abstractmethod
     async def process(self) -> Mapping[str, Any]:
@@ -302,7 +639,7 @@ class PkgProcessor(BringProcessor):
         return result
 
     async def get_all_required_args(
-        self
+        self,
     ) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
 
         pkg = await self.get_pkg()
@@ -320,11 +657,13 @@ class PkgProcessor(BringProcessor):
                     reason=f"Duplicate arg name: {k}",
                 )
             result[k] = v
+
         return result
 
     async def get_pkg(self) -> "PkgTing":
 
         if self._pkg is None:
+
             pkg_name = await self.get_pkg_name()
             if pkg_name is None:
                 raise FrklException(
@@ -333,9 +672,34 @@ class PkgProcessor(BringProcessor):
                 )
 
             pkg_index = await self.get_pkg_index()
-            pkg = await self._bring.get_pkg(pkg_name, pkg_index, raise_exception=True)
-            # index_defaults = await pkg.bring_index.get_index_defaults()
-            # self.add_constants(_constants_name="index defaults", **index_defaults)
+            pkg: PkgTing = await self._bring.get_pkg(
+                pkg_name, pkg_index, raise_exception=True
+            )  # type: ignore
+
+            vals: Mapping[str, Any] = await pkg.get_values(
+                "aliases", "args", resolve=True
+            )  # type: ignore
+
+            args: RecordArg = vals["args"]
+            pkg_defaults = args.get_defaults()
+
+            aliases: Mapping[str, Mapping[Any, Any]] = vals["aliases"]
+
+            self.add_defaults(
+                _defaults_name="pkg_defaults",
+                _defaults_metadata={"pkg": pkg},
+                _replace_existing=True,
+                **pkg_defaults,
+            )
+            index_defaults = await pkg.bring_index.get_index_defaults()
+            self.add_defaults(
+                _defaults_name="index_defaults",
+                _defaults_metadata={"index": pkg.bring_index},
+                _replace_existing=True,
+                **index_defaults,
+            )
+            self.args_holder.clear_value_aliases()
+            self._args_holder.update_value_aliases(aliases)
             self._pkg = pkg
 
         return self._pkg  # type: ignore
@@ -344,7 +708,8 @@ class PkgProcessor(BringProcessor):
 
         self._transmogrificator = None
         self._pkg = None
-        super().invalidate(invalidate_args=invalidate_args)
+
+        super().invalidate()
 
     async def get_transmogrificator(self) -> Transmogrificator:
 

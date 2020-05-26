@@ -89,7 +89,7 @@ class PkgTing(SimpleTing):
     async def get_aliases(self):
 
         metadata = await self.get_metadata()
-        return self._get_aliases(metadata)
+        return await self._get_aliases(metadata)
 
     async def get_pkg_args(self) -> RecordArg:
 
@@ -290,12 +290,17 @@ class PkgTing(SimpleTing):
         hashes = DeepHash(id_dict)
         return hashes[id_dict]
 
-    async def calculate_full_vars(self, **vars: Any) -> MutableMapping[str, Any]:
+    async def get_defaults(self) -> Mapping[str, Any]:
+
+        args = await self.get_value("args")
+        return args.get_defaults()
+
+    async def merge_with_defaults(self, **vars: Any) -> MutableMapping[str, Any]:
 
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "metadata", "args", resolve=True
         )
-        _pkg_metadata: Mapping[str, Any] = vals["metadata"]
+        # _pkg_metadata: Mapping[str, Any] = vals["metadata"]
         args: RecordArg = vals["args"]
 
         pkg_defaults = args.get_defaults()
@@ -307,41 +312,53 @@ class PkgTing(SimpleTing):
             if k in args.arg_names:
                 filtered[k] = v
 
+        return filtered
+
+    async def calculate_full_vars(self, **vars: Any) -> MutableMapping[str, Any]:
+
+        filtered = await self.merge_with_defaults(**vars)
+
+        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
+            "metadata", "args", resolve=True
+        )
+        _pkg_metadata: Mapping[str, Any] = vals["metadata"]
+        args: RecordArg = vals["args"]
+
         _vars_replaced = replace_var_aliases(vars=filtered, metadata=_pkg_metadata)
 
         validated = args.validate(_vars_replaced, raise_exception=True)
         return validated
 
-    async def explain_full_vars(self, **vars: Any) -> Mapping[str, Mapping[str, Any]]:
-
-        args: RecordArg = await self.get_value("args")  # type: ignore
-
-        pkg_defaults = args.get_defaults()
-
-        index_vars: Dict[
-            str, Any
-        ] = await self.bring_index.get_default_vars()  # type: ignore
-
-        result = {}
-
-        for k, v in vars.items():
-            if k not in args.arg_names:
-                continue
-
-            result[k] = {"value": v, "source": "user"}
-
-        for k, v in index_vars.items():
-
-            if k in result.keys() or k not in args.arg_names:
-                continue
-            result[k] = {"value": v, "source": "index"}
-
-        for k, v in pkg_defaults.items():
-            if k in result.keys():
-                continue
-            result[k] = {"value": v, "source": "pkg"}
-
-        return result
+    # async def explain_full_vars(self, **vars: Any) -> Mapping[str, Mapping[str, Any]]:
+    #
+    #     args: RecordArg = await self.get_value("args")  # type: ignore
+    #
+    #     pkg_defaults = args.get_defaults()
+    #
+    #     index_vars: Dict[
+    #         str, Any
+    #     ] = await self.bring_index.get_default_vars()  # type: ignore
+    #
+    #     result = {}
+    #
+    #     for k, v in vars.items():
+    #         if k not in args.arg_names:
+    #             continue
+    #
+    #         result[k] = {"value": v, "source": "user"}
+    #
+    #     for k, v in index_vars.items():
+    #
+    #         if k in result.keys() or k not in args.arg_names:
+    #             continue
+    #         result[k] = {"value": v, "source": "index"}
+    #
+    #     for k, v in pkg_defaults.items():
+    #         if k in result.keys():
+    #             continue
+    #         result[k] = {"value": v, "source": "pkg"}
+    #
+    #     return result
 
     # def create_processor(self, processor_type: str, target: Union[BringTarget, str]) -> PkgProcessor:
     #
