@@ -43,10 +43,18 @@ async def create_pkg_info_table_string(
 ) -> str:
 
     pkg_vals = await get_values_for_pkgs(pkgs, "info")
+    table = create_info_table_string(info_dicts=pkg_vals, header=header)
+    return table
+
+
+def create_info_table_string(
+    info_dicts: Mapping[PkgTing, Mapping[str, Any]], header: bool = False
+):
+
     data = SortedDict()
-    for pkg in sorted(pkg_vals.keys()):
+    for pkg in sorted(info_dicts.keys()):
         pkg_name = pkg.name
-        p = pkg_vals[pkg]
+        p = info_dicts[pkg]
         if isinstance(p, TingTaskException):
             slug = f"{Fore.RED}{p}{Style.RESET_ALL}"
         else:

@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-from typing import MutableMapping, Optional
+from typing import Optional
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
-from bring.utils.pkgs import create_pkg_info_table_string
+from bring.utils.pkgs import (
+    create_info_table_string,
+    create_pkg_info_table_string,
+    get_values_for_pkgs,
+)
 from frtls.cli.group import FrklBaseCommand
+from frtls.strings import reindent
 
 
 class BringListPkgsGroup(FrklBaseCommand):
@@ -19,10 +23,10 @@ class BringListPkgsGroup(FrklBaseCommand):
         super(BringListPkgsGroup, self).__init__(
             name=name,
             invoke_without_command=True,
-            no_args_is_help=True,
+            no_args_is_help=False,
             chain=False,
             result_callback=None,
-            # callback=self.all_info,
+            callback=self.all_info,
             arg_hive=bring.arg_hive,
             subcommand_metavar="CONTEXT",
             **kwargs,
@@ -64,31 +68,21 @@ class BringListPkgsGroup(FrklBaseCommand):
 
         print()
         # all: Iterable[PkgTing] = await self._tingistry.get_all_pkgs()
-        pkgs: MutableMapping[BringIndexTing, PkgTing] = {}
+        index_ids = self._bring.index_ids
 
-        for pkg in all:
-            pkgs.setdefault(pkg.bring_index, []).append(pkg)
+        pkgs = await self._bring.get_alias_pkg_map()
+        pkgs_info = await get_values_for_pkgs(pkgs.values(), "info")
 
-        all_indexes = self._bring.indexes
-        for c in all_indexes.values():
-            if c not in pkgs.keys():
-                pkgs[c] = []
+        index_info = {}
+        for pkg, info in pkgs_info.items():
+            index_info.setdefault(pkg.bring_index.id, {})[pkg] = info
 
-        default_index = await self._tingistry.config.get_default_index()
-
-        for _index, _pkgs in pkgs.items():
-            if _index.name == default_index:
-                _default_marker = " (default index)"
-            else:
-                _default_marker = ""
-            print(f"index: {_index.name}{_default_marker}")
-            print()
-            if not _pkgs:
-                print("  No packages")
-            else:
-                table_str = await create_pkg_info_table_string(_pkgs, header=False)
-                click.echo(table_str)
-            print()
+        for idx_id in index_ids:
+            click.secho(idx_id, bold=True)
+            click.echo()
+            table = create_info_table_string(index_info[idx_id])
+            click.echo(reindent(table, 2))
+            click.echo()
 
     async def _list_commands(self, ctx):
 
