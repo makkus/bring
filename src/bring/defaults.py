@@ -31,6 +31,12 @@ BRING_RESULTS_FOLDER = os.path.join(BRING_WORKSPACE_FOLDER, "results")
 
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
 BRING_PLUGIN_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "plugins")
+
+BRING_GLOBAL_METADATA_FOLDER = os.path.join(
+    BRING_APP_DIRS.user_data_dir, "managed_files"
+)
+BRING_BACKUP_FOLDER = os.path.join(BRING_APP_DIRS.user_data_dir, "backup")
+
 DEFAULT_CONTEXT_NAME = "binaries"
 
 BRINGISTRY_PRELOAD_MODULES = [

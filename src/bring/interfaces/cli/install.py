@@ -82,6 +82,18 @@ class BringInstallGroup(FrklBaseCommand):
                 "type": "string",
                 "required": False,
             },
+            "force": {
+                "doc": "Overwrite potentially existing files.",
+                "type": "boolean",
+                "required": False,
+                "cli": {"is_flag": True},
+            },
+            "update": {
+                "doc": "Replace a potentially existing file that was installed by bring.",
+                "type": "boolean",
+                "required": False,
+                "cli": {"is_flag": True},
+            },
             "merge_strategy": {
                 "doc": "Strategy on how to deal with existing files, options",
                 "type": "merge_strategy",
@@ -100,11 +112,16 @@ class BringInstallGroup(FrklBaseCommand):
         explain = self._group_params.get("explain")
         load_details = not ctx.obj.get("list_install_commands", False)
         target = self._group_params_parsed.get("target", None)
+
+        force = self._group_params_parsed.get("force", False)
+        update = self._group_params_parsed.get("update", False)
         merge_strategy = self._group_params_parsed.get("merge_strategy")
+        merge_strategy["config"]["force"] = force
+        merge_strategy["config"]["update"] = update
 
         install_args = {}
-        if merge_strategy:
-            install_args["merge_strategy"] = merge_strategy
+
+        install_args["merge_strategy"] = merge_strategy
         if target:
             install_args["target"] = target
 
@@ -117,7 +134,7 @@ class BringInstallGroup(FrklBaseCommand):
 
         processor = self._bring.create_processor("install_pkg")
 
-        processor.add_constants(_constants_name="install_args", **install_args)
+        processor.add_constants(_constants_name="install_command_input", **install_args)
 
         args = await processor.get_user_input_args()
 

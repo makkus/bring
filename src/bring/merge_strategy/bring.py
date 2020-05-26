@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 import json
+import logging
 import os
+import shutil
+import time
 from typing import Any, Mapping
 
 from anyio import aopen
+from bring.defaults import BRING_BACKUP_FOLDER
 from bring.merge_strategy import LocalFolder, LocalFolderItem, MergeStrategy
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
+
+
+log = logging.getLogger("bring")
 
 
 class BringMergeStrategy(MergeStrategy):
@@ -22,11 +29,7 @@ class BringMergeStrategy(MergeStrategy):
     def pkg_metadata_hash(self) -> str:
 
         if "_pkg_hash" not in self._config.keys():
-            # if "hash" in self.pkg_metadata.keys():
             _pkg_hash = self.pkg_metadata["hash"]
-            # else:
-            #     pkg_hash = DeepHash(self.pkg_metadata)
-            #     _pkg_hash = pkg_hash[self.pkg_metadata]
             self._config["_pkg_hash"] = _pkg_hash
 
         return self.get_config("_pkg_hash")
@@ -84,21 +87,42 @@ class BringMergeStrategy(MergeStrategy):
         self, source_file: LocalFolderItem, target_file: LocalFolderItem
     ) -> Any:
 
+        force = self.get_config("force", False)
+        update = self.get_config("update", False)
+
+        backup = self.get_config("backup", True)
+
         if not target_file.exists:
             await self.write_target_file(
                 source_file=source_file, target_file=target_file
             )
-            return None
+            return "installed"
 
         md = await target_file.get_metadata()
 
         if md["managed"]:
+            if not update and not force:
+                return "file already exists/update not set"
+
             await self.write_target_file(
                 source_file=source_file, target_file=target_file
             )
-            return None
+            return "updated"
 
-        raise FrklException(
-            msg=f"Can't merge/copy file '{target_file.rel_path}'.",
-            reason=f"File already exists in target: {target_file.base_folder}",
-        )
+        if not force:
+            return FrklException(
+                msg=f"Can't merge/copy file '{target_file.rel_path}'.",
+                reason=f"File already exists in target and 'force' not set: {target_file.base_folder}",
+            )
+
+        if backup:
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            ensure_folder(BRING_BACKUP_FOLDER)
+            backup_file = f"{BRING_BACKUP_FOLDER}{os.path.sep}{target_file.file_name}.{timestamp}.bak"
+            shutil.move(target_file.full_path, backup_file)
+            log.debug(f"Backed up file '{target_file.rel_path}' to: {backup_file}")
+        else:
+            target_file.unlink()
+        await self.write_target_file(source_file=source_file, target_file=target_file)
+
+        return "force-updated"

@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 
 from anyio import aopen, create_task_group
 from bring.defaults import (
+    BRING_GLOBAL_METADATA_FOLDER,
     BRING_ITEM_METADATA_FOLDER_NAME,
     BRING_METADATA_FILE_NAME,
     BRING_METADATA_FOLDER_NAME,
@@ -48,7 +49,7 @@ class LocalFolder(object):
         self,
         path: Union[Path, str],
         metadata_folder: Optional[str] = None,
-        use_global_metadata: bool = False,
+        use_global_metadata: Optional[bool] = None,
     ):
 
         self._path: str = None  # type: ignore
@@ -63,7 +64,7 @@ class LocalFolder(object):
         self._managed_files: Optional[Mapping[str, Any]] = None
         self._hash_contents: Dict[str, Mapping[str, Any]] = {}
 
-        self._use_global_metadata: bool = use_global_metadata
+        self._use_global_metadata: Optional[bool] = use_global_metadata
 
         self.load_folder(path=path, metadata_folder=metadata_folder)
 
@@ -77,6 +78,35 @@ class LocalFolder(object):
     def __hash__(self):
 
         return hash(self.get_full_path())
+
+    @property
+    def use_global_metadata(self) -> Optional[bool]:
+        return self._use_global_metadata
+
+    @use_global_metadata.setter
+    def use_global_metadata(self, use_global_metadata: bool):
+
+        if use_global_metadata == self._use_global_metadata:
+            return
+
+        self._use_global_metadata = use_global_metadata
+        self.invalidate()
+
+    @property
+    def metadata_folder(self) -> str:
+        return self._metadata_folder
+
+    @metadata_folder.setter
+    def metadata_folder(self, metadata_folder: Optional[str] = None) -> None:
+
+        if (
+            metadata_folder is not None
+            and os.path.abspath(metadata_folder) == self._metadata_folder
+        ):
+            return
+
+        self._metadata_folder = metadata_folder  # type: ignore
+        self.invalidate()
 
     def load_folder(
         self, path: Union[str, Path], metadata_folder: Optional[str] = None
@@ -94,9 +124,27 @@ class LocalFolder(object):
                 reason="Not a folder.",
             )
 
+        if self.use_global_metadata is None:
+            if metadata_folder == BRING_GLOBAL_METADATA_FOLDER:
+                self._use_global_metadata = True
+            elif metadata_folder is None:
+                md_path = os.path.realpath(
+                    os.path.join(self._path, BRING_METADATA_FOLDER_NAME)
+                )
+                if os.path.isdir(md_path):
+                    self._use_global_metadata = False
+                else:
+                    self._use_global_metadata = True
+                    metadata_folder = BRING_GLOBAL_METADATA_FOLDER
+            else:
+                self._use_global_metadata = False
+
         if metadata_folder is None:
-            metadata_folder = os.path.join(self._path, BRING_METADATA_FOLDER_NAME)
-        self._metadata_folder = metadata_folder
+            if self.use_global_metadata:
+                metadata_folder = BRING_GLOBAL_METADATA_FOLDER
+            else:
+                metadata_folder = os.path.join(self._path, BRING_METADATA_FOLDER_NAME)
+        self._metadata_folder = os.path.abspath(metadata_folder)
         self._metadata_file = os.path.join(
             self._metadata_folder, BRING_METADATA_FILE_NAME
         )
@@ -284,7 +332,13 @@ class LocalFolder(object):
                 await tg.spawn(get_md, hash_str)
 
         result: Dict[str, Mapping[str, Any]] = {}
-        for rel_path, hash in file_map.items():
+        for p, hash in file_map.items():
+            if self._use_global_metadata:
+                index_sep = p.index(os.path.sep)
+                full_path = p[index_sep:]
+                rel_path = os.path.relpath(full_path, self._path)
+            else:
+                rel_path = p
             result[rel_path] = all_metadata_per_hash[hash]
 
         return result
@@ -373,6 +427,10 @@ class LocalFolderItem(object):
         return self._base_folder
 
     @property
+    def file_name(self) -> str:
+        return os.path.basename(self.rel_path)
+
+    @property
     def exists(self):
         return os.path.exists(self.full_path)
 
@@ -397,6 +455,14 @@ class LocalFolderItem(object):
                 self.rel_path
             )
         return self._metadata
+
+    def __str__(self):
+
+        return self.rel_path
+
+    def __repr__(self):
+
+        return self.rel_path
 
 
 class MergeStrategy(metaclass=ABCMeta):
@@ -456,7 +522,7 @@ class MergeStrategy(metaclass=ABCMeta):
         self,
         target_folder: Union[LocalFolder, str, Path],
         *sources: Union[str, Path, LocalFolder],
-    ):
+    ) -> Mapping[str, Any]:
 
         if isinstance(target_folder, (str, Path)):
             _target_folder: LocalFolder = LocalFolder(target_folder)
@@ -537,6 +603,8 @@ class MergeStrategy(metaclass=ABCMeta):
 
                 await tg.spawn(merge, src, target)
 
+        return merge_result
+
     @abstractmethod
     async def merge_source(
         self, source_file: LocalFolderItem, target_file: LocalFolderItem
@@ -603,10 +671,11 @@ class FolderMerge(object):
     def target(self) -> LocalFolder:
         return self._target
 
-    async def merge_folders(self, *sources: Union[str, Path]) -> None:
+    async def merge_folders(self, *sources: Union[str, Path]) -> Mapping[str, Any]:
 
         self._target.ensure_exists()
-        await self.merge_strategy.merge(self._target, *sources)
+        result = await self.merge_strategy.merge(self._target, *sources)
+        return result
 
 
 class MergeStrategyClickType(DictType):
