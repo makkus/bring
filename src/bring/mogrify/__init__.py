@@ -421,7 +421,7 @@ class Transmogrificator(Tasks):
         result = {}
 
         for mogrifier in self._children.values():
-            result[mogrifier.name] = mogrifier.explain()
+            result[mogrifier.name] = mogrifier.explain()  # type: ignore
 
         # result.append(self._result_mogrifier.explain())  # type: ignore
 

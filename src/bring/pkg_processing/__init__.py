@@ -866,7 +866,7 @@ class ProcessInfo(Explanation):
 
         yield self.explained_vars
 
-        yield self._explained_tasks
+        yield self._explained_tasks  # type: ignore
 
 
 class ProcessResult(Explanation):
