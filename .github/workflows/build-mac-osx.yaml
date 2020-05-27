@@ -1,0 +1,11 @@
+name: Greet Everyone
+# This workflow is triggered on pushes to the repository.
+on: [push]
+
+jobs:
+  build:
+    name: build
+    runs-on: macos-latest
+    steps:
+      - name: pyinstaller
+        run: ./binary_build/build.sh --spec-file binary_build/onefile.spec
