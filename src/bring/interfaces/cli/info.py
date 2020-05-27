@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 
 import asyncclick as click
@@ -7,11 +8,12 @@ from bring.bring import Bring
 from bring.bring_target.local_folder import LocalFolderTarget
 from bring.display.info import IndexInfoDisplay, PkgInfoDisplay
 from bring.interfaces.cli import console
-from bring.interfaces.cli.utils import log
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.cli.group import FrklBaseCommand
 
+
+log = logging.getLogger("bring")
 
 INFO_HELP = """Display information about a index or package.
 
