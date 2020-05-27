@@ -7,6 +7,10 @@ jobs:
     name: build
     runs-on: macos-latest
     steps:
+      - uses: actions/cache@v2
+        with:
+          path: ~/.pyenv/
+          key: ${{ runner.os }}-bring-pythone
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
