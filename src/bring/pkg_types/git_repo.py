@@ -17,7 +17,7 @@ class GitRepo(SimplePkgType):
     tags exist, to the 'master' branch.
 
     Examples:
-      - kube-install-manifests.ingress-nginx
+      - kubernetes.ingress-nginx
     """
 
     _plugin_name: str = "git"

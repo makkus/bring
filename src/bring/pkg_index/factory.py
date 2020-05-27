@@ -1,8 +1,18 @@
 # -*- coding: utf-8 -*-
 import collections
 import os
-from typing import TYPE_CHECKING, Any, Dict, Mapping, MutableMapping, Optional, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Union,
+)
 
+from bring.config.bring_config import BringConfig
 from bring.defaults import BRING_CONTEXT_NAMESPACE, BRING_DEFAULT_INDEXES
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.folder_index import BringDynamicIndexTing
@@ -17,20 +27,71 @@ if TYPE_CHECKING:
 
 
 class IndexFactory(object):
-    def __init__(self, tingistry: Tingistry):
+    def __init__(
+        self, tingistry: Tingistry, bring_config: Optional[BringConfig] = None
+    ):
 
         self._tingistry: Tingistry = tingistry
-
+        self._bring_config: Optional[BringConfig] = bring_config
+        self._config_indexes: Optional[
+            Mapping[str, Union[None, str, Mapping[str, Any]]]
+        ] = None
         self._default_indexes: Optional[Dict[str, Mapping[str, Any]]] = None
+
+    @property
+    def bring_config(self) -> Optional[BringConfig]:
+
+        return self._bring_config
+
+    @bring_config.setter
+    def bring_config(self, bring_config: BringConfig) -> None:
+        self._bring_config = bring_config
+        self.invalidate()
+
+    def invalidate(self):
+
+        self._default_indexes = None
+        self._config_indexes = None
+
+    async def get_config_indexes(
+        self
+    ) -> Mapping[str, Union[str, None, Mapping[str, Any]]]:
+
+        if self._config_indexes is not None:
+            return self._config_indexes
+
+        if self.bring_config is None:
+            return {}
+
+        indexes: Iterable[
+            Union[str, Mapping[str, Any]]
+        ] = await self.bring_config.get_config_value_async("indexes")
+
+        self._config_indexes = {}
+        for item in indexes:
+            if isinstance(item, str):
+                if "=" in item:
+                    id, data = item.split("=", maxsplit=1)
+                    self._config_indexes[id] = data
+                else:
+                    self._config_indexes[item] = None
+            elif isinstance(item, collections.Mapping):
+                id = item["id"]
+                self._config_indexes[id] = item
+            else:
+                raise TypeError(f"Invalid type for index config: {type(item)}")
+        return self._config_indexes
 
     @property
     def default_indexes(self) -> Mapping[str, Mapping[str, Any]]:
 
         if self._default_indexes is None:
             self._default_indexes = {}
+
             idx: Mapping[str, Any]
             for idx in BRING_DEFAULT_INDEXES:
                 self._default_indexes[idx["id"]] = idx  # type: ignore
+
         return self._default_indexes
 
     async def explode_index_string(self, index_string: str) -> MutableMapping[str, Any]:
@@ -148,16 +209,44 @@ class IndexFactory(object):
 
         if isinstance(index_data, IndexConfig):
             return index_data
-        elif isinstance(index_data, str) and index_data in self.default_indexes.keys():
-            _index_data: MutableMapping[str, Any] = dict(
-                self.default_indexes[index_data]
-            )
-        elif isinstance(index_data, str):
-            _index_data = await self.explode_index_string(index_data)
-        elif isinstance(index_data, collections.Mapping):
-            _index_data = dict(index_data)
+
+        _idx_id: Optional[str] = None
+        _idx_data: Union[str, Mapping[str, Any]]
+
+        if isinstance(index_data, str) and "=" in index_data:
+            _idx_id, _idx_data = index_data.split("=", maxsplit=1)
         else:
-            raise ValueError(f"Invalid type for index data: {type(index_data)}")
+            _idx_data = index_data
+
+        _index_data: MutableMapping[str, Any]
+
+        if isinstance(_idx_data, str):
+            config_indexes = await self.get_config_indexes()
+            if _idx_data in config_indexes.keys():
+                value = config_indexes[_idx_data]
+                if value is None:
+                    _index_data = dict(self.default_indexes[_idx_data])
+                elif isinstance(value, str):
+                    if value in self.default_indexes.keys():
+                        _index_data = dict(self.default_indexes[value])
+                    else:
+                        _index_data = await self.explode_index_string(value)
+                        _index_data["id"] = _idx_data
+                elif isinstance(_idx_data, collections.Mapping):
+                    _index_data = _idx_data
+                else:
+                    raise TypeError(f"Invalid type for index data: {type(index_data)}")
+            elif _idx_data in self.default_indexes.keys():
+                _index_data = dict(self.default_indexes[_idx_data])
+            else:
+                _index_data = await self.explode_index_string(_idx_data)
+        elif isinstance(_idx_data, collections.Mapping):
+            _index_data = dict(_idx_data)
+        else:
+            raise TypeError(f"Invalid type for index data: {type(index_data)}")
+
+        if _idx_id is not None:
+            _index_data["id"] = _idx_id
 
         await self.augment_data(_index_data)
 

@@ -115,6 +115,7 @@ BRING_DEFAULT_CONFIG = {
                 "version": "latest",
             },
         },
+        {"id": "kubernetes", "defaults": {"version": "latest"}},
         "collections",
     ],
 }

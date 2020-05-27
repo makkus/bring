@@ -27,11 +27,11 @@ class BringPkgsResolver(SimplePkgType):
           type: bring-pkgs
 
            pkgs:
-             - name: kube-install-manifests.ingress-nginx
+             - name: kubernetes.ingress-nginx
                mogrify:
                  - type: move_to_subfolder
                    subfolder: ingress-nginx
-             - name: kube-install-manifests.cert-manager
+             - name: kubernetes.cert-manager
                vars:
                  version: 0.13.0
                mogrify:

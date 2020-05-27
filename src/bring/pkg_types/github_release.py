@@ -62,7 +62,7 @@ class GithubRelease(SimplePkgType):
 
     examples:
       - binaries.k3d
-      - kube-install-manifests.cert-manager
+      - kubernetes.cert-manager
 
 
     """

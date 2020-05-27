@@ -10,7 +10,7 @@ class FileFilterMogrifier(SimpleMogrifier):
 
     Examples:
         - binaries.hugo
-        - kube-install-manifests.ingress-nginx
+        - kubernetes.ingress-nginx
     """
 
     _plugin_name: str = "file_filter"
@@ -42,6 +42,7 @@ class FileFilterMogrifier(SimpleMogrifier):
         include_patterns: Union[str, Iterable[str]] = requirements["include"]
 
         result = self.create_temp_dir(prefix="file_filter_")
+
         copy_filtered_files(
             orig=path,
             include=include_patterns,

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """Main module."""
-import collections
 import logging
 import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
@@ -101,12 +100,14 @@ class Bring(SimpleTing):
         self._index_lock: Optional[Lock] = None
 
         self._bring_config: Optional[BringConfig] = bring_config
+        self._index_factory = IndexFactory(
+            tingistry=self._tingistry_obj, bring_config=self._bring_config
+        )
+
         if self._bring_config is not None:
             self._bring_config.set_bring(self)
 
         self._indexes: Dict[str, Optional[BringIndexTing]] = {}
-
-        self._index_factory = IndexFactory(tingistry=self._tingistry_obj)
 
     async def _get_index_lock(self) -> Lock:
 
@@ -120,6 +121,7 @@ class Bring(SimpleTing):
         if self._bring_config is None:
             self._bring_config = BringConfig(tingistry=self._tingistry_obj)
             self._bring_config.set_bring(self)
+            self._index_factory.bring_config = self._bring_config
 
         return self._bring_config
 
@@ -127,24 +129,25 @@ class Bring(SimpleTing):
 
         self._indexes = {}
         self._defaults = None
+        self._index_factory.invalidate()
 
-        if self._bring_config is not None:
-            indexes = self.config.get_config_value("indexes")
-            if not indexes:
-                return
-            else:
-                for idx in indexes:
-                    if isinstance(idx, str):
-                        idx_id = idx
-                    elif isinstance(idx, collections.Mapping):
-                        idx_id = idx.get("id", None)
-                        if idx_id is None:
-                            raise FrklException(
-                                f"Can't add index config: {idx}",
-                                reason="No 'id' value provided.",
-                            )
-
-                    self._indexes[idx_id] = None
+        # if self._bring_config is not None:
+        #     indexes = self.config.get_config_value("indexes")
+        #     if not indexes:
+        #         return
+        #     else:
+        #         for idx in indexes:
+        #             if isinstance(idx, str):
+        #                 idx_id = idx
+        #             elif isinstance(idx, collections.Mapping):
+        #                 idx_id = idx.get("id", None)
+        #                 if idx_id is None:
+        #                     raise FrklException(
+        #                         f"Can't add index config: {idx}",
+        #                         reason="No 'id' value provided.",
+        #                     )
+        #
+        #             self._indexes[idx_id] = None
 
     @property
     def typistry(self):
@@ -198,7 +201,7 @@ class Bring(SimpleTing):
 
         async def add(_ii, _ae):
             _idx = await self.add_index(_ii, _ae)
-            added[_idx.id] = _idx
+            added[_ii] = _idx
 
         async with create_task_group() as tg:
 
@@ -211,6 +214,13 @@ class Bring(SimpleTing):
             _idx = added[ii]
             result[_idx.id] = _idx
 
+        return result
+
+    async def add_all_config_indexes(self) -> Mapping[str, BringIndexTing]:
+
+        indexes = await self._index_factory.get_config_indexes()
+
+        result = await self.add_indexes(*indexes.keys(), allow_existing=True)
         return result
 
     async def add_index(
@@ -267,31 +277,32 @@ class Bring(SimpleTing):
         if index_name is None:
             index_name = await self.config.get_default_index()
 
-        if index_name not in self._indexes:
+        if index_name not in self._indexes.keys():
             idx = await self.add_index(index_data=index_name, allow_existing=True)
             index_name = idx.id
-        elif self._indexes[index_name] is None:
-            idx_config = {}
-            indexes = await self.config.get_config_value_async("indexes")
-            _idx: Union[str, Mapping[str, Any]]
-            for _idx in indexes:
-                if _idx == index_name:
-                    # means no config
-                    break
-
-                if isinstance(_idx, str) or _idx["id"] != index_name:
-                    continue
-
-                idx_defaults = _idx.get("defaults", {})
-                idx_config["defaults"] = calculate_defaults(
-                    typistry=self._tingistry_obj.typistry, data=idx_defaults
-                )
-
-            idx = await self.add_index(index_data=index_name, allow_existing=True)
-
-            if idx_config:
-                idx.set_input(**idx_config)
-            index_name = idx.id
+        # elif self._indexes[index_name] is None:
+        #     idx_config = {}
+        #     indexes = await self.config.get_config_value_async("indexes")
+        #
+        #     _idx: Union[str, Mapping[str, Any]]
+        #     for _idx in indexes:
+        #         if _idx == index_name:
+        #             # means no config
+        #             break
+        #
+        #         if isinstance(_idx, str) or _idx["id"] != index_name:
+        #             continue
+        #
+        #         idx_defaults = _idx.get("defaults", {})
+        #         idx_config["defaults"] = calculate_defaults(
+        #             typistry=self._tingistry_obj.typistry, data=idx_defaults
+        #         )
+        #
+        #     idx = await self.add_index(index_data=index_name, allow_existing=True)
+        #
+        #     if idx_config:
+        #         idx.set_input(**idx_config)
+        #     index_name = idx.id
 
         return self._indexes[index_name]  # type: ignore
 

@@ -177,6 +177,7 @@ class BringCommandGroup(FrklBaseCommand):
         if not is_list_command:
 
             self.bring.config.set_config(*config_list)
+            await self.bring.add_all_config_indexes()
 
         if name == "list":
 

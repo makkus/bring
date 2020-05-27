@@ -19,7 +19,7 @@ Before installing a `bring` package, it is useful to know which packages are ava
 
 You can limit the results to a single index by providing it's name:
 
-{{ cli("bring", "list", "kube-install-manifests") }}
+{{ cli("bring", "list", "binaries") }}
 
 ## Display information
 
@@ -29,13 +29,13 @@ In order to get more information about a index or package, you can use the ``inf
 
 This is how to get metadata for the ``binaries`` index:
 
-{{ cli("bring", "info", "binaries") }}
+{{ cli("bring", "info", "index", "binaries") }}
 
 ### Package metadata
 
 And this is how to get the details for the ``fd`` package that is a contained in that index:
 
-{{ cli("bring", "info", "binaries.fd", max_height=400) }}
+{{ cli("bring", "info", "package", "binaries.fd", max_height=400) }}
 
 Note: since the ``fd`` package lives in the default index, it is allowed to omit the index name: ``bring info fd``).
 
@@ -49,13 +49,13 @@ Installing a package looks similar to using the ``info`` command. Packages are s
 
 As you can see in the example above, you can specify the target directory where the file(s) of the package should be installed using the ``--target`` parameter. That folder (as well as any intermediate ones) will be created should it not exist yet.
 
-Some index (like the ``binaries`` one) have a default target (check with ``bring info [index_name]`` to find out). If that is the case, you can omit the ``target`` parameter and the default target will be used:
+Some index (like the ``binaries`` one) have a default target (check with ``bring info index [index_name]`` to find out). If that is the case, you can omit the ``target`` parameter and the default target will be used:
 
 {{ cli("bring", "install", "binaries.fd") }}
 
 If you don't specify the ``--target`` parameter, and the index does not have a default target set, the files will be copied into a temporary directory somewhere under `~/.local/share/bring/workspace/results/`:
 
-{{ cli("bring", "install", "kube-install-manifests.cert-manager") }}
+{{ cli("bring", "install", "kubernetes.cert-manager") }}
 
 ### Install details
 
