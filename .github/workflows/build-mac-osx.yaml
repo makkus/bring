@@ -17,7 +17,6 @@ jobs:
       - name: pyinstaller
         run: ./binary_build/build.sh --spec-file binary_build/onefile.spec
       - name: Add MacOS certs
-        if: matrix.os == 'macos-latest'
         run: chmod +x deploy/add-osx-cert.sh && ./deploy/add-osx-cert.sh
         env:
           CERTIFICATE_OSX_APPLICATION: ${{ secrets.CERTIFICATE_OSX_APPLICATION }}
