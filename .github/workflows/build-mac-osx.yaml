@@ -12,7 +12,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-bring-pythone
+          key: ${{ runner.os }}-10.3-bring-python
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
