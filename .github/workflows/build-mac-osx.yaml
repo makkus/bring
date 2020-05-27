@@ -16,6 +16,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: pyinstaller
         run: ./binary_build/build.sh --spec-file binary_build/onefile.spec
+      - name: find
+        run: find .
+      - name: ls
+        run: ls -lah
+      - name: pwd
+        run: pwd
       - name: Add MacOS certs
         run: chmod +x deploy/add-osx-cert.sh && ./deploy/add-osx-cert.sh
         env:
