@@ -98,6 +98,7 @@ binary_linux:
     name: registry.gitlab.com/frkl/frkl-python-build:dev
     entrypoint: [""]
   stage: build
+  needs: ["python38"]
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
@@ -113,6 +114,7 @@ binary_windows:
     name: registry.gitlab.com/frkl/frkl-python-build:dev-win
     entrypoint: [""]
   stage: build
+  needs: ["python38"]
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
@@ -125,6 +127,7 @@ binary_windows:
 
 binary_darwin:
   stage: build
+  needs: ["python38"]
   tags:
     - darwin
   script:
@@ -146,6 +149,10 @@ release_binaries:
     - develop
   environment:
     name: dev
+  needs:
+    - binary_linux
+    - binary_windows
+    - binary_darwin
   script:
   - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
   - aws s3 cp --content-type binary/octet-stream dist/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
@@ -156,6 +163,7 @@ pkg_python_dev:
   stage: release
   only:
     - develop
+  needs: ["python38"]
   script:
     - pip install devpi-client
     - rm -rf dist build
@@ -170,6 +178,7 @@ pkg_python_dev:
 
 pkg_python_stable:
   stage: release
+  needs: ["python38"]
   only:
     - /^\d+\.\d+\.\d+$/
   except:
@@ -192,6 +201,7 @@ pkg_python_stable:
 
 pkg_python_beta:
   stage: release
+  needs: ["python38"]
   only:
     - /^\d+\.\d+\.\d+b\d+$/
   except:
@@ -215,6 +225,7 @@ pkg_python_beta:
 container_image_dev:
    stage: release
    image: docker:19
+   needs: ["binary_linux"]
    only:
      - develop
    environment:
