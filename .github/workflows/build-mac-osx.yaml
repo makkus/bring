@@ -7,8 +7,8 @@ jobs:
     name: build
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v1
-      - name: Install python version
-        uses: gabrielfalcao/pyenv-action@v5
+      - run: brew install pyenv
+      - run: brew install pyenv-virtualenv
+      - uses: actions/checkout@v2
       - name: pyinstaller
         run: ./binary_build/build.sh --spec-file binary_build/onefile.spec
