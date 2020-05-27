@@ -9,6 +9,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
+from bring.display.explanation import StepsExplanation
 from bring.utils import BringTaskDesc
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
@@ -415,16 +416,16 @@ class Transmogrificator(Tasks):
         for child in self._children.values():
             await child.run_async()
 
-    def explain_steps(self) -> Iterable[str]:
+    def explain_steps(self) -> StepsExplanation:
 
-        result = []
+        result = {}
 
         for mogrifier in self._children.values():
-            result.append(mogrifier.explain())  # type: ignore
+            result[mogrifier.name] = mogrifier.explain()
 
         # result.append(self._result_mogrifier.explain())  # type: ignore
 
-        return result
+        return StepsExplanation(steps_map=result)
 
 
 class Transmogritory(SimpleTing):

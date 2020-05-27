@@ -2,7 +2,9 @@
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from bring.bring_target import BringTarget
+from bring.display.explanation import LocalFolderExplanation
 from bring.merge_strategy import LocalFolder
+from rich.console import Console, ConsoleOptions, RenderResult
 
 
 if TYPE_CHECKING:
@@ -55,6 +57,10 @@ class LocalFolderTarget(BringTarget):
             path = self.current_input(validate=True)["path"]
             self._target_folder = LocalFolder(path)
         return self._target_folder
+
+    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+
+        yield LocalFolderExplanation(self.target_folder)
 
     # async def process_result(
     #     self, input: Mapping[str, Any], result: Mapping[str, Any]

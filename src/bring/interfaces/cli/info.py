@@ -65,9 +65,9 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 if path is None:
                     path = os.getcwd()
                 target = LocalFolderTarget(bring=self._bring, path=path)
-
-                tf = target.target_folder
-                print(await tf.get_managed_files())
+                console.line()
+                console.print(target)
+                # print(await tf.get_managed_files())
 
             return command
 

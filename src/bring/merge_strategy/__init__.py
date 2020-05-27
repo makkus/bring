@@ -336,6 +336,8 @@ class LocalFolder(object):
             if self._use_global_metadata:
                 index_sep = p.index(os.path.sep)
                 full_path = p[index_sep:]
+                if self._path not in full_path:
+                    continue
                 rel_path = os.path.relpath(full_path, self._path)
             else:
                 rel_path = p

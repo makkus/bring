@@ -69,6 +69,11 @@ class PkgTing(SimpleTing):
             raise Exception(f"Index already set for PkgTing '{self.full_name}'.")
         self._index = index
 
+    @property
+    def pkg_id(self) -> str:
+
+        return f"{self.bring_index.id}.{self.name}"
+
     def provides(self) -> Dict[str, str]:
 
         return {

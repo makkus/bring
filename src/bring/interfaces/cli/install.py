@@ -3,11 +3,11 @@ from typing import Dict, Union
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
 from frtls.args.arg import Arg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.group import FrklBaseCommand
-from frtls.formats.output_formats import serialize
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -146,10 +146,9 @@ class BringInstallGroup(FrklBaseCommand):
 
                 user_input = args.from_cli_input(**kwargs)
                 processor.set_user_input(**user_input)
-                explanation = processor.args_holder.explain()
+                explanation = processor.explain()
 
-                s = serialize(explanation, format="yaml")
-                click.echo(s)
+                console.print(explanation)
 
         else:
 
@@ -160,8 +159,12 @@ class BringInstallGroup(FrklBaseCommand):
                 user_input = args.from_cli_input(**kwargs)
                 processor.set_user_input(**user_input)
 
+                pi = processor.explain_vars()
+                console.print(pi)
+
+                console.line()
                 result = await processor.process()
-                print(result)
+                console.print(result)
 
         command.params = args.to_cli_options(add_defaults=False)
 

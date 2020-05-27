@@ -58,3 +58,8 @@ class InstallPkgProcessor(PkgProcessor):
         ]
 
         return mogrifiers
+
+    async def get_msg(self) -> str:
+
+        pkg = await self.get_pkg()
+        return f"installing package '[bold italic]{pkg.pkg_id}[/bold italic]'"

@@ -15,12 +15,15 @@ from typing import (
     Union,
 )
 
+from bring.display.explanation import Explanation, StepsExplanation
 from bring.mogrify import Transmogrificator
 from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.exceptions import FrklException
+from frtls.types.utils import is_instance_or_subclass
+from rich.console import Console, ConsoleOptions, RenderResult
 
 
 if TYPE_CHECKING:
@@ -214,6 +217,63 @@ class VarHolder(object):
         result = {}
         result[VarSetType.CONSTANTS] = arg_hive.create_record_arg(childs=constant_args)
         result[VarSetType.INPUT] = arg_hive.create_record_arg(childs=input_args)
+
+        return result
+
+
+class ProcessVars(Explanation):
+    def __init__(self, args_holder: "ArgsHolder"):
+
+        self._args_holder: ArgsHolder = args_holder
+        self._arg_map: Optional[Dict[str, Dict[str, Any]]] = None
+
+    @property
+    def arg_map(self):
+
+        if self._arg_map is not None:
+            return self._arg_map
+
+        # print(self._vars_validated)
+        result: Dict[str, Dict[str, Any]] = {}
+        for arg_name, data in sorted(self._args_holder.vars_validated.items()):
+
+            result[arg_name] = {}
+
+            metadata = data["metadata"]
+            is_set = metadata["is_set"]
+
+            if not is_set:
+                result[arg_name]["is_set"] = is_set
+                continue
+
+            result[arg_name]["value"] = data["validated"]
+
+            origin = metadata["origin"]
+            result[arg_name]["origin"] = origin
+
+            alias = metadata.get("from_alias", None)
+            if alias is not None:
+                result[arg_name]["from_alias"] = alias
+
+            if data["validated"] != data["value"] and data["value"] != metadata.get(
+                "from_alias", None
+            ):
+                result[arg_name]["orig_value"] = data["value"]
+
+        self._arg_map = result
+        return self._arg_map
+
+    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+
+        result = []
+
+        result.append("\n[bold]Variables[/bold]:")
+        result.append("")
+        for arg_name, data in self.arg_map.items():
+            _alias = data.get("from_alias", "")
+            if _alias:
+                _alias = f" (from alias: [italic]{_alias}[/italic])"
+            result.append(f"  {arg_name}: [italic]{data['value']}[/italic]{_alias}")
 
         return result
 
@@ -454,36 +514,10 @@ class ArgsHolder(object):
             )
         return self._vars_validated
 
-    def explain(self) -> Dict[str, Any]:
+    def explain(self) -> ProcessVars:
 
-        # print(self._vars_validated)
-        result: Dict[str, Any] = {}
-        for arg_name, data in sorted(self.vars_validated.items()):
-
-            result[arg_name] = {}
-
-            metadata = data["metadata"]
-            is_set = metadata["is_set"]
-
-            if not is_set:
-                result[arg_name]["is_set"] = is_set
-                continue
-
-            result[arg_name]["value"] = data["validated"]
-
-            origin = metadata["origin"]
-            result[arg_name]["origin"] = origin
-
-            alias = metadata.get("from_alias", None)
-            if alias is not None:
-                result[arg_name]["from_alias"] = alias
-
-            if data["validated"] != data["value"] and data["value"] != metadata.get(
-                "from_alias", None
-            ):
-                result[arg_name]["orig_value"] = data["value"]
-
-        return result
+        pv = ProcessVars(self)
+        return pv
 
     @property
     def vars(self) -> Mapping[str, Any]:
@@ -598,9 +632,47 @@ class BringProcessor(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    async def process(self) -> Mapping[str, Any]:
+    async def _process(self) -> Any:
 
         pass
+
+    async def process(self) -> Any:
+
+        result = await self._process()
+
+        if is_instance_or_subclass(result, Explanation):
+            self._result = result
+        else:
+            self._result = ProcessResult(vars=self._args_holder.vars, result=result)
+        return self._result
+
+    def explain(self) -> "ProcessInfo":
+
+        pi = ProcessInfo(self)
+        return pi
+
+    def explain_vars(self) -> ProcessVars:
+
+        return self._args_holder.explain()
+
+    async def explain_tasks(self) -> StepsExplanation:
+
+        se = StepsExplanation({"process": self.get_msg()})
+        return se
+
+    async def get_msg(self) -> str:
+
+        if hasattr(self.__class__, "_plugin_name"):
+            proc_name = self.__class__._plugin_name  # type: ignore
+        else:
+            proc_name = self.__class__.__name__
+
+        return f"executing processor '{proc_name}'"
+
+    def create_process_info(self) -> "ProcessInfo":
+
+        pi = ProcessInfo(self)
+        return pi
 
 
 class PkgProcessor(BringProcessor):
@@ -729,7 +801,7 @@ class PkgProcessor(BringProcessor):
     async def get_mogrifiers(self, **vars) -> Iterable[Union[str, Mapping[str, Any]]]:
         return []
 
-    async def process(self) -> Mapping[str, Any]:
+    async def _process(self) -> Mapping[str, Any]:
 
         if self._result is not None:
             raise FrklException(msg="Can't run pkg processor.", reason="Already ran.")
@@ -739,5 +811,87 @@ class PkgProcessor(BringProcessor):
         # args.validate(self.get_current_input(), raise_exception=True)
 
         tm: Transmogrificator = await self.get_transmogrificator()
-        self._result = await tm.transmogrify()
+        result = await tm.transmogrify()
+        return result
+
+    async def explain_tasks(self) -> StepsExplanation:
+
+        tm: Transmogrificator = await self.get_transmogrificator()
+
+        steps = tm.explain_steps()
+        return steps
+
+    async def get_msg(self) -> str:
+
+        msg = await super(PkgProcessor, self).get_msg()
+        pkg = await self.get_pkg()
+        return msg + f" with package '{pkg.pkg_id}'"
+
+
+class ProcessInfo(Explanation):
+    def __init__(self, processor: BringProcessor):
+
+        self._processor: BringProcessor = processor
+        self._msg: Optional[str] = None
+        self._explained_tasks: Optional[StepsExplanation] = None
+
+    @property
+    def explained_vars(self) -> ProcessVars:
+
+        return self._processor.explain_vars()
+
+    async def get_explained_tasks(self) -> StepsExplanation:
+
+        if self._explained_tasks is None:
+            self._explained_tasks = await self._processor.explain_tasks()
+        return self._explained_tasks
+
+    async def get_process_msg(self) -> str:
+
+        if self._msg is None:
+            self._msg = await self._processor.get_msg()
+        return self._msg
+
+    async def _init(self) -> None:
+
+        await self.get_process_msg()
+        await self.get_explained_tasks()
+
+    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+
+        if self._msg is None or self._explained_tasks is None:
+            wrap_async_task(self._init)
+
+        yield f"\n[bold]Task[/bold]: {self._msg}"
+
+        yield self.explained_vars
+
+        yield self._explained_tasks
+
+
+class ProcessResult(Explanation):
+    def __init__(self, vars: Mapping[str, Any], result: Any):
+
+        self._vars: Mapping[str, Any] = vars
+        self._result: Any = result
+
+    @property
+    def vars(self):
+
+        return self._vars
+
+    @property
+    def result(self):
+
         return self._result
+
+    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+
+        result = []
+
+        result.append("[bold]Result:[/bold]")
+        result.append("")
+        for key, data in self._result.items():
+            result.append(f"  {key}: [italic]{data}[/italic]")
+
+        return result
