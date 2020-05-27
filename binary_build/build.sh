@@ -9,7 +9,7 @@ function command_exists {
    type "$1" > /dev/null 2>&1 ;
 }
 
-if ! command exists realpath; then
+if ! command_exists realpath; then
 
   function realpath() {
 
