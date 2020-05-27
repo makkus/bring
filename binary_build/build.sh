@@ -79,7 +79,7 @@ function ensure_dependencies () {
       # python version
       local python_path="${HOME}/.pyenv/versions/${python_version}"
       if [ ! -e "${python_path}" ]; then
-          env PYTHON_CONFIGURE_OPTS="--enable-shared" MACOSX_DEPLOYMENT_TARGET=10.10 pyenv install "${python_version}"
+          env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install "${python_version}"
       fi
     fi
 

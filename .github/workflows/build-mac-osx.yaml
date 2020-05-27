@@ -10,10 +10,10 @@ jobs:
     name: build
     runs-on: macos-latest
     steps:
-#      - uses: actions/cache@v2
-#        with:
-#          path: ~/.pyenv/
-#          key: ${{ runner.os }}-target-10.11-bring-python
+      - uses: actions/cache@v2
+        with:
+          path: ~/.pyenv/
+          key: ${{ runner.os }}-target-10.11-bring-python
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
