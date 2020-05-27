@@ -3,6 +3,7 @@ name: build binaries
 on: [push]
 env:
   DEVELOPER_DIR: /Applications/Xcode_10.3.app/Contents/Developer
+  MACOSX_DEPLOYMENT_TARGET: 10.11
 
 jobs:
   build:
@@ -12,7 +13,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-10.3-bring-python
+          key: ${{ runner.os }}-target-10.11-bring-python
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
