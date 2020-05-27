@@ -42,7 +42,9 @@ async def create_pkg_info_table_string(
     pkgs: Iterable[PkgTing], header: bool = False
 ) -> str:
 
-    pkg_vals: Mapping[PkgTing, Mapping[str, Any]] = await get_values_for_pkgs(
+    pkg_vals: Mapping[
+        PkgTing, Mapping[str, Any]
+    ] = await get_values_for_pkgs(  # type: ignore
         pkgs, "info"
     )  # type: ignore
     table = create_info_table_string(info_dicts=pkg_vals, header=header)
