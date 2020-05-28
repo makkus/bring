@@ -218,9 +218,9 @@ class Bring(SimpleTing):
 
     async def add_all_config_indexes(self) -> Mapping[str, BringIndexTing]:
 
-        indexes = await self._index_factory.get_config_indexes()
+        indexes = await self._index_factory.get_indexes_in_config()
 
-        result = await self.add_indexes(*indexes.keys(), allow_existing=True)
+        result = await self.add_indexes(*indexes, allow_existing=True)
         return result
 
     async def add_index(

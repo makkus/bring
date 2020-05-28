@@ -12,16 +12,22 @@ class IndexConfig(metaclass=ABCMeta):
         self,
         id: str,
         type: str,
-        uri: str,
+        index_file: Optional[str] = None,
+        auto_id: Optional[str] = None,
         info: Optional[Mapping[str, Any]] = None,
         labels: Optional[Mapping[str, str]] = None,
         tags: Optional[Iterable[str]] = None,
-        **metadata: Any
+        defaults: Optional[Mapping[str, Any]] = None,
+        **type_config: Any
     ):
 
-        self._id = id
+        self._id: str = id
+        self._auto_id: Optional[str] = auto_id
+
+        self._index_file: Optional[str] = index_file
+
         self._index_type: str = type
-        self._uri: str = uri
+
         if info is None:
             info = {}
         self._info: Mapping[str, Any] = info
@@ -32,15 +38,23 @@ class IndexConfig(metaclass=ABCMeta):
             tags = []
         self._tags: Iterable[str] = tags
 
-        self._metadata: Mapping[str, Any] = metadata
+        if defaults is None:
+            defaults = {}
+        self._defaults = defaults
+
+        self._type_config: Mapping[str, Any] = type_config
 
     @property
     def id(self) -> str:
         return self._id
 
     @property
-    def uri(self) -> str:
-        return self._uri
+    def auto_id(self) -> Optional[str]:
+        return self._auto_id
+
+    @property
+    def index_file(self) -> Optional[str]:
+        return self._index_file
 
     @property
     def index_type(self) -> str:
@@ -51,6 +65,10 @@ class IndexConfig(metaclass=ABCMeta):
         return self._info
 
     @property
+    def index_type_config(self) -> Mapping[str, Any]:
+        return self._type_config
+
+    @property
     def labels(self) -> Mapping[str, str]:
         return self._labels
 
@@ -58,13 +76,23 @@ class IndexConfig(metaclass=ABCMeta):
     def tags(self) -> Iterable[str]:
         return self._tags
 
+    @property
+    def defaults(self) -> Mapping[str, Any]:
+
+        return self._defaults
+
     def to_dict(self) -> Mapping[str, Any]:
 
-        return {
+        result = {
             "id": self.id,
-            "uri": self.uri,
+            "auto_id": self._auto_id,
             "info": self.info,
             "tags": self.tags,
             "labels": self._labels,
             "index_type": self.index_type,
+            "defaults": self.defaults,
+            "index_config": self.index_type_config,
         }
+        if self._auto_id:
+            result["auto_id"] = self._auto_id
+        return result

@@ -4,17 +4,34 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 import arrow
 from bring.display.args import create_table_from_pkg_args
+from bring.interfaces.cli import bring_code_theme, bring_style
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.doc import Doc
+from frtls.formats.output_formats import serialize
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
 
 log = logging.getLogger("bring")
+
+
+def create_dict_block(**config: Any):
+
+    config_yaml_string = serialize(config, format="yaml", indent=4, strip=True)
+    config_markdown_string = f"``` yaml\n{config_yaml_string}\n```"
+    config_markdown = Markdown(
+        config_markdown_string,
+        style=bring_style,
+        code_theme=bring_code_theme,
+        justify="left",
+    )
+
+    return config_markdown
 
 
 class IndexInfoDisplay(object):
@@ -24,12 +41,14 @@ class IndexInfoDisplay(object):
         update: bool = False,
         display_full: bool = False,
         display_packages: bool = False,
+        display_config: bool = True,
     ):
 
         self._index: BringIndexTing = index
         self._update: bool = update
         self._display_full: bool = display_full
         self._display_packages: bool = display_packages
+        self._display_config: bool = display_config
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
         self._info: Optional[Mapping[str, Any]] = None
@@ -49,6 +68,14 @@ class IndexInfoDisplay(object):
     @display_full.setter
     def display_full(self, display_full: bool):
         self._display_full = display_full
+
+    @property
+    def display_config(self) -> bool:
+        return self._display_config
+
+    @display_config.setter
+    def display_config(self, display_config: bool) -> None:
+        self._display_config = display_config
 
     @property
     def display_packages(self) -> bool:
@@ -129,7 +156,7 @@ class IndexInfoDisplay(object):
 
         display_title: bool = True
         display_metadata: bool = True
-        # display_config: bool = False
+        display_config: bool = False
         display_packages: bool = False
         # display_args: bool = True
         # arg_allowed_items: int = 0
@@ -137,8 +164,8 @@ class IndexInfoDisplay(object):
 
         desc_section = Doc(_info_data, short_help_key="slug", help_key="desc")
 
-        # if self._display_config:
-        #     display_config = True
+        if self._display_config:
+            display_config = True
 
         if self._display_packages:
             display_packages = True
@@ -147,62 +174,79 @@ class IndexInfoDisplay(object):
             display_title = True
             display_packages = True
             display_metadata = True
+            display_config = True
             # display_args = True
             # arg_allowed_items = 10000
             # display_version_list = True
 
         if display_title:
 
-            md_ts = arrow.get(info_data["metadata_timestamp"]).humanize()
-            title = f"Index: '[bold dark_red]{self._index.id}[/bold dark_red]' (metadata snapshot: {md_ts})"
+            title = []
 
-            all.append(title)
-            all.append("")
+            md_ts = arrow.get(info_data["metadata_timestamp"]).humanize()
+            title_str = f"[bold]Index[/bold]: '[bold dark_red]{self._index.id}[/bold dark_red]' (metadata snapshot: {md_ts})"
+
+            title.append(title_str)
+            title.append("")
+
             help_str = desc_section.get_help(use_short_help=True, default=None)
             if help_str:
-                all.append(help_str)
-                all.append("")
-            all.append(f"url: {info_data['uri']}")
-            all.append("")
+                title.append(help_str)
+                title.append("")
+
+            md = {}
+            md["uri"] = info_data["uri"]
+            md["index_type"] = info_data["index_type"]
+
+            md_markdown = create_dict_block(**md)
+            title.append("[bold]Metadata[/bold]")
+            title.append("\n")
+            title.append(md_markdown)
+
+            defaults = info_data["defaults"]
+            if defaults:
+                defaults_markdown = create_dict_block(**defaults)
+            else:
+                defaults_markdown = "  -- no defaults --"
+            title.append("\n[bold]Defaults[/bold]")
+            title.append("")
+            title.append(defaults_markdown)
+            title.append("")
+
+            all.append(Panel(RenderGroup(*title)))
 
         if display_metadata:
             if desc_section.metadata:
                 all.append(desc_section)
                 all.append("")
 
-        # if display_config:
-        #     config = info_data["config"]
-        #     _config = {}
-        #     for k, v in config.items():
-        #         if k.startswith("_"):
-        #             continue
-        #         _config[k] = v
-        #
-        #     if _config:
-        #         config = []
-        #         config.append("[bold]Config[/bold]")
-        #         config.append("")
-        #
-        #         config_yaml_string = serialize(
-        #             _config, format="yaml", indent=4, strip=True
-        #         )
-        #         config_markdown_string = f"``` yaml\n{config_yaml_string}\n```"
-        #         config_markdown = Markdown(
-        #             config_markdown_string,
-        #             style=bring_style,
-        #             code_theme=bring_code_theme,
-        #             justify="left",
-        #         )
-        #         config.append(config_markdown)
-        #         config.append("")
-        #
-        #         all.append(Panel(RenderGroup(*config)))
+        if display_config:
+            config = info_data["index_type_config"]
+            _config = {}
+            for k, v in config.items():
+                if k.startswith("_"):
+                    continue
+                _config[k] = v
+
+            config = []
+            config.append("[bold]Config[/bold]")
+            config.append("")
+
+            if not _config:
+                config.append("  -- no config --")
+            else:
+                md_markdown = create_dict_block(**_config)
+
+                config.append(md_markdown)
+            config.append("")
+
+            all.append(Panel(RenderGroup(*config)))
 
         if display_packages:
 
             pkg_infos = wrap_async_task(self._index.get_all_pkg_values, "info")
 
-            title = "[bold]Packages[/bold]"
+            _title = "[bold]Packages[/bold]"
 
             table = Table(box=box.SIMPLE, show_header=False)
             table.add_column("Name", no_wrap=True, style="bold deep_sky_blue4")
@@ -211,7 +255,7 @@ class IndexInfoDisplay(object):
                 slug = vals["info"].get("slug", "n/a")
                 table.add_row(pkg, slug)
 
-            all.append(Panel(RenderGroup(title, table)))
+            all.append(Panel(RenderGroup(_title, table)))
 
         yield Panel(RenderGroup(*all), box=box.SIMPLE)
 

@@ -2,11 +2,13 @@
 from typing import Mapping, Optional
 
 import arrow
+from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.pkgs import Pkgs
 from bring.utils import BringTaskDesc
 from bring.utils.git import ensure_repo_cloned
+from frtls.exceptions import FrklException
 from frtls.strings import is_git_repo_url
 from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
 from tings.makers import TingMaker
@@ -29,17 +31,49 @@ class BringDynamicIndexTing(BringIndexTing):
         self._maker: Optional[TingMaker] = None
 
         self._metadata_timestamp: Optional[str] = None
+        self._uri: Optional[str] = None
 
-    async def init(self, uri: str) -> None:
+    async def init(self, config: IndexConfig) -> None:
 
-        if is_git_repo_url(uri):
-            _local_path = await ensure_repo_cloned(url=uri, update=False)
+        config_dict = config.index_type_config
+        git_url = config_dict.get("git_url", None)
+        path = config_dict.get("path", None)
+
+        if path is None and git_url is None:
+            raise FrklException(
+                f"Can't create folder index with config: {config_dict}",
+                reason="Neither 'path' nor 'git_url' value provided.",
+            )
+
+        if path and git_url:
+            raise FrklException(
+                f"Can't create folder index with config: {config_dict}",
+                reason="Both 'path' and 'git_url' value provided.",
+                solution="Only provide one of those keys.",
+            )
+
+        if git_url:
+            self._uri = git_url
+            if is_git_repo_url(git_url):
+                _local_path = await ensure_repo_cloned(url=git_url, update=False)
+            else:
+                _local_path = git_url
         else:
-            _local_path = uri
+            self._uri = path
+            _local_path = path
 
         maker = await self.get_maker(_local_path)
         await maker.sync()
         self._metadata_timestamp = str(arrow.Arrow.now())
+
+    async def get_uri(self) -> str:
+
+        if self._uri is None:
+            raise FrklException(
+                "Can't retrieve uri for index.", reason="Index not initialized yet."
+            )
+
+        return self._uri
 
     async def _get_metadata_timestamp(self) -> Optional[str]:
 

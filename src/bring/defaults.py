@@ -87,6 +87,22 @@ BRING_DEFAULT_INDEXES = [
     },
 ]
 
+BRING_DEFAULT_INDEX_CONFIG = {
+    "binaries": {"info": {"slug": "Single file, compiled applications."}},
+    "scripts": {"info": {"slug": "Single file scripts."}},
+    "collections": {
+        "info": {"slug": "Miscellaneous collections of sets of related files."}
+    },
+    "kubernetes": {"info": {"slug": "Install manifests for Kubernetes apps."}},
+}
+
+BRING_DEFAULT_INDEX_ALIASES = {
+    "binaries": "gitlab.tingistries.binaries",
+    "scripts": "gitlab.tingistries.scripts",
+    "collections": "gitlab.tingistries.collections",
+    "kubernetes": "gitlab.tingistries.kube-install-manifests",
+}
+
 BRING_CORE_CONFIG = {
     # "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
     # "default_index": "binaries",

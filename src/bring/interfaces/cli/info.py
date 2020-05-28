@@ -76,7 +76,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         elif name in ["index", "idx"]:
 
             @click.command()
-            @click.argument("index", nargs=1, required=False)
+            @click.argument("index", nargs=1, required=True)
             @click.option(
                 "--update",
                 "-u",
@@ -91,8 +91,6 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             )
             @click.pass_context
             async def command(ctx, index, update, full, packages):
-                if index is None:
-                    index = os.getcwd()
 
                 idx = await self._bring.get_index(index_name=index)
 

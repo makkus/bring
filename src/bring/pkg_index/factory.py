@@ -6,6 +6,7 @@ from typing import (
     Any,
     Dict,
     Iterable,
+    List,
     Mapping,
     MutableMapping,
     Optional,
@@ -13,10 +14,16 @@ from typing import (
 )
 
 from bring.config.bring_config import BringConfig
-from bring.defaults import BRING_CONTEXT_NAMESPACE, BRING_DEFAULT_INDEXES
+from bring.defaults import (
+    BRING_CONTEXT_NAMESPACE,
+    BRING_DEFAULT_INDEXES,
+    BRING_DEFAULT_INDEX_ALIASES,
+    BRING_DEFAULT_INDEX_CONFIG,
+)
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.folder_index import BringDynamicIndexTing
-from bring.pkg_index.index import BringIndexTing, retrieve_index_content
+from bring.pkg_index.index import BringIndexTing
+from frtls.dicts import dict_merge
 from frtls.exceptions import FrklException
 from frtls.strings import is_git_repo_url, is_url_or_abbrev
 from tings.tingistry import Tingistry
@@ -26,6 +33,122 @@ if TYPE_CHECKING:
     from bring.pkg_index.static_index import BringStaticIndexTing
 
 
+async def resolve_index_string(index_string: str) -> MutableMapping[str, Any]:
+
+    index_id: Optional[str] = None
+
+    if "=" in index_string:
+        index_id, index_string = index_string.split("=", maxsplit=1)
+
+    if index_string in BRING_DEFAULT_INDEX_ALIASES.keys():
+        if not index_id:
+            index_id = index_string
+        index_string = BRING_DEFAULT_INDEX_ALIASES[index_string]
+
+    index_data = await explode_index_string(index_string)
+
+    if index_data["id"] in BRING_DEFAULT_INDEX_CONFIG.keys():
+        index_data = dict_merge(
+            BRING_DEFAULT_INDEX_CONFIG[index_data["id"]], index_data, copy_dct=True
+        )
+
+    if index_id:
+        index_data["id"] = index_id
+
+    return index_data
+
+
+DEFAULT_FOLDER_INDEX_NAME = "folder.br.idx"
+
+
+async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
+
+    result: Dict[str, Any] = {}
+
+    if index_string.startswith("gitlab"):
+
+        tokens = index_string.split(".")
+        username = tokens[1]
+        repo = tokens[2]
+        version = "master"
+
+        if len(tokens) > 3:
+            version = tokens[4]
+            if len(tokens) > 4:
+                raise NotImplementedError()
+                # path = tokens[5:]
+
+        result["type"] = "git_repo"
+        result[
+            "index_file"
+        ] = f"https://gitlab.com/{username}/{repo}/-/raw/{version}/.bring/{DEFAULT_FOLDER_INDEX_NAME}"
+        result["git_url"] = f"https://gitlab.com/{username}/{repo}.git"
+        result["version"] = version
+
+        result["id"] = index_string
+        result["auto_id"] = index_string
+
+    elif index_string.startswith("github"):
+        tokens = index_string.split(".")
+        username = tokens[1]
+        repo = tokens[2]
+        version = "master"
+
+        if len(tokens) > 3:
+            version = tokens[4]
+            if len(tokens) > 4:
+                raise NotImplementedError()
+                # path = tokens[5:]
+
+        result["type"] = "git_repo"
+        result[
+            "index_file"
+        ] = f"https://raw.githubusercontent.com/{username}/{repo}/{version}/.bring/{DEFAULT_FOLDER_INDEX_NAME}"
+        result["git_url"] = f"https://github.com/{username}/{repo}.git"
+        result["version"] = version
+
+        result["id"] = index_string
+        result["auto_id"] = index_string
+
+    elif index_string.startswith("bitbucket"):
+        tokens = index_string.split(".")
+        username = tokens[1]
+        repo = tokens[2]
+        raise NotImplementedError()
+
+    elif index_string.endswith(".br.idx"):
+        result["type"] = "index_file"
+        if is_url_or_abbrev(index_string):
+            result["index_file"] = index_string
+            result["id"] = result["index_file"]
+        elif os.path.isfile(index_string):
+            result["index_file"] = os.path.abspath(index_string)
+            result["id"] = f"file://{result['index_file']}"
+        else:
+            raise FrklException(
+                msg=f"Can't determine type of index file: {index_string}"
+            )
+        result["auto_id"] = index_string
+    elif os.path.isdir(os.path.realpath(index_string)):
+        result["type"] = "folder"
+        result["path"] = os.path.abspath(index_string)
+        result["index_file"] = os.path.join(
+            result["path"], ".bring", DEFAULT_FOLDER_INDEX_NAME
+        )
+        result["id"] = f"file://{result['path']}"
+        result["auto_id"] = index_string
+    elif is_git_repo_url(index_string):
+        result["type"] = "git_repo"
+        result["git_url"] = index_string
+        result["id"] = result["git_url"]
+        # TODO: calculate and insert index_file key for known hosts
+        result["auto_id"] = index_string
+    else:
+        raise FrklException(msg=f"Can't parse index string: {index_string}")
+
+    return result
+
+
 class IndexFactory(object):
     def __init__(
         self, tingistry: Tingistry, bring_config: Optional[BringConfig] = None
@@ -33,9 +156,9 @@ class IndexFactory(object):
 
         self._tingistry: Tingistry = tingistry
         self._bring_config: Optional[BringConfig] = bring_config
-        self._config_indexes: Optional[
-            Mapping[str, Union[None, str, Mapping[str, Any]]]
-        ] = None
+        self._aliases: Optional[Dict[str, str]] = None
+        self._indexes_in_config: Optional[List[str]] = None
+        self._config_indexes: Optional[Mapping[str, Mapping[str, Any]]] = None
         self._default_indexes: Optional[Dict[str, Mapping[str, Any]]] = None
 
     @property
@@ -52,34 +175,80 @@ class IndexFactory(object):
 
         self._default_indexes = None
         self._config_indexes = None
+        self._aliases = None
 
-    async def get_config_indexes(
-        self
-    ) -> Mapping[str, Union[str, None, Mapping[str, Any]]]:
+    async def index_name_aliases(self) -> Mapping[str, str]:
+
+        if self._aliases is None:
+            self._aliases = dict(BRING_DEFAULT_INDEX_ALIASES)
+            if self._bring_config is None:
+                return self._aliases
+
+            indexes: Iterable[
+                Union[str, Mapping[str, Any]]
+            ] = await self._bring_config.get_config_value_async("indexes")
+
+            for item in indexes:
+                if isinstance(item, str):
+                    if "=" in item:
+                        alias, idx = item.split("=", maxsplit=1)
+                        self._aliases[alias] = idx
+                elif isinstance(item, collections.Mapping):
+                    raise NotImplementedError()
+
+        return self._aliases  # type: ignore
+
+    async def get_indexes_in_config(self) -> Iterable[str]:
+
+        if self._indexes_in_config is None:
+            await self.get_index_configs()
+        return self._indexes_in_config  # type: ignore
+
+    async def get_index_configs(self) -> Mapping[str, Mapping[str, Any]]:
 
         if self._config_indexes is not None:
             return self._config_indexes
 
+        self._indexes_in_config = []
+
         if self.bring_config is None:
-            return {}
+            self._config_indexes = {}
+            return self._config_indexes
 
         indexes: Iterable[
             Union[str, Mapping[str, Any]]
         ] = await self.bring_config.get_config_value_async("indexes")
 
         self._config_indexes = {}
+        auto_ids = {}
         for item in indexes:
             if isinstance(item, str):
-                if "=" in item:
-                    id, data = item.split("=", maxsplit=1)
-                    self._config_indexes[id] = data
-                else:
-                    self._config_indexes[item] = None
+                index_data = await resolve_index_string(item)
             elif isinstance(item, collections.Mapping):
                 id = item["id"]
-                self._config_indexes[id] = item
+                index_data = await resolve_index_string(id)
+                dict_merge(index_data, item, copy_dct=False)
             else:
                 raise TypeError(f"Invalid type for index config: {type(item)}")
+
+            id = index_data["id"]
+            self._indexes_in_config.append(id)
+            auto_id = index_data["auto_id"]
+
+            auto_ids[auto_id] = id
+            if id in self._config_indexes.keys():
+                raise FrklException(
+                    msg=f"Can't add index config with id '{id}'",
+                    reason="Duplicate index id.",
+                )
+            self._config_indexes[id] = index_data
+
+        # make sure we also use the config if the lower-level id is used
+        for auto_id in auto_ids.keys():
+            if auto_id in self._config_indexes.keys():
+                continue
+            self._config_indexes[auto_id] = self._config_indexes[auto_ids[auto_id]]
+
         return self._config_indexes
 
     @property
@@ -94,163 +263,23 @@ class IndexFactory(object):
 
         return self._default_indexes
 
-    async def explode_index_string(self, index_string: str) -> MutableMapping[str, Any]:
-
-        result: Dict[str, Any] = {}
-
-        if index_string.startswith("gitlab"):
-
-            tokens = index_string.split(".")
-            username = tokens[1]
-            repo = tokens[2]
-            version = "master"
-            path = None
-
-            if len(tokens) > 3:
-                version = tokens[4]
-                if len(tokens) > 4:
-                    raise NotImplementedError()
-                    # path = tokens[5:]
-
-            url = f"https://gitlab.com/{username}/{repo}/-/raw/{version}/.br.idx"
-
-            try:
-                content = await retrieve_index_content(index_url=url, update=False)
-                result["type"] = "index_file"
-                result["uri"] = url
-                result["version"] = version
-                result["content"] = content
-                # result["path"] = path
-            except Exception:
-                result["type"] = "git_repo"
-                result["uri"] = f"https://gitlab.com/{username}/{repo}.git"
-                result["version"] = version
-                result["content"] = None
-                # result["path"] = path
-
-            result["id"] = index_string
-        elif index_string.startswith("github"):
-            tokens = index_string.split(".")
-            username = tokens[1]
-            repo = tokens[2]
-            version = "master"
-            path = None
-
-            if len(tokens) > 3:
-                version = tokens[4]
-                if len(tokens) > 4:
-                    raise NotImplementedError()
-                    # path = tokens[5:]
-
-            url = (
-                f"https://raw.githubusercontent.com/{username}/{repo}/{version}/.br.idx"
-            )
-
-            try:
-                content = await retrieve_index_content(index_url=url, update=False)
-                result["type"] = "index_file"
-                result["uri"] = url
-                result["version"] = version
-                result["content"] = content
-                result["path"] = path
-            except Exception:
-                result["type"] = "git_repo"
-                result["uri"] = f"https://github.com/{username}/{repo}.git"
-                result["version"] = version
-                result["content"] = None
-                result["path"] = path
-
-            result["id"] = index_string
-
-        elif index_string.startswith("bitbucket"):
-            tokens = index_string.split(".")
-            username = tokens[1]
-            repo = tokens[2]
-            path = tokens[3:]
-            raise NotImplementedError()
-
-        elif index_string.endswith(".br.idx"):
-            if is_url_or_abbrev(index_string):
-                result["type"] = "index_file"
-                result["uri"] = index_string
-            elif os.path.isfile(index_string):
-                result["type"] = "index_file"
-                result["uri"] = os.path.abspath(index_string)
-            else:
-                raise FrklException(
-                    msg=f"Can't determine type of index file: {index_string}"
-                )
-
-            result["id"] = result["uri"]
-        elif os.path.isdir(os.path.realpath(index_string)):
-            result["id"] = os.path.basename(index_string)
-            result["type"] = "folder"
-            result["uri"] = os.path.abspath(index_string)
-        elif is_git_repo_url(index_string):
-            result["type"] = "git_repo"
-            result["uri"] = index_string
-        else:
-            raise FrklException(msg=f"Can't parse index string: {index_string}")
-
-        return result
-
-    async def augment_data(self, index_data: MutableMapping[str, Any]) -> None:
-
-        pass
-        # if "id" not in index_data.keys():
-        #     index_data["id"] = index_data["uri"]
-        #
-        # if "type" not in index_data.keys():
-        #     raise ValueError(f"No 'type' key in index config: {index_data}")
-
     async def create_index_config(
         self, index_data: Union[str, Mapping[str, Any], IndexConfig]
     ) -> IndexConfig:
 
         if isinstance(index_data, IndexConfig):
-            return index_data
+            raise NotImplementedError()
+        elif not isinstance(index_data, str):
+            raise NotImplementedError()
 
-        _idx_id: Optional[str] = None
-        _idx_data: Union[str, Mapping[str, Any]]
+        index_configs = await self.get_index_configs()
 
-        if isinstance(index_data, str) and "=" in index_data:
-            _idx_id, _idx_data = index_data.split("=", maxsplit=1)
+        if index_data in index_configs.keys():
+            index_config = index_configs[index_data]
         else:
-            _idx_data = index_data
+            index_config = await resolve_index_string(index_data)
 
-        _index_data: MutableMapping[str, Any]
-
-        if isinstance(_idx_data, str):
-            config_indexes = await self.get_config_indexes()
-            if _idx_data in config_indexes.keys():
-                value = config_indexes[_idx_data]
-                if value is None:
-                    _index_data = dict(self.default_indexes[_idx_data])
-                elif isinstance(value, str):
-                    if value in self.default_indexes.keys():
-                        _index_data = dict(self.default_indexes[value])
-                    else:
-                        _index_data = await self.explode_index_string(value)
-                        _index_data["id"] = _idx_data
-                elif isinstance(_idx_data, collections.Mapping):
-                    _index_data = _idx_data
-                else:
-                    raise TypeError(f"Invalid type for index data: {type(index_data)}")
-            elif _idx_data in self.default_indexes.keys():
-                _index_data = dict(self.default_indexes[_idx_data])
-            else:
-                _index_data = await self.explode_index_string(_idx_data)
-        elif isinstance(_idx_data, collections.Mapping):
-            _index_data = dict(_idx_data)
-        else:
-            raise TypeError(f"Invalid type for index data: {type(index_data)}")
-
-        if _idx_id is not None:
-            _index_data["id"] = _idx_id
-
-        await self.augment_data(_index_data)
-
-        return IndexConfig(**_index_data)
+        return IndexConfig(**index_config)
 
     async def create_index(
         self,
@@ -286,13 +315,7 @@ class IndexFactory(object):
         else:
             raise NotImplementedError()
 
-        index.set_input(
-            info=index_config.info,
-            uri=index_config.uri,
-            id=index_config.id,
-            labels=index_config.labels,
-            tags=index_config.tags,
-        )
+        index.set_input(config=index_config)
 
         await index.get_values("id")
 

@@ -4,12 +4,14 @@ import logging
 import os
 import zlib
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional
 
 import arrow
 from anyio import aopen, create_task_group
 from bring.defaults import BRING_INDEX_FILES_CACHE, BRING_NO_METADATA_TIMESTAMP_MARKER
+from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.pkg import PkgTing
+from bring.utils.defaults import calculate_defaults
 from bring.utils.system_info import get_current_system_info
 from frtls.async_helpers import wrap_async_task
 from frtls.downloads import download_cached_binary_file_async
@@ -20,10 +22,22 @@ from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
 
-if TYPE_CHECKING:
-    pass
+# if TYPE_CHECKING:
+#     from bring.pkg_index.static_index import BringStaticIndexTing
 
 log = logging.getLogger("bring")
+
+
+async def ensure_index_file_is_local(index_url: str) -> str:
+
+    if os.path.exists(index_url):
+        return index_url
+
+    cache_path = await download_cached_binary_file_async(
+        url=index_url, cache_base=BRING_INDEX_FILES_CACHE, return_content=False
+    )
+
+    return cache_path  # type: ignore
 
 
 async def retrieve_index_content(
@@ -55,13 +69,21 @@ class BringIndexTing(InheriTing, SimpleTing):
         self._initialized: bool = False
 
         self._id: Optional[str] = None
+
         super().__init__(name=name, meta=meta)
+
+    def _invalidate(self) -> None:
+
+        pass
 
     def provides(self) -> Dict[str, str]:
 
         return {
             "id": "string",
             "uri": "string",
+            "index_type_config": "dict",
+            "index_type": "string",
+            "index_file": "string?",
             "info": "dict",
             "pkgs": "dict",
             "tags": "list",
@@ -72,14 +94,7 @@ class BringIndexTing(InheriTing, SimpleTing):
 
     def requires(self) -> Dict[str, str]:
 
-        return {
-            "id": "string",
-            "uri": "string",
-            "info": "dict?",
-            "defaults": "dict?",
-            "labels": "dict?",
-            "tags": "list?",
-        }
+        return {"config": "any"}
 
     @property
     def id(self) -> str:
@@ -92,39 +107,49 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         result: Dict[str, Any] = {}
 
-        self._id = requirements["id"]
+        config: IndexConfig = requirements["config"]
+        if not is_instance_or_subclass(config, IndexConfig):
+            raise FrklException(
+                f"Can't process index {self.name}",
+                reason=f"Invalid index config type: {type(config)}",
+            )
+
+        self._id = config.id
+
+        if not self._initialized:
+            await self.init(config)
+            self._initialized = True
+
         if "id" in value_names:
             result["id"] = self._id
 
-        uri = requirements["uri"]
+        if "index_type" in value_names:
+            result["index_type"] = config.index_type
 
-        # if "config" in requirements.keys():
-        #     # still valid cache
-        #     config = requirements["config"]
-        # else:
-        #     config = await self._get_config(data)
-
-        if not self._initialized:
-            await self.init(uri)
-            self._initialized = True
+        if "index_file" in value_names:
+            result["index_file"] = config.index_file
 
         if "uri" in value_names:
-            result["uri"] = uri
+            result["uri"] = await self.get_uri()
+
+        if "index_type_config" in value_names:
+            result["index_type_config"] = config.index_type_config
 
         if "defaults" in value_names:
-            defaults = requirements.get("defaults", {})
-            if defaults is None:
-                defaults = {}
-            result["defaults"] = defaults
+
+            _defaults = calculate_defaults(
+                typistry=self._tingistry_obj.typistry, data=config.defaults
+            )
+            result["defaults"] = _defaults
 
         if "info" in value_names:
-            result["info"] = requirements.get("info", {})
+            result["info"] = config.info
 
         if "labels" in value_names:
-            result["labels"] = requirements.get("labels", {})
+            result["labels"] = config.labels
 
         if "tags" in value_names:
-            result["tags"] = requirements.get("tags", [])
+            result["tags"] = config.tags
 
         if "metadata_timestamp" in value_names:
             result["metadata_timestamp"] = await self.get_metadata_timestamp()
@@ -155,7 +180,10 @@ class BringIndexTing(InheriTing, SimpleTing):
 
     @abstractmethod
     async def _get_pkgs(self) -> Mapping[str, PkgTing]:
+        pass
 
+    @abstractmethod
+    async def get_uri(self) -> str:
         pass
 
     async def get_metadata_timestamp(self, return_format: str = "default") -> str:
@@ -182,7 +210,7 @@ class BringIndexTing(InheriTing, SimpleTing):
         return None
 
     @abstractmethod
-    async def init(self, uri: str):
+    async def init(self, config: IndexConfig):
 
         pass
 
