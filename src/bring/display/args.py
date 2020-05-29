@@ -50,7 +50,7 @@ def prepare_table_items(
 
         item = {
             "name": k,
-            "desc": doc.get_short_help(use_help=True),
+            "desc": doc.get_short_help(),
             "type": v["type"],
             "required": v.get("required", True),
             "default": v["default"],

@@ -169,7 +169,10 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.config import BringConfigGroup
 
             command = BringConfigGroup(
-                bring_config=self.bring_config, config_list=config_list, name=name
+                bring_config=self.bring_config,
+                config_list=config_list,
+                name=name,
+                arg_hive=self._tingistry_obj.arg_hive,
             )
 
             return command

@@ -66,16 +66,14 @@ class FolderConfigProfilesTing(SimpleTing):
         # _calculated = await self.calculate_config(config_input)
 
         if "profiles" in value_names:
-            result["profiles"] = await self.get_config_profiles()
+            result["profiles"] = await self.get_contexts()
 
         if "config_dicts" in value_names:
             result["config_dicts"] = await self.get_config_dicts()
 
         return result
 
-    async def get_config_profiles(
-        self, update: bool = False
-    ) -> Mapping[str, ConfigTing]:
+    async def get_contexts(self, update: bool = False) -> Mapping[str, ConfigTing]:
         """Get all available config profiles."""
 
         async with await self._get_init_lock():
@@ -111,7 +109,7 @@ class FolderConfigProfilesTing(SimpleTing):
     ) -> Mapping[str, Mapping[str, Any]]:
         """Retrun the values of all available config profiles."""
 
-        profiles = await self.get_config_profiles(update=update)
+        profiles = await self.get_contexts(update=update)
 
         result: Dict[str, Any] = {}
 

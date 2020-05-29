@@ -4,6 +4,8 @@ from typing import Iterable
 
 import asyncclick as click
 from bring.config.bring_config import BringConfig
+from bring.display.args_explanation import ArgsExplanation
+from bring.interfaces.cli import console
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 from frtls.formats.output_formats import create_multi_column_table, serialize
@@ -12,6 +14,35 @@ from frtls.formats.output_formats import create_multi_column_table, serialize
 CONFIG_HELP = """Configuration-related utility commands"""
 
 log = logging.getLogger("bring")
+
+BRING_CONFIG_SCHEMAN = {
+    "defaults": {
+        "doc": """Default values for this configuration context.
+
+Will be overwritten by index-specific defaults, but have higher priority than package defaults.
+""",
+        "type": "dict?",
+    },
+    "default_index": {
+        "doc": "The default index to use when a package name without index part is provided.",
+        "type": "string?",
+    },
+    "indexes": {
+        "doc": """A list of indexes and their configuration.
+
+Each item in this list is either an index id string, or a dictionary including additional data to use in this configuration context for this index (for example, default variables). For more information on index configuration, please check out [the relevant documentation site](TODO).
+
+Each item in this list will be pre-loaded at application start, so a 'bring list' for example will list all packages of all indexes in this configuration context.
+""",
+        "type": "list",
+    },
+    "output": {
+        "doc": "Output plugin to use (not implemented yet).",
+        "type": "string?",
+        "default": "default",
+    },
+    "task_log": {"doc": "Format of the task log.\n\nTODO", "type": "string?"},
+}
 
 
 class BringConfigGroup(FrklBaseCommand):
@@ -55,7 +86,13 @@ class BringConfigGroup(FrklBaseCommand):
         self._bring_config.set_config(*self._config_list)
         c = await self._bring_config.get_config_dict()
 
-        click.echo(serialize(c, format="yaml"))
+        config_explanation = ArgsExplanation(
+            c, BRING_CONFIG_SCHEMAN, arg_hive=self._arg_hive
+        )
+
+        console.line()
+        console.print(config_explanation)
+        # click.echo(serialize(c, format="yaml"))
 
     async def _list_commands(self, ctx):
 
@@ -85,7 +122,7 @@ class BringConfigGroup(FrklBaseCommand):
             @handle_exc_async
             async def list(ctx, profile_name):
 
-                profiles = await self.get_config().get_config_profiles()
+                profiles = await self.get_config().get_contexts()
 
                 if profile_name is None:
 

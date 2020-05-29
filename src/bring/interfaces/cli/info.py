@@ -44,7 +44,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
     async def _list_commands(self, ctx):
 
         ctx.obj["list_info_commands"] = True
-        return ["target", "index", "package"]
+        return ["index", "package", "target"]
 
     async def _get_command(self, ctx, name):
 

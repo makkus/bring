@@ -189,7 +189,7 @@ class IndexInfoDisplay(object):
             title.append(title_str)
             title.append("")
 
-            help_str = desc_section.get_help(use_short_help=True, default=None)
+            help_str = desc_section.get_help(default=None)
             if help_str:
                 title.append(help_str)
                 title.append("")

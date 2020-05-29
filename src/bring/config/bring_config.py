@@ -64,16 +64,16 @@ class BringConfig(object):
 
         register_args(self._tingistry_obj.arg_hive)
 
-        self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
+        self._config_contexts: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
             BRING_CONFIG_PROFILES_NAME, raise_exception=False
         )
 
-        if self._config_profiles is None:
+        if self._config_contexts is None:
             # in case it wasn't created before, we use the default one
             self._tingistry_obj.register_prototing(
                 **BRING_DEFAULT_CONFIG_PROFILE
             )  # type: ignore
-            self._config_profiles: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
+            self._config_contexts: FolderConfigProfilesTing = self._tingistry_obj.get_ting(  # type: ignore
                 BRING_CONFIG_PROFILES_NAME, raise_exception=True
             )
 
@@ -120,9 +120,9 @@ class BringConfig(object):
         if self._bring is not None:
             self._bring.invalidate()
 
-    async def get_config_profiles(self, update: bool = False):
+    async def get_contexts(self, update: bool = False):
 
-        return await self._config_profiles.get_config_profiles(update=update)
+        return await self._config_contexts.get_contexts(update=update)
 
     @property
     def config_input(self) -> Iterable[Union[str, Mapping[str, Any]]]:
@@ -151,7 +151,7 @@ class BringConfig(object):
         # TODO: this could be made more efficient by only loading the config dicts that are required
         config_dicts: Mapping[
             str, Mapping[str, Any]
-        ] = await self._config_profiles.get_config_dicts()
+        ] = await self._config_contexts.get_config_dicts()
 
         result: List[Mapping[str, Any]] = []
 

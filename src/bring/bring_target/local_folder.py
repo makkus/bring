@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
 from bring.bring_target import BringTarget
-from bring.display.explanation import LocalFolderExplanation
+from bring.display.local_folder import LocalFolderExplanation
 from bring.merge_strategy import LocalFolder
 from rich.console import Console, ConsoleOptions, RenderResult
 

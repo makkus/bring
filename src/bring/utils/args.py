@@ -60,13 +60,7 @@ def create_table_from_pkg_args(
             alias = ""
 
         table.add_row(
-            k,
-            doc.get_short_help(use_help=True),
-            v["type"],
-            req,
-            default,
-            allowed_first,
-            alias,
+            k, doc.get_short_help(), v["type"], req, default, allowed_first, alias
         )
         if (
             allowed_first in aliases_reverse.keys()

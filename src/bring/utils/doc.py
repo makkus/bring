@@ -19,7 +19,7 @@ async def create_mogrifier_markdown_string(
 
     plugin_doc.extract_metadata("examples")
 
-    if plugin_doc.get_help(default=None, use_short_help=False):
+    if plugin_doc.get_help(default=None):
         help_str = plugin_doc.get_help()
     else:
         help_str = "No description available."
@@ -57,7 +57,7 @@ async def create_pkg_type_markdown_string(
 
     plugin_doc.extract_metadata("examples")
 
-    if plugin_doc.get_help(default=None, use_short_help=False):
+    if plugin_doc.get_help(default=None):
         help_str = plugin_doc.get_help()
     else:
         help_str = "No description available."

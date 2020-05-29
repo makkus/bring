@@ -115,7 +115,9 @@ class BringInstallGroup(FrklBaseCommand):
 
         force = self._group_params_parsed.get("force", False)
         update = self._group_params_parsed.get("update", False)
+
         merge_strategy = self._group_params_parsed.get("merge_strategy")
+
         merge_strategy["config"]["force"] = force
         merge_strategy["config"]["update"] = update
 
@@ -137,6 +139,7 @@ class BringInstallGroup(FrklBaseCommand):
         processor.add_constants(_constants_name="install_command_input", **install_args)
 
         args = await processor.get_user_input_args()
+        args_renderer = args.create_arg_renderer("cli", add_defaults=True)
 
         if explain:
 
@@ -144,8 +147,9 @@ class BringInstallGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, **kwargs):
 
-                user_input = args.from_cli_input(**kwargs)
-                processor.set_user_input(**user_input)
+                arg_value = args_renderer.create_arg_value(kwargs)
+
+                processor.set_user_input(**arg_value.processed_input)
                 explanation = processor.explain()
 
                 console.print(explanation)
@@ -156,8 +160,9 @@ class BringInstallGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, **kwargs):
 
-                user_input = args.from_cli_input(**kwargs)
-                processor.set_user_input(**user_input)
+                arg_value = args_renderer.create_arg_value(kwargs)
+
+                processor.set_user_input(**arg_value.processed_input)
 
                 pi = processor.explain_vars()
                 console.print(pi)
@@ -166,6 +171,6 @@ class BringInstallGroup(FrklBaseCommand):
                 result = await processor.process()
                 console.print(result)
 
-        command.params = args.to_cli_options(add_defaults=False)
+        command.params = args_renderer.rendered_arg
 
         return command

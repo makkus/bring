@@ -22,9 +22,6 @@ from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
 
-# if TYPE_CHECKING:
-#     from bring.pkg_index.static_index import BringStaticIndexTing
-
 log = logging.getLogger("bring")
 
 
