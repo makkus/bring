@@ -2,9 +2,9 @@
 import collections
 from typing import Any, Mapping, Optional, Union
 
-from bring.display.explanation import Explanation
 from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
+from frtls.doc.explanation import Explanation
 from frtls.formats.output_formats import serialize
 from frtls.templating import process_string_template
 from frtls.types.utils import is_instance_or_subclass

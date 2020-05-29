@@ -15,12 +15,12 @@ from typing import (
     Union,
 )
 
-from bring.display.explanation import Explanation, StepsExplanation
 from bring.mogrify import Transmogrificator
 from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.dicts import dict_merge, get_seeded_dict
+from frtls.doc.explanation import Explanation, StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 from rich.console import Console, ConsoleOptions, RenderResult

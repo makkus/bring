@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Mapping, Optional
 
-from bring.display.explanation import Explanation
 from bring.merge_strategy import LocalFolder
 from frtls.async_helpers import wrap_async_task
+from frtls.doc.explanation import Explanation
 from rich.console import Console, ConsoleOptions, RenderResult
 
 
