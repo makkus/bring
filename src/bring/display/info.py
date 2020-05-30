@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union
 
 import arrow
 from bring.display.args import create_table_from_pkg_args
@@ -12,6 +12,7 @@ from frtls.doc.doc import Doc
 from frtls.doc.utils import create_dict_block
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
@@ -168,7 +169,7 @@ class IndexInfoDisplay(object):
 
         if display_title:
 
-            title = []
+            title: List = []
 
             md_ts = arrow.get(info_data["metadata_timestamp"]).humanize()
             title_str = f"[bold]Index[/bold]: '[bold dark_red]{self._index.id}[/bold dark_red]' (metadata snapshot: {md_ts})"
@@ -194,7 +195,7 @@ class IndexInfoDisplay(object):
 
             defaults = info_data["defaults"]
             if defaults:
-                defaults_markdown = create_dict_block(
+                defaults_markdown: Union[str, Markdown] = create_dict_block(
                     _style=bring_style, _code_theme=bring_code_theme, **defaults
                 )
             else:
