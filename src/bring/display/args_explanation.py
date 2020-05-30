@@ -69,8 +69,12 @@ class ArgsExplanation(Explanation):
             arg_hive = ArgHive()
         self._arg_hive = arg_hive
         if not is_instance_or_subclass(args, RecordArg):
+            if not isinstance(args, collections.abc.Mapping):
+                raise TypeError(
+                    f"Can't create explanation object for arguments, invalid type for childs: {type(args)}"
+                )
             args = arg_hive.create_record_arg(childs=args)
-        self._args: RecordArg = args
+        self._args: RecordArg = args  # type: ignore
 
         self._full: bool = False
 
