@@ -33,7 +33,6 @@ class FolderConfigProfilesTing(SimpleTing):
             ting_class="text_file_ting_maker",
             prototing="config_ting",
             ting_name_strategy="basename_no_ext",
-            file_content="yaml",
             ting_target_namespace=f"{self.full_name}.configs",
             file_matchers=[
                 {"type": "extension", "regex": f".*\\.{self._config_file_ext}"}
