@@ -5,7 +5,7 @@ from typing import Iterable
 
 import asyncclick as click
 from bring.config.bring_config import BringConfig
-from bring.interfaces.cli import console
+from bring.interfaces.cli import bring_code_theme, console
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 from frtls.doc.explanation.args import ArgsExplanation
@@ -110,7 +110,9 @@ class BringConfigGroup(FrklBaseCommand):
                 if vals["parent"]:
                     info["parent context"] = vals["parent"]
 
-                info["config_data"] = create_dict_element(**vals["config"])
+                info["config_data"] = create_dict_element(
+                    _theme=bring_code_theme, **vals["config"]
+                )
 
                 exp = InfoExplanation(
                     name=context_name,

@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 import arrow
 from bring.display.args import create_table_from_pkg_args
+from bring.interfaces.cli import bring_code_theme, bring_style
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
@@ -184,14 +185,18 @@ class IndexInfoDisplay(object):
             md["uri"] = info_data["uri"]
             md["index_type"] = info_data["index_type"]
 
-            md_markdown = create_dict_block(**md)
+            md_markdown = create_dict_block(
+                _style=bring_style, _code_theme=bring_code_theme, **md
+            )
             title.append("[bold]Metadata[/bold]")
             title.append("\n")
             title.append(md_markdown)
 
             defaults = info_data["defaults"]
             if defaults:
-                defaults_markdown = create_dict_block(**defaults)
+                defaults_markdown = create_dict_block(
+                    _style=bring_style, _code_theme=bring_code_theme, **defaults
+                )
             else:
                 defaults_markdown = "  -- no defaults --"
             title.append("\n[bold]Defaults[/bold]")
@@ -221,7 +226,9 @@ class IndexInfoDisplay(object):
             if not _config:
                 config.append("  -- no config --")
             else:
-                md_markdown = create_dict_block(**_config)
+                md_markdown = create_dict_block(
+                    _style=bring_style, _code_theme=bring_code_theme, **_config
+                )
 
                 config.append(md_markdown)
             config.append("")
