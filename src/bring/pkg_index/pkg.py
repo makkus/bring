@@ -297,8 +297,8 @@ class PkgTing(SimpleTing):
 
     async def get_defaults(self) -> Mapping[str, Any]:
 
-        args = await self.get_value("args")
-        return args.get_defaults()
+        args: RecordArg = await self.get_value("args")
+        return args.default
 
     async def merge_with_defaults(self, **vars: Any) -> MutableMapping[str, Any]:
 
@@ -308,7 +308,7 @@ class PkgTing(SimpleTing):
         # _pkg_metadata: Mapping[str, Any] = vals["metadata"]
         args: RecordArg = vals["args"]
 
-        pkg_defaults = args.get_defaults()
+        pkg_defaults = args.default
 
         _vars = get_seeded_dict(pkg_defaults, vars, merge_strategy="update")
 

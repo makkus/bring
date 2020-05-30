@@ -13,6 +13,7 @@ from typing import (
 
 import anyio
 from anyio import Lock
+from bring.config import ConfigTing
 from bring.config.folder_config import FolderConfigProfilesTing
 from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
@@ -120,7 +121,7 @@ class BringConfig(object):
         if self._bring is not None:
             self._bring.invalidate()
 
-    async def get_contexts(self, update: bool = False):
+    async def get_contexts(self, update: bool = False) -> Mapping[str, ConfigTing]:
 
         return await self._config_contexts.get_contexts(update=update)
 

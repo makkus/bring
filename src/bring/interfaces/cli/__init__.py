@@ -16,8 +16,8 @@ LIGHT_THEME = Theme(
     {
         "title": Style.parse("bold bright_black"),
         "key": Style.parse("bold grey35"),
-        "key2": Style.parse("grey42"),
-        "value": Style.parse("italic"),
+        "key2": Style.parse("italic"),
+        "value": Style.parse(""),
     }
 )
 

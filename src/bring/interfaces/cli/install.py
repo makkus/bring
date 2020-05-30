@@ -139,6 +139,7 @@ class BringInstallGroup(FrklBaseCommand):
         processor.add_constants(_constants_name="install_command_input", **install_args)
 
         args = await processor.get_user_input_args()
+
         args_renderer = args.create_arg_renderer("cli", add_defaults=True)
 
         if explain:
@@ -148,7 +149,6 @@ class BringInstallGroup(FrklBaseCommand):
             async def command(ctx, **kwargs):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
-
                 processor.set_user_input(**arg_value.processed_input)
                 explanation = processor.explain()
 

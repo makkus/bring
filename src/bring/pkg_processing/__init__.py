@@ -95,7 +95,7 @@ class VarSet(object):
 
     def __repr__(self):
 
-        return f"[VarSet: name={self.name} vars={self.vars}]"
+        return f"[VarSet: name={self.name} type={self.type} vars={self.vars}]"
 
 
 class VarHolder(object):
@@ -217,7 +217,10 @@ class VarHolder(object):
 
         result = {}
         result[VarSetType.CONSTANTS] = arg_hive.create_record_arg(childs=constant_args)
-        result[VarSetType.INPUT] = arg_hive.create_record_arg(childs=input_args)
+        defaults = self.merged_per_type[VarSetType.DEFAULTS]
+        result[VarSetType.INPUT] = arg_hive.create_record_arg(
+            childs=input_args, default=defaults
+        )
 
         return result
 
@@ -408,6 +411,7 @@ class ArgsHolder(object):
                 processed[arg_name] = arg
             else:
                 other[arg_name] = arg
+
         args = self.vars_holder.create_args(arg_hive=self._arg_hive, **other)
         self._constants_args = args[VarSetType.CONSTANTS]
         self._input_args = args[VarSetType.INPUT]
@@ -617,6 +621,7 @@ class BringProcessor(metaclass=ABCMeta):
 
         if self._input_processed is None:
             all_args = await self.get_all_required_args()
+
             self._args_holder.set_args_descs(**all_args)
 
             self._input_processed = self._args_holder.vars
@@ -756,7 +761,7 @@ class PkgProcessor(BringProcessor):
             )  # type: ignore
 
             args: RecordArg = vals["args"]
-            pkg_defaults = args.get_defaults()
+            pkg_defaults = args.default
 
             aliases: Mapping[str, Mapping[Any, Any]] = vals["aliases"]
 

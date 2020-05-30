@@ -21,6 +21,7 @@ from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import SerialTasksAsync
+from frtls.types.utils import is_instance_or_subclass
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
 
@@ -200,7 +201,7 @@ class Bring(SimpleTing):
         added = {}
 
         async def add(_ii, _ae):
-            _idx = await self.add_index(_ii, _ae)
+            _idx = await self.create_index(_ii, _ae)
             added[_ii] = _idx
 
         async with create_task_group() as tg:
@@ -212,6 +213,7 @@ class Bring(SimpleTing):
         result = {}
         for ii in index_items:
             _idx = added[ii]
+            await self.add_index(_idx, allow_existing=allow_existing)
             result[_idx.id] = _idx
 
         return result
@@ -223,7 +225,7 @@ class Bring(SimpleTing):
         result = await self.add_indexes(*indexes, allow_existing=True)
         return result
 
-    async def add_index(
+    async def create_index(
         self,
         index_data: Union[str, Mapping[str, Any], IndexConfig],
         allow_existing: bool = False,
@@ -232,6 +234,22 @@ class Bring(SimpleTing):
         index = await self._index_factory.create_index(
             index_data=index_data, allow_existing=allow_existing
         )
+
+        return index
+
+    async def add_index(
+        self,
+        index_data: Union[str, Mapping[str, Any], IndexConfig, BringIndexTing],
+        allow_existing: bool = False,
+    ) -> BringIndexTing:
+
+        if is_instance_or_subclass(index_data, BringIndexTing):
+            index: BringIndexTing = index_data  # type: ignore
+        else:
+            index = await self.create_index(
+                index_data=index_data, allow_existing=allow_existing
+            )
+
         if index.id in self.index_ids and not allow_existing:
             raise FrklException(
                 f"Can't add index '{index.id}'.",
