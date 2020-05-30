@@ -35,11 +35,12 @@ class ConfigTing(InheriTing, SimpleTing):
             self._parent_key: "string?",
             self._info_key: "string?",
             "config": "dict",
+            "config_source": "dict",
         }
 
     def requires(self) -> Dict[str, str]:
 
-        return {"ting_dict": "dict"}
+        return {"ting_dict": "dict", "ting_make_metadata": "dict"}
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
@@ -57,6 +58,9 @@ class ConfigTing(InheriTing, SimpleTing):
             else:
                 config = await self._get_config(config_dict, parent)
                 result["config"] = config
+
+        if "config_source" in value_names:
+            result["config_source"] = requirements["ting_make_metadata"]
 
         if self._info_key in value_names:
             result[self._info_key] = info

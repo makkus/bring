@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Dict, List, Mapping, Optional
 
-from frtls.doc import Doc
+from frtls.doc.doc import Doc
 from rich import box
 from rich.table import Table
 

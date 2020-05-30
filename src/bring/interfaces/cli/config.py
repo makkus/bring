@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
 import logging
+import sys
 from typing import Iterable
 
 import asyncclick as click
 from bring.config.bring_config import BringConfig
-from bring.display.args_explanation import ArgsExplanation
 from bring.interfaces.cli import console
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
-from frtls.formats.output_formats import create_multi_column_table, serialize
+from frtls.doc.explanation.args import ArgsExplanation
+from frtls.doc.explanation.info import InfoExplanation, InfoListExplanation
+from frtls.doc.utils import create_dict_element
 
 
-CONFIG_HELP = """Configuration-related utility commands"""
+CONFIG_HELP = """Configuration-related utility commands.
+
+This sub-command provides convenience wrappers to display information about, as well as create and manage configuration contexts for 'bring'. Use the '--help' option on the sub-commands for more information.
+"""
 
 log = logging.getLogger("bring")
 
@@ -62,95 +67,118 @@ class BringConfigGroup(FrklBaseCommand):
         super(BringConfigGroup, self).__init__(
             name=name,
             invoke_without_command=True,
-            no_args_is_help=False,
-            callback=self.show,
+            no_args_is_help=True,
             result_callback=None,
             **kwargs,
         )
 
-    # def format_commands(self, ctx, formatter):
-    #     """Extra format methods for multi methods that adds all the commands
-    #     after the options.
-    #     """
-    #
-    #     wrap_async_task(
-    #         print_config_list_for_help, bring_config=self._bring_config, formatter=formatter
-    #     )
-
-    @click.pass_context
-    async def show(ctx, self):
-
-        if ctx.invoked_subcommand is not None:
-            return
-
-        self._bring_config.set_config(*self._config_list)
-        c = await self._bring_config.get_config_dict()
-
-        config_explanation = ArgsExplanation(
-            c, BRING_CONFIG_SCHEMAN, arg_hive=self._arg_hive
-        )
-
-        console.line()
-        console.print(config_explanation)
-        # click.echo(serialize(c, format="yaml"))
-
     async def _list_commands(self, ctx):
 
         ctx.obj["list_info_commands"] = True
-        return ["profile"]
+        return ["contexts", "show", "show-current"]
 
     async def _get_command(self, ctx, name):
 
-        command = None
-
-        # if name == "show":
-        #     @click.command()
-        #     @click.pass_context
-        #     @handle_exc_async
-        #     async def show(ctx):
-        #         """show the current configuration"""
-        #
-        #
-        #
-        #     command = show
-
-        if name == "profile":
+        if name == "show":
 
             @click.command()
-            @click.argument("profile_name", nargs=1, required=False)
+            @click.option("--full", "-f", help="Show full details.", is_flag=True)
+            @click.argument(
+                "context_name", type=str, nargs=1, required=True, default="default"
+            )
             @click.pass_context
             @handle_exc_async
-            async def list(ctx, profile_name):
+            async def show(ctx, context_name: str, full: bool):
+                """Show details for a config context."""
 
-                profiles = await self.get_config().get_contexts()
+                contexts = await self._bring_config.get_contexts()
 
-                if profile_name is None:
+                context = contexts.get(context_name, None)
+                if context is None:
+                    click.echo(f"No context '{context_name}' available.")
+                    sys.exit(1)
 
-                    profile_list = []
-                    for profile_name, profile in sorted(profiles.items()):
-                        info = await profile.get_value("info")
-                        slug = info.get("slug", "no description available")
-                        profile_list.append([profile_name, slug])
+                console.line()
 
-                    table = create_multi_column_table(
-                        profile_list, headers=["profile", "description"]
+                vals = await context.get_values()
+
+                config_source = vals["config_source"]
+                info = vals["info"]
+
+                info["path"] = config_source.get("full_path", "-- not available --")
+
+                if vals["parent"]:
+                    info["parent context"] = vals["parent"]
+
+                info["config_data"] = create_dict_element(**vals["config"])
+
+                exp = InfoExplanation(
+                    name=context_name,
+                    info_data=info,
+                    short_help_key="slug",
+                    help_key="desc",
+                    full_info=True,
+                )
+                console.print(exp)
+
+            return show
+
+        elif name == "show-current":
+
+            @click.command()
+            @click.option("--full", "-f", help="Show full details.", is_flag=True)
+            @click.pass_context
+            @handle_exc_async
+            async def show_current(ctx, full: bool):
+                """Show details for the current config context.
+
+                This takes into account the provided gloabl arguments for this commandline invocation.
+                """
+
+                self._bring_config.set_config(*self._config_list)
+                c = await self._bring_config.get_config_dict()
+
+                config_explanation = ArgsExplanation(
+                    c, BRING_CONFIG_SCHEMAN, arg_hive=self._arg_hive, full_details=full
+                )
+
+                console.line()
+                console.print(config_explanation)
+
+            return show_current
+
+        elif name == "contexts":
+
+            @click.command()
+            @click.pass_context
+            @handle_exc_async
+            async def contexts(ctx):
+                """List available config contexts."""
+
+                contexts = await self._bring_config.get_contexts()
+
+                explanations = []
+                for ctx_name, context in contexts.items():
+
+                    vals = await context.get_values()
+                    config_source = vals["config_source"]
+
+                    info = vals["info"]
+                    info["source"] = config_source
+
+                    exp = InfoExplanation(
+                        name=ctx_name,
+                        info_data=info,
+                        short_help_key="slug",
+                        help_key="desc",
                     )
-                    click.echo()
-                    click.echo(table)
-                    return
+                    explanations.append(exp)
 
-                profile = profiles.get(profile_name, None)
-                if profile is None:
-                    click.echo()
-                    click.echo(f"No profile '{profile_name}' available.")
-                    return
+                exp_list = InfoListExplanation(*explanations)
 
-                values = await profile.get_values()
-                click.echo(serialize(values, format="yaml"))
+                console.print(exp_list)
 
-            return list
-
-        return command
+            return contexts
 
 
 # @click.group()

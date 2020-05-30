@@ -20,7 +20,8 @@ from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.dicts import dict_merge, get_seeded_dict
-from frtls.doc.explanation import Explanation, StepsExplanation
+from frtls.doc.explanation import Explanation
+from frtls.doc.explanation.steps import StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
 from rich.console import Console, ConsoleOptions, RenderResult
@@ -263,7 +264,9 @@ class ProcessVars(Explanation):
         self._arg_map = result
         return self._arg_map
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         result = []
 
@@ -857,7 +860,9 @@ class ProcessInfo(Explanation):
         await self.get_process_msg()
         await self.get_explained_tasks()
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         if self._msg is None or self._explained_tasks is None:
             wrap_async_task(self._init)
@@ -885,7 +890,9 @@ class ProcessResult(Explanation):
 
         return self._result
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         result = []
 

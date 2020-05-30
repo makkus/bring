@@ -33,6 +33,7 @@ class FolderConfigProfilesTing(SimpleTing):
             ting_class="text_file_ting_maker",
             prototing="config_ting",
             ting_name_strategy="basename_no_ext",
+            file_content="yaml",
             ting_target_namespace=f"{self.full_name}.configs",
             file_matchers=[
                 {"type": "extension", "regex": f".*\\.{self._config_file_ext}"}
@@ -95,7 +96,7 @@ class FolderConfigProfilesTing(SimpleTing):
                 dt = self._tingistry_obj.create_ting(
                     "config_ting", f"{self.full_name}.configs.default"
                 )
-                dt.set_input(ting_dict=BRING_DEFAULT_CONFIG)
+                dt.set_input(ting_dict=BRING_DEFAULT_CONFIG, ting_make_metadata={})
 
             profiles: MutableMapping[str, ConfigTing] = {
                 k.split(".")[-1]: v  # type: ignore

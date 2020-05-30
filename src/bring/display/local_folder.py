@@ -23,7 +23,9 @@ class LocalFolderExplanation(Explanation):
             self._managed_files = await self._local_folder.get_managed_files()
         return self._managed_files
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         if self._managed_files is None:
             wrap_async_task(self._init)

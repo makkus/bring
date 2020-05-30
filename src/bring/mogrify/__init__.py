@@ -12,7 +12,7 @@ from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.utils import BringTaskDesc
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
-from frtls.doc.explanation import StepsExplanation
+from frtls.doc.explanation.steps import StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import Task, Tasks

@@ -4,34 +4,18 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 import arrow
 from bring.display.args import create_table_from_pkg_args
-from bring.interfaces.cli import bring_code_theme, bring_style
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
-from frtls.doc import Doc
-from frtls.formats.output_formats import serialize
+from frtls.doc.doc import Doc
+from frtls.doc.utils import create_dict_block
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 
 
 log = logging.getLogger("bring")
-
-
-def create_dict_block(**config: Any):
-
-    config_yaml_string = serialize(config, format="yaml", indent=4, strip=True)
-    config_markdown_string = f"``` yaml\n{config_yaml_string}\n```"
-    config_markdown = Markdown(
-        config_markdown_string,
-        style=bring_style,
-        code_theme=bring_code_theme,
-        justify="left",
-    )
-
-    return config_markdown
 
 
 class IndexInfoDisplay(object):
@@ -138,7 +122,9 @@ class IndexInfoDisplay(object):
 
         return info
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         all: List[Any] = []
 
@@ -367,7 +353,9 @@ class PkgInfoDisplay(object):
 
         return result
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         all: List[Any] = []
 

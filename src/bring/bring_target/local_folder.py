@@ -58,7 +58,9 @@ class LocalFolderTarget(BringTarget):
             self._target_folder = LocalFolder(path)
         return self._target_folder
 
-    def __console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
 
         yield LocalFolderExplanation(self.target_folder)
 

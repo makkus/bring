@@ -18,7 +18,7 @@ from typing import (
 from bring.defaults import BRING_AUTO_ARG
 from bring.merge_strategy import MergeStrategy
 from frtls.dicts import get_seeded_dict
-from frtls.doc import Doc
+from frtls.doc.doc import Doc
 from frtls.exceptions import FrklException
 from frtls.formats.input_formats import SmartInput
 from frtls.templating import (

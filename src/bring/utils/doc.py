@@ -4,7 +4,7 @@ from typing import Any, Dict, Mapping, Optional
 from anyio import create_task_group
 from bring.bring import Bring
 from bring.pkg_types import PkgType
-from frtls.doc import Doc
+from frtls.doc.doc import Doc
 from frtls.exceptions import FrklException
 from frtls.formats.output_formats import serialize
 
