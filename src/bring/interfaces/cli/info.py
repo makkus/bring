@@ -65,7 +65,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, path):
                 if path is None:
-                    path = os.getcwd()
+                    path = os.path.abspath(".").split(os.path.sep)[0] + os.path.sep
                 target = LocalFolderTarget(bring=self._bring, path=path)
                 console.line()
                 console.print(target)
