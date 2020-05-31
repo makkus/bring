@@ -247,7 +247,7 @@ class Bring(SimpleTing):
             index: BringIndexTing = index_data  # type: ignore
         else:
             index = await self.create_index(
-                index_data=index_data, allow_existing=allow_existing
+                index_data=index_data, allow_existing=allow_existing  # type: ignore
             )
 
         if index.id in self.index_ids and not allow_existing:
