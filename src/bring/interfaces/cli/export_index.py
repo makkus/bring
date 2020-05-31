@@ -45,9 +45,16 @@ class BringExportIndexCommand(click.Command):
 
         click.echo()
 
+        _index = os.path.abspath(os.path.expanduser(index))
+        if not os.path.isdir(os.path.realpath(_index)):
+            click.echo(
+                f"Can't export index '{index}': path does not exist or not a folder"
+            )
+            sys.exit(1)
+
         if output_file is None:
             _path = os.path.join(
-                index, BRING_METADATA_FOLDER_NAME, DEFAULT_FOLDER_INDEX_NAME
+                _index, BRING_METADATA_FOLDER_NAME, DEFAULT_FOLDER_INDEX_NAME
             )
         elif os.path.isdir(os.path.realpath(output_file)):
             click.echo(
@@ -56,7 +63,7 @@ class BringExportIndexCommand(click.Command):
         else:
             _path = os.path.abspath(os.path.expanduser(output_file))
 
-        index_obj = await self._bring.get_index(index)
+        index_obj = await self._bring.get_index(_index)
         exported_index = await index_obj.export_index()
 
         empty: bool = True
@@ -87,7 +94,7 @@ class BringExportIndexCommand(click.Command):
                     f"Force update old index, even though are inconsistencies for packages: {', '.join(inconsistent)}"
                 )
             else:
-                click.echo("Updating old index, no inconsistencies.")
+                click.echo("Older index file exists, no inconsistencies.")
             added = await diff.get_added_package_names()
             if added:
                 click.echo("Added packages:")
@@ -100,6 +107,8 @@ class BringExportIndexCommand(click.Command):
                     click.echo(f"  - {u}")
         else:
             ensure_folder(os.path.dirname(_path))
+
+        click.echo(f"Exporting index to file: {_path}")
 
         json_data = json.dumps(exported_index, indent=2) + "\n"
         json_bytes = json_data.encode("utf-8")

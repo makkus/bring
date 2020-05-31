@@ -88,7 +88,7 @@ class IndexDiff(object):
         if pkg_names:
             if raise_exception:
                 raise FrklException(
-                    msg=f"Can't update index.",
+                    msg="Can't update index.",
                     reason=f"Missing/inconsistent packages: {pkg_names}",
                 )
 

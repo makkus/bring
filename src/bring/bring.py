@@ -298,7 +298,7 @@ class Bring(SimpleTing):
             indexes = await self._index_factory.get_indexes_in_config()
             if not indexes:
                 raise FrklException(
-                    f"Can't calculate default index.",
+                    "Can't calculate default index.",
                     reason="No 'default_index' value in config, and no indexes configured/registered (yet).",
                 )
 
