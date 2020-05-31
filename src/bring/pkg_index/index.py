@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
-import json
 import logging
-import os
-import zlib
 from abc import abstractmethod
 from typing import Any, Dict, Iterable, Mapping, Optional
 
 import arrow
-from anyio import aopen, create_task_group
-from bring.defaults import BRING_INDEX_FILES_CACHE, BRING_NO_METADATA_TIMESTAMP_MARKER
+from anyio import create_task_group
+from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.defaults import calculate_defaults
 from frtls.async_helpers import wrap_async_task
-from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
 from frtls.tasks import Task
 from frtls.types.utils import is_instance_or_subclass
@@ -22,40 +18,6 @@ from tings.ting.inheriting import InheriTing
 
 
 log = logging.getLogger("bring")
-
-
-async def ensure_index_file_is_local(index_url: str) -> str:
-
-    if os.path.exists(index_url):
-        return index_url
-
-    cache_path = await download_cached_binary_file_async(
-        url=index_url, cache_base=BRING_INDEX_FILES_CACHE, return_content=False
-    )
-
-    return cache_path  # type: ignore
-
-
-async def retrieve_index_content(
-    index_url: str, update: bool = False
-) -> Mapping[str, Any]:
-
-    if os.path.exists(index_url):
-        async with await aopen(index_url, "rb") as f:
-            content = await f.read()
-    else:
-
-        content = await download_cached_binary_file_async(
-            url=index_url,
-            update=update,
-            cache_base=BRING_INDEX_FILES_CACHE,
-            return_content=True,
-        )
-
-    json_string = zlib.decompress(content, 16 + zlib.MAX_WBITS)  # type: ignore
-
-    data = json.loads(json_string)
-    return data
 
 
 class BringIndexTing(InheriTing, SimpleTing):

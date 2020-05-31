@@ -4,8 +4,9 @@ from typing import Any, Dict, Mapping, Optional
 
 import arrow
 from bring.pkg_index.config import IndexConfig
-from bring.pkg_index.index import BringIndexTing, retrieve_index_content
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_index.utils import retrieve_index_file_content
 from bring.utils import BringTaskDesc
 from frtls.exceptions import FrklException
 from frtls.tasks import SingleTaskAsync, Task
@@ -38,7 +39,7 @@ class BringIndexFile(object):
 
         pkgs: Dict[str, Mapping[str, Any]] = {}
 
-        data: Mapping[str, Any] = await retrieve_index_content(
+        data: Mapping[str, Any] = await retrieve_index_file_content(
             self._index_file, update=update_index_file
         )
 

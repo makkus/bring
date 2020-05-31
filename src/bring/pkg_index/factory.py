@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
+import logging
 import os
 from typing import (
     TYPE_CHECKING,
@@ -24,6 +25,7 @@ from bring.defaults import (
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.folder_index import BringDynamicIndexTing
 from bring.pkg_index.index import BringIndexTing
+from bring.pkg_index.utils import ensure_index_file_is_local
 from frtls.dicts import dict_merge
 from frtls.exceptions import FrklException
 from frtls.strings import is_git_repo_url, is_url_or_abbrev
@@ -32,6 +34,8 @@ from tings.tingistry import Tingistry
 
 if TYPE_CHECKING:
     from bring.pkg_index.static_index import BringStaticIndexTing
+
+log = logging.getLogger("bring")
 
 
 async def resolve_index_string(index_string: str) -> MutableMapping[str, Any]:
@@ -308,7 +312,15 @@ class IndexFactory(object):
 
         elif index_config.index_type == "git_repo":
 
-            index = await self.create_index_from_git(ting_name)
+            if index_config.index_file:
+                try:
+                    await ensure_index_file_is_local(index_config.index_file)
+                    index = await self.create_index_from_index_file(ting_name)
+                except Exception:
+                    log.debug(
+                        f"No valid index file exists for git repo index '{index_config.id}', using git repo directly..."
+                    )
+                    index = await self.create_index_from_git(ting_name)
 
         else:
             raise NotImplementedError()
