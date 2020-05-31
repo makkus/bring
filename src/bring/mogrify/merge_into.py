@@ -66,7 +66,7 @@ class MergeIntoMogrifier(CheckMogrifier):
         if target_path is None or target_path == BRING_TEMP_FOLDER_MARKER:
             target_path = self.create_temp_dir("merge_into_")
 
-        use_global_metadata = True
+        use_global_metadata = None
         metadata_folder = None
 
         target = LocalFolder(

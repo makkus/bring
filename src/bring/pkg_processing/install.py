@@ -45,6 +45,7 @@ class InstallPkgProcessor(PkgProcessor):
         pkg_metadata = await pkg.create_id_dict(_include_hash=True, **vars)
 
         merge_strategy: Dict = vars["merge_strategy"]
+
         merge_strategy.setdefault("config", {})["pkg_metadata"] = pkg_metadata
         merge_strategy["config"]["move_method"] = "move"
 

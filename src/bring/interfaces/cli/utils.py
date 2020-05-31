@@ -117,14 +117,9 @@ async def print_pkg_list_help(bring: Bring, formatter) -> None:
         limit = formatter.width - 6 - max(len(cmd[0]) for cmd in short_help_map)
 
         rows: List[Tuple] = []
-        unique: List[str] = []
         for subcommand, help in short_help_map:
             idx, pkg_name = subcommand.rsplit(".", maxsplit=1)
-            if pkg_name not in unique:
-                unique.append(pkg_name)
-                display_name = f"[{idx}.]{pkg_name}"
-            else:
-                display_name = subcommand
+            display_name = f"{idx}.{pkg_name}"
             _help = make_default_short_help(help, max_length=limit)
             rows.append((display_name, _help))
 

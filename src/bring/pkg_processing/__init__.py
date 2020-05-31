@@ -247,8 +247,10 @@ class ProcessVars(Explanation):
             is_set = metadata["is_set"]
 
             if not is_set:
-                result[arg_name]["is_set"] = is_set
+                result[arg_name]["is_set"] = False
                 continue
+
+            result[arg_name]["is_set"] = True
 
             result[arg_name]["value"] = data["validated"]
 
@@ -279,7 +281,9 @@ class ProcessVars(Explanation):
             _alias = data.get("from_alias", "")
             if _alias:
                 _alias = f" (from alias: [italic]{_alias}[/italic])"
-            result.append(f"  {arg_name}: [italic]{data['value']}[/italic]{_alias}")
+            is_set = data["is_set"]
+            if is_set:
+                result.append(f"  {arg_name}: [italic]{data['value']}[/italic]{_alias}")
 
         return result
 

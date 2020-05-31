@@ -2,6 +2,7 @@
 import collections
 import copy
 import json
+import logging
 import os
 import shutil
 from abc import ABCMeta, abstractmethod
@@ -22,6 +23,9 @@ from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.types.typistry import Typistry
 from frtls.types.utils import is_instance_or_subclass
+
+
+log = logging.getLogger("bring")
 
 
 def explode_merge_strategy(
@@ -128,9 +132,11 @@ class LocalFolder(object):
             if metadata_folder == BRING_GLOBAL_METADATA_FOLDER:
                 self._use_global_metadata = True
             elif metadata_folder is None:
+                # TODO: read target config instead of just using '.bring' folder
                 md_path = os.path.realpath(
                     os.path.join(self._path, BRING_METADATA_FOLDER_NAME)
                 )
+
                 if os.path.isdir(md_path):
                     self._use_global_metadata = False
                 else:
@@ -363,12 +369,28 @@ class LocalFolder(object):
                     continue
 
                 rel_path = os.path.relpath(path, self._item_path_files)
+
                 if not self._use_global_metadata:
+                    real_rel_file_path = path[len(self._item_path_files) + 1 :]  # noqa
+                    real_file_path = os.path.join(self._path, real_rel_file_path)
                     link_target = rel_path
                 else:
+                    temp = path[len(self._item_path_files) + 1 :]  # noqa
+                    index_sep = temp.index(os.path.sep)
+                    real_file_path = temp[index_sep:]
                     link_target = os.path.join(self._item_path_files, path)
 
+                if not os.path.exists(real_file_path):
+                    log.debug(
+                        f"Managed file does not exist anymore, removing link: {real_file_path}"
+                    )
+                    os.unlink(path)
+                    continue
+
                 if not self.exists(link_target):
+                    log.debug(
+                        f"Link target '{link_target}' for file does not exist anymore, removing link: {path}"
+                    )
                     os.unlink(path)
                     continue
 
