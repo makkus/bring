@@ -290,37 +290,30 @@ class Bring(SimpleTing):
 
         return self._defaults
 
+    async def get_default_index(self) -> str:
+
+        index_name = await self.config.get_default_index()
+
+        if not index_name:
+            indexes = await self._index_factory.get_indexes_in_config()
+            if not indexes:
+                raise FrklException(
+                    f"Can't calculate default index.",
+                    reason="No 'default_index' value in config, and no indexes configured/registered (yet).",
+                )
+
+            index_name = list(indexes)[0]
+
+        return index_name
+
     async def get_index(self, index_name: Optional[str] = None) -> BringIndexTing:
 
         if index_name is None:
-            index_name = await self.config.get_default_index()
+            index_name = await self.get_default_index()
 
         if index_name not in self._indexes.keys():
             idx = await self.add_index(index_data=index_name, allow_existing=True)
             index_name = idx.id
-        # elif self._indexes[index_name] is None:
-        #     idx_config = {}
-        #     indexes = await self.config.get_config_value_async("indexes")
-        #
-        #     _idx: Union[str, Mapping[str, Any]]
-        #     for _idx in indexes:
-        #         if _idx == index_name:
-        #             # means no config
-        #             break
-        #
-        #         if isinstance(_idx, str) or _idx["id"] != index_name:
-        #             continue
-        #
-        #         idx_defaults = _idx.get("defaults", {})
-        #         idx_config["defaults"] = calculate_defaults(
-        #             typistry=self._tingistry_obj.typistry, data=idx_defaults
-        #         )
-        #
-        #     idx = await self.add_index(index_data=index_name, allow_existing=True)
-        #
-        #     if idx_config:
-        #         idx.set_input(**idx_config)
-        #     index_name = idx.id
 
         return self._indexes[index_name]  # type: ignore
 
@@ -455,7 +448,7 @@ class Bring(SimpleTing):
 
             _index_name = index
             if index is None:
-                _index_name = await self.config.get_default_index()
+                _index_name = await self.get_default_index()
 
             if _index_name is None:
                 for id_n in self.index_ids:

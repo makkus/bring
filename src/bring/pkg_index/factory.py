@@ -19,6 +19,7 @@ from bring.defaults import (
     BRING_DEFAULT_INDEXES,
     BRING_DEFAULT_INDEX_ALIASES,
     BRING_DEFAULT_INDEX_CONFIG,
+    DEFAULT_FOLDER_INDEX_NAME,
 )
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.folder_index import BringDynamicIndexTing
@@ -56,9 +57,6 @@ async def resolve_index_string(index_string: str) -> MutableMapping[str, Any]:
         index_data["id"] = index_id
 
     return index_data
-
-
-DEFAULT_FOLDER_INDEX_NAME = "folder.br.idx"
 
 
 async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:

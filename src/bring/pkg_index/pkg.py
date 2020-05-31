@@ -158,6 +158,11 @@ class PkgTing(SimpleTing):
 
         return await self.get_metadata({"metadata_max_age": 0})
 
+    async def get_versions(self) -> Iterable[Mapping[str, Any]]:
+
+        md = await self.get_value("metadata")
+        return md["versions"]
+
     async def get_info(
         self,
         include_metadata: bool = False,

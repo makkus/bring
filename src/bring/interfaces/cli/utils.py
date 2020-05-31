@@ -83,7 +83,7 @@ async def create_pkg_list_for_help(
     after the options.
     """
 
-    default_index_name = wrap_async_task(bring.config.get_default_index)
+    default_index_name = wrap_async_task(bring.get_default_index)
 
     pkgs = await bring.get_pkg_property_map("info", "index_name")
 

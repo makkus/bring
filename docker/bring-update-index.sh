@@ -7,4 +7,4 @@ then
  INDEX_NAME=$(basename ${PWD})
 fi
 
-bring --task-log simple -i . export-index -o "${INDEX_NAME}.br.idx"
+bring --task-log simple export-index .
