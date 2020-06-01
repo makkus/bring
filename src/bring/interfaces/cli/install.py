@@ -136,7 +136,7 @@ class BringInstallGroup(FrklBaseCommand):
 
         processor = self._bring.create_processor("install_pkg")
 
-        processor.add_constants(_constants_name="install_command_input", **install_args)
+        processor.add_constants(_constants_name="install_param", **install_args)
 
         args = await processor.get_user_input_args()
 
