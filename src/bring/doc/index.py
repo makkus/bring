@@ -13,8 +13,8 @@ from frtls.doc.explanation.info import InfoExplanation
 from frtls.doc.utils import create_dict_element
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
-from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.syntax import Syntax
 from rich.table import Table
 
 
@@ -43,7 +43,7 @@ class IndexExplanation(InfoExplanation):
         self._display_packages: bool = display_packages
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
-        self._info: Optional[Mapping[str, Any]] = None
+        # self._info: Optional[Mapping[str, Any]] = None
 
     async def create_info(self) -> Doc:
 
@@ -55,7 +55,11 @@ class IndexExplanation(InfoExplanation):
             resolve=True
         )  # type: ignore
 
+        metadata_timestamp = info["metadata_timestamp"]
+        t = arrow.get(metadata_timestamp)
+
         doc_dict = dict(info["info"])
+        doc_dict["metadata_timestamp"] = t.humanize()
         if info["labels"]:
             doc_dict["labels"] = info["labels"]
         if info["tags"]:
@@ -64,7 +68,7 @@ class IndexExplanation(InfoExplanation):
         doc_dict["uri"] = info["uri"]
         defaults = info["defaults"]
         if defaults:
-            defaults_markdown: Union[str, Markdown] = create_dict_element(
+            defaults_markdown: Union[str, Syntax] = create_dict_element(
                 _theme=bring_code_theme, **defaults
             )
         else:
@@ -74,7 +78,7 @@ class IndexExplanation(InfoExplanation):
         doc_dict["index_type"] = info["index_type"]
         config = info["index_type_config"]
         if not config:
-            _config = "  -- no config --"
+            _config: Union[str, Syntax] = "  -- no config --"
         else:
             _config = create_dict_element(_theme=bring_code_theme, **config)
         doc_dict["config"] = _config
@@ -83,7 +87,7 @@ class IndexExplanation(InfoExplanation):
 
             pkg_infos = wrap_async_task(self._index.get_all_pkg_values, "info")
 
-            table = Table(box=box.SIMPLE, show_header=False)
+            table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2, 0, 0))
             table.add_column("Name", no_wrap=True, style="bold deep_sky_blue4")
             table.add_column("Description", no_wrap=False, style="italic")
             for pkg, vals in sorted(pkg_infos.items()):

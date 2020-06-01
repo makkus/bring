@@ -62,7 +62,12 @@ async def resolve_index_string(index_string: str) -> MutableMapping[str, Any]:
                     default_data = BRING_DEFAULT_INDEX_CONFIG[k]
                     break
 
-        index_data = dict_merge(default_data, index_data, copy_dct=True)
+        if not default_data:
+            log.error(f"Error adding default data for index: {index_string}")
+        else:
+            index_data = dict_merge(
+                default_data, index_data, copy_dct=True
+            )  # type: ignore
 
     if index_id:
         index_data["id"] = index_id

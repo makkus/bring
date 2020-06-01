@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 from appdirs import AppDirs
 from frtls.templating import get_global_jinja_env
@@ -87,7 +87,7 @@ BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 #     },
 # ]
 
-BRING_DEFAULT_INDEX_CONFIG = {
+BRING_DEFAULT_INDEX_CONFIG: Mapping[str, Mapping[str, Any]] = {
     "binaries": {
         "info": {
             "slug": "Single file, compiled applications.",
