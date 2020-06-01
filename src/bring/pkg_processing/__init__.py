@@ -9,6 +9,7 @@ from typing import (
     Any,
     Dict,
     Iterable,
+    List,
     Mapping,
     MutableMapping,
     Optional,
@@ -283,7 +284,7 @@ class ProcessVars(Explanation):
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
 
-        result = []
+        result: List[Any] = []
 
         if self._render_as_table:
 
