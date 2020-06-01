@@ -4,11 +4,13 @@ import json
 import logging
 import os
 import sys
+from typing import Iterable
 
 import asyncclick as click
 from asyncclick.core import Argument, Option
 from bring.bring import Bring
 from bring.defaults import BRING_METADATA_FOLDER_NAME, DEFAULT_FOLDER_INDEX_NAME
+from bring.interfaces.cli import console
 from bring.pkg_index.utils import IndexDiff
 from frtls.files import ensure_folder
 
@@ -35,13 +37,20 @@ class BringExportIndexCommand(click.Command):
             Option(
                 ["--force", "-f"],
                 is_flag=True,
-                help="verwrite existing, inconsistent index file",
+                help="overwrite existing, inconsistent index file",
+            ),
+            Option(
+                ["--check", "-c"],
+                help="check export for inconsistencies and errors",
+                is_flag=True,
             ),
         ]
         super().__init__(name=name, callback=self.export_index, params=params, **kwargs)
 
     @click.pass_context
-    async def export_index(ctx, self, output_file, index: str, force: bool):
+    async def export_index(
+        ctx, self, output_file, index: str, force: bool, check: bool
+    ):
 
         click.echo()
 
@@ -76,6 +85,7 @@ class BringExportIndexCommand(click.Command):
             click.echo("Index does not contain any packages, doing nothing...")
             sys.exit(1)
 
+        inconsistent: Iterable[str] = []
         if os.path.exists(_path):
 
             old_index = await self._bring.get_index(_path)
@@ -84,34 +94,35 @@ class BringExportIndexCommand(click.Command):
             inconsistent = await diff.get_inconsistent_package_names()
 
             if inconsistent:
+
                 if not force:
                     click.echo(
                         f"Can't update index, inconsistencies exist for package(s): {', '.join(inconsistent)}"
                     )
-                    sys.exit(1)
-
-                click.echo(
-                    f"Force update old index, even though are inconsistencies for packages: {', '.join(inconsistent)}"
-                )
+                else:
+                    click.echo(
+                        f"Force update old index, even though are inconsistencies for packages: {', '.join(inconsistent)}"
+                    )
             else:
                 click.echo("Older index file exists, no inconsistencies.")
-            added = await diff.get_added_package_names()
-            if added:
-                click.echo("Added packages:")
-                for a in added:
-                    click.echo(f"  - {a}")
-            updated = await diff.get_updated_package_names()
-            if updated:
-                click.echo("Updated packages:")
-                for u in updated:
-                    click.echo(f"  - {u}")
+
+            console.line()
+            console.print("Details:")
+            console.line()
+            console.print(diff)
         else:
+            console.print("No previous index file exists, writing new one...")
             ensure_folder(os.path.dirname(_path))
 
-        click.echo(f"Exporting index to file: {_path}")
+        if inconsistent and not force:
+            sys.exit(1)
 
-        json_data = json.dumps(exported_index, indent=2) + "\n"
-        json_bytes = json_data.encode("utf-8")
+        if not check:
 
-        with gzip.GzipFile(_path, "w") as f:
-            f.write(json_bytes)
+            click.echo(f"Exporting index to file: {_path}")
+
+            json_data = json.dumps(exported_index, indent=2) + "\n"
+            json_bytes = json_data.encode("utf-8")
+
+            with gzip.GzipFile(_path, "w") as f:
+                f.write(json_bytes)

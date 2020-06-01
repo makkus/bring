@@ -9,8 +9,10 @@ from anyio import aopen
 from bring.defaults import BRING_INDEX_FILES_CACHE
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from frtls.async_helpers import wrap_async_task
 from frtls.downloads import download_cached_binary_file_async
 from frtls.exceptions import FrklException
+from rich.console import Console, ConsoleOptions, RenderResult
 
 
 log = logging.getLogger("bring")
@@ -99,6 +101,79 @@ class IndexDiff(object):
                 )
 
         return await self.get_inconsistent_packages()
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+
+        if self._diff is None:
+            wrap_async_task(self.get_diff)
+
+        if self._diff is None:
+            raise Exception("Can't print index diff, this is a bug.")
+
+        added = self._diff.get("added", None)
+        removed = self._diff.get("removed", None)
+        added_versions = self._diff.get("versions_added", None)
+        removed_versions = self._diff.get("versions_removed", None)
+
+        if added:
+            if len(added) == 1:
+                _ps = "package"
+            else:
+                _ps = "packages"
+            yield f"- [title]added {_ps}:[/title]"
+            for a in added:
+                yield f"  - {a.name}"
+        else:
+            yield "- [title]no added packages[/title]"
+        yield ""
+
+        if added_versions:
+            if len(added_versions) == 1:
+                _ps = "package"
+            else:
+                _ps = "packages"
+            yield f"- [title]added versions in {_ps}:[/title]"
+            versions_set = set()
+            for pkg, versions in added_versions.items():
+                yield f"    [key2]{pkg.name}[/key2]:"
+                for v in versions:
+                    _v = v.get("version", "n/a")
+                    versions_set.add(_v)
+                for v in versions_set:
+                    yield f"      - {v}"
+        else:
+            yield "- [title]no versions added to any packages[/title]"
+
+        yield ""
+
+        if removed:
+            if len(removed) == 1:
+                _ps = "package"
+            else:
+                _ps = "packages"
+            yield f"- [title][red]removed {_ps}:[/red][/title]"
+            for r in removed:
+                yield f"  - {r.name}"
+        else:
+            yield "- [title]no removed packages[/title]"
+        yield ""
+
+        if removed_versions:
+            if len(removed_versions) == 1:
+                _ps = "package"
+            else:
+                _ps = "packages"
+            yield f"- [bold red]removed versions in {_ps}:[/bold red]"
+            versions_set = set()
+            for pkg, versions in removed_versions.items():
+                yield f"    [key2]{pkg.name}[/key2]:"
+                for v in versions:
+                    _v = v.get("version", "n/a")
+                    versions_set.add(_v)
+                for v in versions_set:
+                    yield f"      - {v}"
 
 
 async def diff_packages(
