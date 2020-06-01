@@ -56,39 +56,46 @@ BRINGISTRY_PRELOAD_MODULES = [
 BRING_CONTEXT_NAMESPACE = "bring.indexes"
 BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 
-BRING_DEFAULT_INDEXES = [
-    {
-        "id": "binaries",
-        "type": "index_file",
-        "uri": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx",
-        # "defaults": {"target": "~/.local/bring", "vars": {}},
-        # "add_sysinfo_to_default_vars": True,
-        "info": {"slug": "Single file, compiled applications."},
-    },
-    {
-        "id": "scripts",
-        "type": "index_file",
-        "uri": "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx",
-        # "defaults": {"target": "~/.local/bring", "vars": {}},
-        # "add_sysinfo_to_default_vars": True,
-        "info": {"slug": "Shell scripts."},
-    },
-    {
-        "id": "collections",
-        "type": "index_file",
-        "uri": "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx",
-        "info": {"slug": "Miscellaneous collections of files."},
-    },
-    {
-        "id": "kubernetes",
-        "type": "index_file",
-        "uri": "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx",
-        "info": {"slug": "Install manifests for Kubernetes apps."},
-    },
-]
+# BRING_DEFAULT_INDEXES = [
+#     {
+#         "id": "binaries",
+#         "type": "index_file",
+#         "uri": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx",
+#         # "defaults": {"target": "~/.local/bring", "vars": {}},
+#         # "add_sysinfo_to_default_vars": True,
+#         "info": {"slug": "Single file, compiled applications."},
+#     },
+#     {
+#         "id": "scripts",
+#         "type": "index_file",
+#         "uri": "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx",
+#         # "defaults": {"target": "~/.local/bring", "vars": {}},
+#         # "add_sysinfo_to_default_vars": True,
+#         "info": {"slug": "Shell scripts."},
+#     },
+#     {
+#         "id": "collections",
+#         "type": "index_file",
+#         "uri": "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx",
+#         "info": {"slug": "Miscellaneous collections of files."},
+#     },
+#     {
+#         "id": "kubernetes",
+#         "type": "index_file",
+#         "uri": "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx",
+#         "info": {"slug": "Install manifests for Kubernetes apps."},
+#     },
+# ]
 
 BRING_DEFAULT_INDEX_CONFIG = {
-    "binaries": {"info": {"slug": "Single file, compiled applications."}},
+    "binaries": {
+        "info": {
+            "slug": "Single file, compiled applications.",
+            "desc": """This index contains single-file binaries that don't require any dependencies to be installed in order to work.
+
+By default, those binaries will be installed into '$HOME/.local/bring', using the default 'bring' merge strategy (save metadata about each installed file, more information [here](TODO).""",
+        }
+    },
     "scripts": {"info": {"slug": "Single file scripts."}},
     "collections": {
         "info": {"slug": "Miscellaneous collections of sets of related files."}

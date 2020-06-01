@@ -3,13 +3,14 @@ import logging
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Union
 
 import arrow
-from bring.display.args import create_table_from_pkg_args
-from bring.interfaces.cli import bring_code_theme, bring_style
+from bring.doc.args import create_table_from_pkg_args
+from bring.interfaces.cli import bring_code_theme
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.async_helpers import wrap_async_task
 from frtls.doc.doc import Doc
-from frtls.doc.utils import create_dict_block
+from frtls.doc.explanation.info import InfoExplanation
+from frtls.doc.utils import create_dict_element
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderGroup, RenderResult
 from rich.markdown import Markdown
@@ -20,24 +21,82 @@ from rich.table import Table
 log = logging.getLogger("bring")
 
 
-class IndexInfoDisplay(object):
+class IndexExplanation(InfoExplanation):
     def __init__(
         self,
+        name: str,
         index: BringIndexTing,
         update: bool = False,
-        display_full: bool = False,
-        display_packages: bool = False,
-        display_config: bool = True,
+        full_info: bool = False,
+        display_packages: bool = True,
     ):
 
+        super().__init__(
+            name=name,
+            info_data=index,
+            short_help_key="slug",
+            help_key="desc",
+            full_info=full_info,
+        )
         self._index: BringIndexTing = index
         self._update: bool = update
-        self._display_full: bool = display_full
         self._display_packages: bool = display_packages
-        self._display_config: bool = display_config
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
         self._info: Optional[Mapping[str, Any]] = None
+
+    async def create_info(self) -> Doc:
+
+        args: Dict[str, Any] = {"include_metadata": True}
+        if self.update:
+            args["retrieve_config"] = {"metadata_max_age": 0}
+
+        info: MutableMapping[str, Any] = await self._index.get_values(
+            resolve=True
+        )  # type: ignore
+
+        doc_dict = dict(info["info"])
+        if info["labels"]:
+            doc_dict["labels"] = info["labels"]
+        if info["tags"]:
+            doc_dict["tags"] = info["tags"]
+
+        doc_dict["uri"] = info["uri"]
+        defaults = info["defaults"]
+        if defaults:
+            defaults_markdown: Union[str, Markdown] = create_dict_element(
+                _theme=bring_code_theme, **defaults
+            )
+        else:
+            defaults_markdown = "  -- no defaults --"
+        doc_dict["defaults"] = defaults_markdown
+
+        doc_dict["index_type"] = info["index_type"]
+        config = info["index_type_config"]
+        if not config:
+            _config = "  -- no config --"
+        else:
+            _config = create_dict_element(_theme=bring_code_theme, **config)
+        doc_dict["config"] = _config
+
+        if self.display_packages:
+
+            pkg_infos = wrap_async_task(self._index.get_all_pkg_values, "info")
+
+            table = Table(box=box.SIMPLE, show_header=False)
+            table.add_column("Name", no_wrap=True, style="bold deep_sky_blue4")
+            table.add_column("Description", no_wrap=False, style="italic")
+            for pkg, vals in sorted(pkg_infos.items()):
+                slug = vals["info"].get("slug", "n/a")
+                table.add_row(pkg, slug)
+
+            doc_dict["packages"] = table
+
+        doc = Doc(
+            doc_dict, short_help_key=self._short_help_key, help_key=self._help_key
+        )
+
+        return doc
 
     @property
     def update(self) -> bool:
@@ -99,159 +158,6 @@ class IndexInfoDisplay(object):
 
         desc = self.base_metadata.get("desc", None)
         return desc
-
-    @property
-    def info(self) -> Mapping[str, Any]:
-
-        if self._info is None:
-            self._info = wrap_async_task(self.retrieve_info)
-
-        return self._info
-
-    async def retrieve_info(self) -> Mapping[str, Any]:
-
-        args: Dict[str, Any] = {"include_metadata": True}
-        if self.update:
-            args["retrieve_config"] = {"metadata_max_age": 0}
-
-        info: MutableMapping[str, Any] = await self._index.get_values(
-            resolve=True
-        )  # type: ignore
-
-        # age = arrow.get(info["metadata_timestamp"])
-
-        # info["metadata_age"] = age.humanize()
-
-        return info
-
-    def __rich_console__(
-        self, console: Console, options: ConsoleOptions
-    ) -> RenderResult:
-
-        all: List[Any] = []
-
-        info_data = wrap_async_task(self.retrieve_info)
-
-        _info_data = info_data["info"]
-        if info_data["labels"]:
-            _info_data["labels"] = info_data["labels"]
-        if info_data["tags"]:
-            _info_data["tags"] = info_data["tags"]
-
-        # args = info_data["args"]
-        # aliases = info_data["aliases"]
-        # version_list = info_data["version_list"]
-
-        display_title: bool = True
-        display_metadata: bool = True
-        display_config: bool = False
-        display_packages: bool = False
-        # display_args: bool = True
-        # arg_allowed_items: int = 0
-        # display_version_list: bool = False
-
-        desc_section = Doc(_info_data, short_help_key="slug", help_key="desc")
-
-        if self._display_config:
-            display_config = True
-
-        if self._display_packages:
-            display_packages = True
-
-        if self._display_full:
-            display_title = True
-            display_packages = True
-            display_metadata = True
-            display_config = True
-            # display_args = True
-            # arg_allowed_items = 10000
-            # display_version_list = True
-
-        if display_title:
-
-            title: List = []
-
-            md_ts = arrow.get(info_data["metadata_timestamp"]).humanize()
-            title_str = f"[bold]Index[/bold]: '[bold dark_red]{self._index.id}[/bold dark_red]' (metadata snapshot: {md_ts})"
-
-            title.append(title_str)
-            title.append("")
-
-            help_str = desc_section.get_help(default=None)
-            if help_str:
-                title.append(help_str)
-                title.append("")
-
-            md = {}
-            md["uri"] = info_data["uri"]
-            md["index_type"] = info_data["index_type"]
-
-            md_markdown = create_dict_block(
-                _style=bring_style, _code_theme=bring_code_theme, **md
-            )
-            title.append("[bold]Metadata[/bold]")
-            title.append("\n")
-            title.append(md_markdown)
-
-            defaults = info_data["defaults"]
-            if defaults:
-                defaults_markdown: Union[str, Markdown] = create_dict_block(
-                    _style=bring_style, _code_theme=bring_code_theme, **defaults
-                )
-            else:
-                defaults_markdown = "  -- no defaults --"
-            title.append("\n[bold]Defaults[/bold]")
-            title.append("")
-            title.append(defaults_markdown)
-            title.append("")
-
-            all.append(Panel(RenderGroup(*title)))
-
-        if display_metadata:
-            if desc_section.metadata:
-                all.append(desc_section)
-                all.append("")
-
-        if display_config:
-            config = info_data["index_type_config"]
-            _config = {}
-            for k, v in config.items():
-                if k.startswith("_"):
-                    continue
-                _config[k] = v
-
-            config = []
-            config.append("[bold]Config[/bold]")
-            config.append("")
-
-            if not _config:
-                config.append("  -- no config --")
-            else:
-                md_markdown = create_dict_block(
-                    _style=bring_style, _code_theme=bring_code_theme, **_config
-                )
-
-                config.append(md_markdown)
-            config.append("")
-
-            all.append(Panel(RenderGroup(*config)))
-
-        if display_packages:
-
-            pkg_infos = wrap_async_task(self._index.get_all_pkg_values, "info")
-
-            _title = "[bold]Packages[/bold]"
-
-            table = Table(box=box.SIMPLE, show_header=False)
-            table.add_column("Name", no_wrap=True, style="bold deep_sky_blue4")
-            table.add_column("Description", no_wrap=False, style="italic")
-            for pkg, vals in sorted(pkg_infos.items()):
-                slug = vals["info"].get("slug", "n/a")
-                table.add_row(pkg, slug)
-
-            all.append(Panel(RenderGroup(_title, table)))
-
-        yield Panel(RenderGroup(*all), box=box.SIMPLE)
 
 
 class PkgInfoDisplay(object):

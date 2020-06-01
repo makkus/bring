@@ -6,11 +6,12 @@ import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.bring_target.local_folder import LocalFolderTarget
-from bring.display.info import IndexInfoDisplay, PkgInfoDisplay
+from bring.doc.index import IndexExplanation, PkgInfoDisplay
 from bring.interfaces.cli import console
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from frtls.cli.group import FrklBaseCommand
+from frtls.doc.explanation.info import InfoListExplanation
 
 
 log = logging.getLogger("bring")
@@ -73,7 +74,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
             return command
 
-        elif name in ["index", "idx"]:
+        elif name in ["index", "idx", "indexes"]:
 
             @click.command()
             @click.argument("indexes", nargs=-1, required=False, metavar="INDEX")
@@ -83,29 +84,42 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 help="update index before retrieving info",
                 is_flag=True,
             )
-            @click.option(
-                "--full", "-f", help="display extended information", is_flag=True
-            )
-            @click.option(
-                "--packages", "-p", help="display packages of this index", is_flag=True
-            )
+            # @click.option(
+            #     "--full", "-f", help="display extended information", is_flag=True
+            # )
+            # @click.option(
+            #     "--packages", "-p", help="display packages of this index", is_flag=True
+            # )
             @click.pass_context
-            async def command(ctx, indexes, update, full, packages):
+            async def command(ctx, indexes, update):
+
+                full = True
+                if len(indexes) == 1:
+
+                    console.line()
+                    idx = await self._bring.get_index(index_name=indexes[0])
+
+                    display = IndexExplanation(
+                        name=indexes[0], index=idx, update=update, full_info=full
+                    )
+                    console.print(display)
+                    return
 
                 if not indexes:
                     indexes = self._bring.index_ids
+                    full = False
 
-                for index_name in indexes:
-
-                    idx = await self._bring.get_index(index_name=index_name)
-
-                    display = IndexInfoDisplay(
-                        index=idx,
-                        update=update,
-                        display_full=full,
-                        display_packages=packages,
+                info_items = []
+                for index in indexes:
+                    idx = await self._bring.get_index(index_name=index)
+                    display = IndexExplanation(
+                        name=index, index=idx, update=update, full_info=full
                     )
-                    console.print(display)
+                    info_items.append(display)
+
+                expl = InfoListExplanation(*info_items, full_info=full)
+
+                console.print(expl)
 
             return command
 
@@ -145,7 +159,9 @@ class IndexInfoTingCommand(Command):
     ):
 
         self._index: BringIndexTing = index
-        self._index_info: IndexInfoDisplay = IndexInfoDisplay(index=self._index)
+        self._index_info: IndexExplanation = IndexExplanation(
+            name=name, index=self._index
+        )
         try:
 
             # slug = self._pkg_info.slug
@@ -164,18 +180,12 @@ class IndexInfoTingCommand(Command):
                     is_flag=True,
                     required=False,
                 ),
-                Option(
-                    ["--pkgs", "-p"],
-                    help="display packages of this index",
-                    is_flag=True,
-                    required=False,
-                ),
-                Option(
-                    ["--config", "-c"],
-                    help="display index configuration",
-                    is_flag=True,
-                    required=False,
-                ),
+                # Option(
+                #     ["--pkgs", "-p"],
+                #     help="display packages of this index",
+                #     is_flag=True,
+                #     required=False,
+                # ),
                 Option(
                     ["--full", "-f"],
                     help="display full information for index",
@@ -192,19 +202,10 @@ class IndexInfoTingCommand(Command):
         super().__init__(name=name, callback=self.info, params=params, **kwargs)
 
     @click.pass_context
-    async def info(
-        ctx,
-        self,
-        update: bool = False,
-        full: bool = False,
-        config: bool = False,
-        pkgs: bool = False,
-    ):
+    async def info(ctx, self, update: bool = False, full: bool = False):
 
         self._index_info.update = update
         self._index_info.display_full = full
-        self._index_info.display_config = config
-        self._index_info.display_packages = pkgs
 
         console.print(self._index_info)
 

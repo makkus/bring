@@ -17,7 +17,6 @@ from typing import (
 from bring.config.bring_config import BringConfig
 from bring.defaults import (
     BRING_CONTEXT_NAMESPACE,
-    BRING_DEFAULT_INDEXES,
     BRING_DEFAULT_INDEX_ALIASES,
     BRING_DEFAULT_INDEX_CONFIG,
     DEFAULT_FOLDER_INDEX_NAME,
@@ -52,10 +51,18 @@ async def resolve_index_string(index_string: str) -> MutableMapping[str, Any]:
 
     index_data = await explode_index_string(index_string)
 
-    if index_data["id"] in BRING_DEFAULT_INDEX_CONFIG.keys():
-        index_data = dict_merge(
-            BRING_DEFAULT_INDEX_CONFIG[index_data["id"]], index_data, copy_dct=True
-        )
+    if (
+        index_data["id"] in BRING_DEFAULT_INDEX_CONFIG.keys()
+        or index_data["id"] in BRING_DEFAULT_INDEX_ALIASES.values()
+    ):
+        default_data = BRING_DEFAULT_INDEX_CONFIG.get(index_data["id"], None)
+        if default_data is None:
+            for k, v in BRING_DEFAULT_INDEX_ALIASES.items():
+                if v == index_data["id"]:
+                    default_data = BRING_DEFAULT_INDEX_CONFIG[k]
+                    break
+
+        index_data = dict_merge(default_data, index_data, copy_dct=True)
 
     if index_id:
         index_data["id"] = index_id
@@ -253,17 +260,17 @@ class IndexFactory(object):
 
         return self._config_indexes
 
-    @property
-    def default_indexes(self) -> Mapping[str, Mapping[str, Any]]:
-
-        if self._default_indexes is None:
-            self._default_indexes = {}
-
-            idx: Mapping[str, Any]
-            for idx in BRING_DEFAULT_INDEXES:
-                self._default_indexes[idx["id"]] = idx  # type: ignore
-
-        return self._default_indexes
+    # @property
+    # def default_indexes(self) -> Mapping[str, Mapping[str, Any]]:
+    #
+    #     if self._default_indexes is None:
+    #         self._default_indexes = {}
+    #
+    #         idx: Mapping[str, Any]
+    #         for idx in BRING_DEFAULT_INDEXES:
+    #             self._default_indexes[idx["id"]] = idx  # type: ignore
+    #
+    #     return self._default_indexes
 
     async def create_index_config(
         self, index_data: Union[str, Mapping[str, Any], IndexConfig]
