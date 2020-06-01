@@ -140,7 +140,9 @@ class BringInstallGroup(FrklBaseCommand):
 
         args = await processor.get_user_input_args()
 
-        args_renderer = args.create_arg_renderer("cli", add_defaults=True)
+        args_renderer = args.create_arg_renderer(
+            "cli", add_defaults=False, remove_required=True
+        )
 
         if explain:
 
@@ -164,7 +166,12 @@ class BringInstallGroup(FrklBaseCommand):
 
                 processor.set_user_input(**arg_value.processed_input)
 
-                pi = processor.explain_vars()
+                console.line()
+                msg = await processor.get_msg()
+                console.print(f"[title]Task[/title]: {msg}")
+                console.print("[title]Variables[/title]:")
+
+                pi = processor.explain_vars(show_title=False, as_table=False)
                 console.print(pi)
 
                 console.line()

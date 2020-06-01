@@ -22,9 +22,12 @@ from frtls.async_helpers import wrap_async_task
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.doc.explanation import Explanation
 from frtls.doc.explanation.steps import StepsExplanation
+from frtls.doc.utils import to_value_string
 from frtls.exceptions import FrklException
 from frtls.types.utils import is_instance_or_subclass
+from rich import box
 from rich.console import Console, ConsoleOptions, RenderResult
+from rich.table import Table
 
 
 if TYPE_CHECKING:
@@ -226,10 +229,17 @@ class VarHolder(object):
 
 
 class ProcessVars(Explanation):
-    def __init__(self, args_holder: "ArgsHolder"):
+    def __init__(
+        self,
+        args_holder: "ArgsHolder",
+        show_title: bool = True,
+        render_as_table: bool = False,
+    ):
 
         self._args_holder: ArgsHolder = args_holder
         self._arg_map: Optional[Dict[str, Dict[str, Any]]] = None
+        self._render_as_table: bool = render_as_table
+        self._show_title: bool = show_title
 
     @property
     def arg_map(self):
@@ -275,17 +285,65 @@ class ProcessVars(Explanation):
 
         result = []
 
-        result.append("\n[bold]Variables[/bold]:")
-        result.append("")
-        for arg_name, data in self.arg_map.items():
-            _alias = data.get("from_alias", "")
-            if _alias:
-                _alias = f" (from alias: [italic]{_alias}[/italic])"
-            is_set = data["is_set"]
-            if is_set:
-                result.append(f"  {arg_name}: [italic]{data['value']}[/italic]{_alias}")
+        if self._render_as_table:
 
-        return result
+            if self._show_title:
+                result.append("\n[bold]Variables[/bold]:")
+
+            aliases: bool = False
+            for arg_name, data in self.arg_map.items():
+                _alias = data.get("from_alias", None)
+                if _alias:
+                    aliases = True
+                    break
+
+            table = Table(show_header=True, box=box.SIMPLE)
+            table.add_column("Name", no_wrap=True, style="key2")
+            table.add_column("Value", style="value")
+
+            if aliases:
+                table.add_column("from alias", no_wrap=True, style="value")
+
+            table.add_column("Origin")
+
+            for arg_name, data in self.arg_map.items():
+                if aliases:
+                    _alias = data.get("from_alias", "")
+                is_set = data["is_set"]
+                if is_set:
+                    value = data["value"]
+                    origin = data["origin"]
+                else:
+                    value = "-- not set --"
+                    origin = ""
+
+                value_string = to_value_string(value)
+
+                if aliases:
+                    table.add_row(arg_name, value_string, _alias, origin)
+                else:
+                    table.add_row(arg_name, value, origin)
+
+            result.append(table)
+            return result
+
+        else:
+
+            if self._show_title:
+                result.append("\n[bold]Variables[/bold]:")
+                result.append("")
+
+            for arg_name, data in self.arg_map.items():
+                _alias = data.get("from_alias", "")
+                if _alias:
+                    _alias = f" (from alias: [italic]{_alias}[/italic])"
+                is_set = data["is_set"]
+                if is_set:
+                    result.append(
+                        f"  {arg_name}: [italic]{data['value']}[/italic]{_alias}"
+                    )
+
+            return result
 
 
 class ArgsHolder(object):
@@ -525,9 +583,9 @@ class ArgsHolder(object):
             )
         return self._vars_validated
 
-    def explain(self) -> ProcessVars:
+    def explain(self, show_title: bool = True, as_table: bool = True) -> ProcessVars:
 
-        pv = ProcessVars(self)
+        pv = ProcessVars(self, show_title=show_title, render_as_table=as_table)
         return pv
 
     @property
@@ -663,9 +721,11 @@ class BringProcessor(metaclass=ABCMeta):
         pi = ProcessInfo(self)
         return pi
 
-    def explain_vars(self) -> ProcessVars:
+    def explain_vars(
+        self, show_title: bool = True, as_table: bool = True
+    ) -> ProcessVars:
 
-        return self._args_holder.explain()
+        return self._args_holder.explain(show_title=show_title, as_table=as_table)
 
     async def explain_tasks(self) -> StepsExplanation:
 

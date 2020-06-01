@@ -117,21 +117,13 @@ BRING_DEFAULT_CONFIG = {
     "indexes": [
         {
             "id": "binaries",
-            "defaults": {
-                "target": "~/.local/bring",
-                "_system_info": True,
-                "version": "latest",
-            },
+            "defaults": {"target": "~/.local/bring", "_system_info": True},
         },
         {
             "id": "scripts",
-            "defaults": {
-                "target": "~/.local/bring",
-                "_system_info": True,
-                "version": "latest",
-            },
+            "defaults": {"target": "~/.local/bring", "_system_info": True},
         },
-        {"id": "kubernetes", "defaults": {"version": "latest"}},
+        "kubernetes",
         "collections",
     ],
 }
@@ -213,7 +205,7 @@ BRING_AUTO_ARG = {"type": "string", "required": True}
 DEFAULT_ARGS_DICT = {
     "os": {"doc": "The operating system to run on.", "type": "string"},
     "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
-    "version": {"doc": "The version of the package."},
+    "version": {"doc": "The version of the package.", "default": "latest"},
 }
 BRING_METADATA_FOLDER_NAME = ".bring"
 BRING_METADATA_FILE_NAME = "meta.json"

@@ -462,7 +462,7 @@ class SimplePkgType(PkgType):
                     continue
 
                 version_vars[k] = {
-                    "default": version[k],
+                    # "default": version[k],
                     "allowed": [version[k]],
                     "type": "string",
                 }
