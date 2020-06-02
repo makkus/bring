@@ -1,4 +1,4 @@
-name: build binaries
+name: build bring binaries
 # This workflow is triggered on pushes to the repository.
 on: [push]
 env:
@@ -33,7 +33,7 @@ jobs:
         run: mypy src
 
   flake8-darwin:
-    name: mypy check on darwin
+    name: flake8 on darwin
     runs-on: macos-latest
     steps:
       - name: Set up Python 3.7.7
