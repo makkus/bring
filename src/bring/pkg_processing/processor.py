@@ -280,11 +280,11 @@ class PkgProcessor(BringProcessor):
                 )
 
             pkg_index = await self.get_pkg_index()
-            pkg: PkgTing = await self._bring.get_pkg(
+            pkg: PkgTing = await self._bring.get_pkg(  # type: ignore
                 pkg_name, pkg_index, raise_exception=True
             )  # type: ignore
 
-            vals: Mapping[str, Any] = await pkg.get_values(
+            vals: Mapping[str, Any] = await pkg.get_values(  # type: ignore
                 "aliases", "args", resolve=True
             )  # type: ignore
 

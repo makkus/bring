@@ -21,7 +21,7 @@ async def get_values_for_pkgs(
 
     async def get_values(_pkg: PkgTing):
         try:
-            result[_pkg] = await _pkg.get_values(
+            result[_pkg] = await _pkg.get_values(  # type: ignore
                 *value_names, raise_exception=True
             )  # type: ignore
         except TingTaskException as e:

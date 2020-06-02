@@ -47,7 +47,7 @@ class IndexExplanation(InfoExplanation):
         if self.update:
             args["retrieve_config"] = {"metadata_max_age": 0}
 
-        info: MutableMapping[str, Any] = await self._index.get_values(
+        info: MutableMapping[str, Any] = await self._index.get_values(  # type: ignore
             resolve=True
         )  # type: ignore
 

@@ -310,7 +310,7 @@ class IndexFactory(object):
         ting_name = f"{BRING_CONTEXT_NAMESPACE}.{index_config.id}"
 
         if allow_existing:
-            existing: BringIndexTing = self._tingistry.get_ting(
+            existing: BringIndexTing = self._tingistry.get_ting(  # type: ignore
                 ting_name, raise_exception=False
             )  # type: ignore
             if existing is not None:
