@@ -10,12 +10,10 @@ jobs:
     name: pytest on darwin
     runs-on: macos-latest
     steps:
-      - uses: actions/cache@v2
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
         with:
-          path: ~/.pyenv/
-          key: ${{ runner.os }}-target-10.11-bring-python-test
-      - run: brew install pyenv
-      - run: brew install pyenv-virtualenv
+          python-version: 3.7.7
       - uses: actions/checkout@v2
       - run: pip install -e '.[testing]'
       - name: Test with pytest
