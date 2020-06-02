@@ -15,13 +15,13 @@ class PkgInfoDisplay(InfoExplanation):
         pkg: PkgTing,
         update: bool = False,
         full_info: bool = False,
-        display_args: bool = False,
+        display_full_args: bool = False,
     ):
 
         self._pkg: PkgTing = pkg
         self._update: bool = update
         self._display_full: bool = full_info
-        self._display_args: bool = display_args
+        self._display_full_args: bool = display_full_args
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
 
@@ -54,14 +54,14 @@ class PkgInfoDisplay(InfoExplanation):
         self._display_full = display_full
 
     @property
-    def display_args(self) -> bool:
+    def display_full_args(self) -> bool:
 
-        return self._display_args
+        return self._display_full_args
 
-    @display_args.setter
-    def display_args(self, display_args: bool) -> None:
+    @display_full_args.setter
+    def display_full_args(self, display_full_args: bool) -> None:
 
-        self._display_args = display_args
+        self._display_full_args = display_full_args
 
     @property
     def base_metadata(self) -> Mapping[str, Any]:
@@ -129,17 +129,17 @@ class PkgInfoDisplay(InfoExplanation):
         args = metadata["pkg_args"]
         aliases = metadata["aliases"]
 
-        arg_allowed_items: int = 0
-        if self._display_args:
-            arg_allowed_items = 10000
+        arg_allowed_items: int = 10000
 
         args_table = create_table_from_pkg_args(
             args=metadata["pkg_args"],
             aliases=aliases,
             limit_allowed=arg_allowed_items,
             show_headers=False,
+            minimal=not self._display_full_args,
         )
         result["args"] = args_table
+
         # result["args"] = metadata["pkg_args"]
         # result["aliases"] = aliases
         # result["version_list"] = metadata["version_list"]

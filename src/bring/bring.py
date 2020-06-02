@@ -9,6 +9,7 @@ from anyio import Lock, create_lock, create_task_group
 from bring.bring_target import BringTarget
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
+from bring.interfaces.cli import console
 from bring.mogrify import Transmogritory
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
@@ -20,7 +21,10 @@ from bring.utils.defaults import calculate_defaults
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.tasks import SerialTasksAsync
+from frtls.introspection.pkg_env import AppEnvironment
+from frtls.tasks import SerialTasksAsync, Tasks
+from frtls.tasks.task_watcher import TaskWatchManager
+from frtls.tasks.watchers.rich import RichTaskWatcher
 from frtls.types.utils import is_instance_or_subclass
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -339,7 +343,36 @@ class Bring(SimpleTing):
             if tsk:
                 tasks.add_task(tsk)
 
-        await tasks.run_async()
+        await self.run_async_tasks(tasks, subtopic="update_indexes")
+
+        # await tasks.run_async()
+
+    async def run_async_tasks(self, tasks: Tasks, subtopic: Optional[str] = None):
+
+        twm: TaskWatchManager = AppEnvironment().get_global("task_watcher")
+        # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)
+        tlc = {
+            "type": "rich",
+            "base_topics": [tasks.task_desc.topic],
+            "console": console,
+            "tasks": tasks,
+        }
+
+        if subtopic:
+            tasks.task_desc.subtopic = subtopic
+
+            for index, child in enumerate(tasks.children.values()):
+                child.task_desc.subtopic = f"{subtopic}.{index}"
+
+        wid = twm.add_watcher(tlc)
+        tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
+
+        progress = tw.progress
+
+        with progress:
+            await tasks.run_async()
+
+        twm.remove_watcher(wid)
 
     async def get_pkg_map(self, *indexes) -> Mapping[str, Mapping[str, PkgTing]]:
         """Get all pkgs, per available (or requested) indexes."""

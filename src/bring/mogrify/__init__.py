@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.utils import BringTaskDesc
-from frtls.args.arg import RecordArg
-from frtls.dicts import get_seeded_dict
 from frtls.doc.explanation.steps import StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -212,126 +210,126 @@ class EnvironmentStatus(object):
         return self._result
 
 
-class CheckMogrifier(Mogrifier):
-    """A mogrifier class that provides a 'is_ready' class that checks whether the required environment specified by the
-    input arguments already exists.
-
-    This is useful for example to check whether a package (or a version of a package) already exists at a target, and
-    thus the pipeline up to this point can be skipped.
-
-    When implementing such a method, make sure to not do any changes, just check the environment.
-    """
-
-    def __init__(self, name: str, meta: TingMeta, **kwargs):
-
-        self._input_arg: Optional[RecordArg] = None
-        self._result_arg: Optional[RecordArg] = None
-
-        self._status: Optional[EnvironmentStatus] = None
-
-        Mogrifier.__init__(self, name=name, meta=meta)
-
-    async def execute(self) -> Any:
-
-        result = await self.get_values(raise_exception=True)
-
-        return result
-
-    async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
-
-        return await self.mogrify(*value_names, **requirements)
-
-    @abstractmethod
-    async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
-        pass
-
-    @property
-    def input_arg_obj(self) -> RecordArg:
-
-        if self._input_arg is None:
-            self._input_arg = self.tingistry.arg_hive.create_record_arg(
-                self.input_args()
-            )
-        return self._input_arg
-
-    @property
-    def user_input(self):
-
-        result = {}
-        for k, v in self.current_input.items():
-            if v != NO_VALUE_MARKER:
-                result[k] = v
-
-        vals = self.input_arg_obj.validate(result, raise_exception=True)
-
-        return vals
-
-    def get_user_input(self, key, default=None):
-
-        return self.user_input.get(key, default)
-
-    # async def get_status(self) -> Optional[EnvironmentStatus]:
-    #
-    #     if self._status is not None:
-    #         return self._status
-    #
-    #     user_input = self.user_input
-    #
-    #     self._status = await self.check_status(**user_input)
-    #     return self._status
-
-    # @abstractmethod
-    # async def check_status(self, **user_input: Any) -> Optional[EnvironmentStatus]:
-    #
-    #     pass
-
-    def input_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        if not hasattr(self.__class__, "_input_args"):
-            raise FrklException(
-                f"Error processing mogrifier '{self.name}'.",
-                reason=f"No class attribute '_input_args' availble for {self.__class__.__name__}. This is a bug.",
-            )
-
-        return self.__class__._input_args  # type: ignore
-
-    def pipeline_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        if not hasattr(self.__class__, "_pipeline_args"):
-            raise FrklException(
-                f"Error processing mogrifier '{self.name}'.",
-                reason=f"No class attribute '_pipeline_args' availble for {self.__class__.__name__}. This is a bug.",
-            )
-
-        return self.__class__._pipeline_args  # type: ignore
-
-    def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        return get_seeded_dict(self.input_args(), self.pipeline_args())
-
-    def check_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        if not hasattr(self.__class__, "_check_output"):
-            raise FrklException(
-                f"Error processing mogrifier '{self.name}'.",
-                reason=f"No class attribute '_check_output' availble for {self.__class__.__name__}. This is a bug.",
-            )
-
-        return self.__class__._check_output  # type: ignore
-
-    def pipeline_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        if not hasattr(self.__class__, "_pipeline_output"):
-            raise FrklException(
-                f"Error processing mogrifier '{self.name}'.",
-                reason=f"No class attribute '_pipeline_output' availble for {self.__class__.__name__}. This is a bug.",
-            )
-
-        return self.__class__._pipeline_output  # type: ignore
-
-    def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-
-        return get_seeded_dict(self.check_output(), self.pipeline_output())
+# class CheckMogrifier(Mogrifier):
+#     """A mogrifier class that provides a 'is_ready' class that checks whether the required environment specified by the
+#     input arguments already exists.
+#
+#     This is useful for example to check whether a package (or a version of a package) already exists at a target, and
+#     thus the pipeline up to this point can be skipped.
+#
+#     When implementing such a method, make sure to not do any changes, just check the environment.
+#     """
+#
+#     def __init__(self, name: str, meta: TingMeta, **kwargs):
+#
+#         self._input_arg: Optional[RecordArg] = None
+#         self._result_arg: Optional[RecordArg] = None
+#
+#         self._status: Optional[EnvironmentStatus] = None
+#
+#         Mogrifier.__init__(self, name=name, meta=meta)
+#
+#     async def execute(self) -> Any:
+#
+#         result = await self.get_values(raise_exception=True)
+#
+#         return result
+#
+#     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+#
+#         return await self.mogrify(*value_names, **requirements)
+#
+#     @abstractmethod
+#     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
+#         pass
+#
+#     @property
+#     def input_arg_obj(self) -> RecordArg:
+#
+#         if self._input_arg is None:
+#             self._input_arg = self.tingistry.arg_hive.create_record_arg(
+#                 self.input_args()
+#             )
+#         return self._input_arg
+#
+#     @property
+#     def user_input(self):
+#
+#         result = {}
+#         for k, v in self.current_input.items():
+#             if v != NO_VALUE_MARKER:
+#                 result[k] = v
+#
+#         vals = self.input_arg_obj.validate(result, raise_exception=True)
+#
+#         return vals
+#
+#     def get_user_input(self, key, default=None):
+#
+#         return self.user_input.get(key, default)
+#
+#     # async def get_status(self) -> Optional[EnvironmentStatus]:
+#     #
+#     #     if self._status is not None:
+#     #         return self._status
+#     #
+#     #     user_input = self.user_input
+#     #
+#     #     self._status = await self.check_status(**user_input)
+#     #     return self._status
+#
+#     # @abstractmethod
+#     # async def check_status(self, **user_input: Any) -> Optional[EnvironmentStatus]:
+#     #
+#     #     pass
+#
+#     def input_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         if not hasattr(self.__class__, "_input_args"):
+#             raise FrklException(
+#                 f"Error processing mogrifier '{self.name}'.",
+#                 reason=f"No class attribute '_input_args' availble for {self.__class__.__name__}. This is a bug.",
+#             )
+#
+#         return self.__class__._input_args  # type: ignore
+#
+#     def pipeline_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         if not hasattr(self.__class__, "_pipeline_args"):
+#             raise FrklException(
+#                 f"Error processing mogrifier '{self.name}'.",
+#                 reason=f"No class attribute '_pipeline_args' availble for {self.__class__.__name__}. This is a bug.",
+#             )
+#
+#         return self.__class__._pipeline_args  # type: ignore
+#
+#     def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         return get_seeded_dict(self.input_args(), self.pipeline_args())
+#
+#     def check_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         if not hasattr(self.__class__, "_check_output"):
+#             raise FrklException(
+#                 f"Error processing mogrifier '{self.name}'.",
+#                 reason=f"No class attribute '_check_output' availble for {self.__class__.__name__}. This is a bug.",
+#             )
+#
+#         return self.__class__._check_output  # type: ignore
+#
+#     def pipeline_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         if not hasattr(self.__class__, "_pipeline_output"):
+#             raise FrklException(
+#                 f"Error processing mogrifier '{self.name}'.",
+#                 reason=f"No class attribute '_pipeline_output' availble for {self.__class__.__name__}. This is a bug.",
+#             )
+#
+#         return self.__class__._pipeline_output  # type: ignore
+#
+#     def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
+#
+#         return get_seeded_dict(self.check_output(), self.pipeline_output())
 
 
 class Transmogrificator(Tasks):

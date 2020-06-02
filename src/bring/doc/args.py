@@ -67,6 +67,7 @@ def create_table_from_pkg_args(
     aliases: Mapping[str, Any],
     limit_allowed: Optional[int] = None,
     show_headers: bool = True,
+    minimal: bool = False,
 ) -> Table:
 
     items = prepare_table_items(args=args, aliases=aliases)
@@ -79,7 +80,8 @@ def create_table_from_pkg_args(
 
         default = details["default"]
         if default is None:
-            default = ""
+            if not minimal:
+                default = ""
         else:
             default = f"[green]{default}[/green]"
 
@@ -91,38 +93,52 @@ def create_table_from_pkg_args(
         allowed = details["allowed"]
         aliases = details["aliases"]
 
-        table.add_row(details["name"], f"  [italic]{details['desc']}[/italic]")
+        if minimal:
+            d_name = details["name"]
+            if required == "yes":
+                d_name = f"[bold]{d_name}[bold]"
+        else:
+            d_name = details["name"]
+
+        table.add_row(d_name, f"  [italic]{details['desc']}[/italic]")
         arg_table = Table(show_header=False, box=box.SIMPLE)
         arg_table.add_column("key")
         arg_table.add_column("value", style="italic")
-        arg_table.add_row("default", default)
-        arg_table.add_row("required", required)
-        arg_table.add_row("type", details["type"])
+        if not minimal or default is not None:
+            arg_table.add_row("default", default)
+        if not minimal:
+            arg_table.add_row("required", required)
+        if not minimal:
+            arg_table.add_row("type", details["type"])
 
-        if allowed and limit_allowed:
-            _allowed: MutableMapping[str, List[str]] = {}
+        if not minimal:
+            if allowed and limit_allowed:
+                _allowed: MutableMapping[str, List[str]] = {}
 
-            for a in allowed:
-                if a in aliases.keys():
-                    _allowed.setdefault(aliases[a], []).append(a)
-                    # _allowed.append(f"{a} (aliases: {', '.join(aliases[a])}")
-                else:
-                    _allowed.setdefault(a, [])
+                for a in allowed:
+                    if a in aliases.keys():
+                        _allowed.setdefault(aliases[a], []).append(a)
+                        # _allowed.append(f"{a} (aliases: {', '.join(aliases[a])}")
+                    else:
+                        _allowed.setdefault(a, [])
 
-            _allowed_strings = []
-            for _arg, _aliases in _allowed.items():
-                if not _aliases:
-                    a = _arg
-                elif len(_aliases) == 1:
-                    a = f"{_arg} (alias: {_aliases[0]})"
-                else:
-                    a = f"{_arg} (aliases: {', '.join(_aliases)})"
-                _allowed_strings.append(a)
-            arg_table.add_row("allowed", _allowed_strings[0])
-            if limit_allowed and len(_allowed_strings) > limit_allowed:
-                _allowed_strings = _allowed_strings[0:limit_allowed] + ["...", "..."]
-            for a in _allowed_strings[1:]:
-                arg_table.add_row("", a)
+                _allowed_strings = []
+                for _arg, _aliases in _allowed.items():
+                    if not _aliases:
+                        a = _arg
+                    elif len(_aliases) == 1:
+                        a = f"{_arg} (alias: {_aliases[0]})"
+                    else:
+                        a = f"{_arg} (aliases: {', '.join(_aliases)})"
+                    _allowed_strings.append(a)
+                arg_table.add_row("allowed", _allowed_strings[0])
+                if limit_allowed and len(_allowed_strings) > limit_allowed:
+                    _allowed_strings = _allowed_strings[0:limit_allowed] + [
+                        "...",
+                        "...",
+                    ]
+                for a in _allowed_strings[1:]:
+                    arg_table.add_row("", a)
 
         table.add_row("", arg_table)
 

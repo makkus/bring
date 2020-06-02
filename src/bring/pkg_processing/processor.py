@@ -148,7 +148,7 @@ class BringProcessor(metaclass=ABCMeta):
     async def process(self) -> Any:
 
         tasks: Transmogrificator = await self._create_tasks()
-        topic = tasks.task_desc._topic
+        topic = tasks.task_desc.topic
 
         twm: TaskWatchManager = AppEnvironment().get_global("task_watcher")
         # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)

@@ -135,18 +135,20 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 is_flag=True,
             )
             @click.option(
-                "--full", "-f", help="display extended information", is_flag=True
+                "--args",
+                "-a",
+                help="display full information on package args",
+                is_flag=True,
             )
-            @click.option("--args", "-a", help="display package args", is_flag=True)
             @click.pass_context
-            async def command(ctx, package, update, full, args):
+            async def command(ctx, package, update, args):
 
                 console.line()
                 # await self._bring.add_indexes("kubernetes", "binaries")
                 pkg = await self._bring.get_pkg(name=package, raise_exception=True)
 
                 pkg_info: PkgInfoDisplay = PkgInfoDisplay(
-                    pkg=pkg, update=update, full_info=True, display_args=args
+                    pkg=pkg, update=update, full_info=True, display_full_args=args
                 )
                 console.print(pkg_info)
 
@@ -263,6 +265,6 @@ class PkgInfoTingCommand(Command):
     ):
 
         self._pkg_info.update = update
-        self._pkg_info.display_args = args
+        self._pkg_info.display_full_args = args
         self._pkg_info.display_full = full
         console.print(self._pkg_info)

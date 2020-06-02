@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from typing import Mapping
 
-from bring.mogrify import CheckMogrifier
+from bring.mogrify import SimpleMogrifier
 
 
-class InstallPkgMogrifier(CheckMogrifier):
+class InstallPkgMogrifier(SimpleMogrifier):
 
     _plugin_name: str = "install_pkg"
 

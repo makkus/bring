@@ -30,6 +30,13 @@ class BringIndexFile(object):
             await self.get_pkg_data(update_index_file=update_index_file)
         return self._metadata  # type: ignore
 
+    async def update(self):
+
+        self._pkg_data = None
+        self._metadata = None
+
+        await self.get_pkg_data(update_index_file=True)
+
     async def get_pkg_data(
         self, update_index_file: bool = False
     ) -> Mapping[str, Mapping[str, Any]]:
@@ -123,14 +130,17 @@ class BringStaticIndexTing(BringIndexTing):
             ts = str(ts)
         return ts
 
-    async def get_index_file(self) -> BringIndexFile:
-        if self._index_file is None:
+    async def get_index_file(self, update: bool = False) -> BringIndexFile:
+        if self._index_file is None or update:
             if self._uri is None:
                 raise Exception(
                     "Can't load packages: index uri not set. This is a bug."
                 )
 
-            self._index_file = BringIndexFile(index_file=self._uri)
+            if self._index_file is None:
+                self._index_file = BringIndexFile(index_file=self._uri)
+            if update:
+                await self._index_file.update()
         return self._index_file
 
     async def _get_pkgs(self) -> Mapping[str, PkgTing]:
@@ -149,7 +159,7 @@ class BringStaticIndexTing(BringIndexTing):
 
         async def update_index():
             self.invalidate()
-            await self._get_pkgs()
+            await self.get_index_file(update=True)
 
         task = SingleTaskAsync(update_index, task_desc=task_desc, parent_task=None)
 

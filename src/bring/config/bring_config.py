@@ -37,14 +37,15 @@ if TYPE_CHECKING:
 
 def register_args(arg_hive: ArgHive):
 
-    arg_hive.register_arg_type(
-        arg=MergeStrategyArgType,
-        id="merge_strategy",
-        arg_type="dict",
-        required=False,
-        default=["bring"],
-        click_type=MergeStrategyClickType,
-    )
+    if "merge_strategy" not in arg_hive.args.keys():
+        arg_hive.register_arg_type(
+            arg=MergeStrategyArgType,
+            id="merge_strategy",
+            arg_type="dict",
+            required=False,
+            default=["bring"],
+            click_type=MergeStrategyClickType,
+        )
 
 
 class BringConfig(object):

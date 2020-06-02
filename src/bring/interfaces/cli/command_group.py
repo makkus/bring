@@ -141,7 +141,7 @@ class BringCommandGroup(FrklBaseCommand):
             "export-index",
             "config",
             "doc",
-            "plugin",
+            # "plugin",
             "self",
             # "differ",
         ]
