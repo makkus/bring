@@ -135,7 +135,7 @@ class BringCommandGroup(FrklBaseCommand):
 
         result = [
             "install",
-            "info",
+            "explain",
             "list",
             "update",
             "export-index",
@@ -205,8 +205,8 @@ class BringCommandGroup(FrklBaseCommand):
             command = BringPluginGroup(bring=self.bring, name="plugin")
             command.short_help = "install one or a list of packages"
 
-        elif name == "info":
-            from bring.interfaces.cli.info import BringInfoPkgsGroup
+        elif name in ["explain", "exp", "x"]:
+            from bring.interfaces.cli.explain import BringInfoPkgsGroup
 
             command = BringInfoPkgsGroup(bring=self.bring, name="info")
             command.short_help = "display index or pkg information"

@@ -169,7 +169,9 @@ class BringInstallGroup(FrklBaseCommand):
                 console.line()
                 msg = await processor.get_msg()
                 console.print(f"[title]Task[/title]: {msg}")
+                console.line()
                 console.print("[title]Variables[/title]:")
+                console.line()
 
                 pi = processor.explain_vars(show_title=False, as_table=False)
                 console.print(pi)

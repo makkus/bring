@@ -23,6 +23,7 @@ from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.plugins import TypistryPluginManager
+from frtls.types.utils import generate_valid_identifier
 from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -178,7 +179,7 @@ class PkgTing(SimpleTing):
         # source_details = vals["source"]
 
         result = {}
-
+        result["source"] = vals["source"]
         result["info"] = info
         result["labels"] = vals["labels"]
         result["tags"] = vals["tags"]
@@ -253,8 +254,12 @@ class PkgTing(SimpleTing):
         if extra_mogrifiers:
             mogrify_list.extend(extra_mogrifiers)
 
+        pipeline_id = generate_valid_identifier(prefix="pipe_", length_without_prefix=6)
+
         task_desc = BringTaskDesc(
-            name=f"install pkg '{self.name}'", msg=f"installing pkg {self.name}"
+            name=f"install pkg '{self.name}'",
+            msg=f"installing pkg {self.name}",
+            subtopic=pipeline_id,
         )
 
         mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
@@ -265,7 +270,7 @@ class PkgTing(SimpleTing):
             args=mogrify_vars,
             name=self.name,
             task_desc=task_desc,
-            # target=target,
+            pipeline_id=pipeline_id,
         )
         if parent_task_desc is not None:
             tm.task_desc.parent = parent_task_desc
@@ -607,9 +612,9 @@ class DynamicPkgTing(PkgTing):
                 seed_data.get("labels", None), labels, merge_strategy="update"
             )
 
-        if "tags" in value_names:
-            tags = requirements.get("tags", [])
-            result["tags"] = tags
+        # if "tags" in value_names:
+        #     tags = requirements.get("tags", [])
+        #     result["tags"] = tags
 
         if "tags" in value_names:
             result["tags"] = requirements.get("tags", [])

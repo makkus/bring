@@ -191,5 +191,10 @@ def find_version(
 class BringTaskDesc(TaskDesc):
     def __init__(self, **kwargs: Any) -> None:
 
-        kwargs["topic"] = BRING_TASKS_BASE_TOPIC
+        subtopic = kwargs.pop("subtopic", None)
+        if subtopic:
+            topic = f"{BRING_TASKS_BASE_TOPIC}.{subtopic}"
+        else:
+            topic = BRING_TASKS_BASE_TOPIC
+        kwargs["topic"] = topic
         super().__init__(**kwargs)

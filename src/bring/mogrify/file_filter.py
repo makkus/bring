@@ -28,7 +28,7 @@ class FileFilterMogrifier(SimpleMogrifier):
         vals = self.user_input
 
         if vals.get("include", None):
-            result = result + f" matching: {', '.join(vals['include'])}"
+            result = result + f" matching: '{', '.join(vals['include'])}'"
 
         if vals.get("flatten", None):
             result = result + ", then flatten all files into a single folder"

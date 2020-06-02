@@ -93,7 +93,7 @@ BRING_DEFAULT_INDEX_CONFIG: Mapping[str, Mapping[str, Any]] = {
             "slug": "Single file, compiled applications.",
             "desc": """This index contains single-file binaries that don't require any dependencies to be installed in order to work.
 
-By default, those binaries will be installed into '$HOME/.local/bring', using the default 'bring' merge strategy (save metadata about each installed file, more information [here](TODO).""",
+By default, those binaries will be installed into '$HOME/.local/bring', using the default 'bring' merge strategy (save metadata about each installed file, more information can be found [here](https://bring.frkl.io/docs/reference/merging/).""",
         }
     },
     "scripts": {"info": {"slug": "Single file scripts."}},

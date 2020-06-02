@@ -3,7 +3,7 @@ import tempfile
 from typing import Any, Dict, Iterable, Mapping, Union
 
 from bring.defaults import BRING_RESULTS_FOLDER
-from bring.pkg_processing import PkgProcessor
+from bring.pkg_processing.processor import PkgProcessor
 from frtls.args.arg import Arg
 from frtls.files import ensure_folder
 

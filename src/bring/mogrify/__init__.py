@@ -400,16 +400,20 @@ class Transmogrificator(Tasks):
     #     else:
     #         return status.is_ready
 
-    async def transmogrify(self) -> Mapping[str, Any]:
+    # async def transmogrify(self) -> Mapping[str, Any]:
+    #
+    #     # if await self.is_ready():
+    #     #     if self._result is None:
+    #     #         raise Exception("No result value, this is a bug.")
+    #     #     return self._result
+    #
+    #     await self.run_async()
+    #     self._result = self._last_item.current_state  # type: ignore
+    #     return self._result  # type: ignore
+    #
+    def get_result(self) -> Mapping[str, Any]:
 
-        # if await self.is_ready():
-        #     if self._result is None:
-        #         raise Exception("No result value, this is a bug.")
-        #     return self._result
-
-        await self.run_async()
-        self._result = self._last_item.current_state  # type: ignore
-        return self._result  # type: ignore
+        return self._last_item.current_state  # type: ignore
 
     async def execute(self) -> Any:
 
@@ -490,7 +494,9 @@ class Transmogritory(SimpleTing):
         )
         ting.set_input(**input_vals)
         msg = ting.get_msg()
-        td = BringTaskDesc(name=mogrify_plugin, msg=msg)
+        td = BringTaskDesc(
+            name=mogrify_plugin, msg=msg, subtopic=f"{pipeline_id}.{ting.name}"
+        )
         ting.task_desc = td
 
         return ting
@@ -501,15 +507,21 @@ class Transmogritory(SimpleTing):
         vars: Mapping[str, Any],
         args: Mapping[str, Any],
         task_desc: Optional[BringTaskDesc] = None,
+        pipeline_id: Optional[str] = None,
         # target: Union[str, Path, Mapping[str, Any]] = None,
         **kwargs,
     ) -> Transmogrificator:
 
-        pipeline_id = generate_valid_identifier(prefix="pipe_", length_without_prefix=6)
+        if pipeline_id is None:
+            pipeline_id = generate_valid_identifier(
+                prefix="pipe_", length_without_prefix=6
+            )
 
         if task_desc is None:
             task_desc = BringTaskDesc(
-                name=pipeline_id, msg=f"executing pipeline '{pipeline_id}'"
+                name=pipeline_id,
+                msg=f"executing pipeline '{pipeline_id}'",
+                subtopic=pipeline_id,
             )
 
         mogrifier_list = assemble_mogrifiers(mogrifier_list=data, vars=vars, args=args)
@@ -576,14 +588,15 @@ class Transmogritory(SimpleTing):
                     tm_working_dir = os.path.join(
                         transmogrificator.working_dir, f"{index}_{j}"
                     )
+                    subtopic = f"{pipeline_id}.{index}_{j}"
                     if guess_task_desc:
-                        td = BringTaskDesc()
+                        td = BringTaskDesc(subtopic=subtopic)
                         if "name" in guess_task_desc.keys():
                             td.name = guess_task_desc["name"]
                         if "msg" in guess_task_desc.keys():
                             td.msg = guess_task_desc["msg"]
                     else:
-                        td = BringTaskDesc()
+                        td = BringTaskDesc(subtopic=subtopic)
 
                     tm = Transmogrificator(
                         f"{pipeline_id}_{index}_{j}",

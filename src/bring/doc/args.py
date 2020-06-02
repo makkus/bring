@@ -66,11 +66,12 @@ def create_table_from_pkg_args(
     args: Mapping[str, Any],
     aliases: Mapping[str, Any],
     limit_allowed: Optional[int] = None,
+    show_headers: bool = True,
 ) -> Table:
 
     items = prepare_table_items(args=args, aliases=aliases)
 
-    table = Table(box=box.SIMPLE)
+    table = Table(box=box.SIMPLE, show_header=show_headers, padding=(0, 0, 0, 0))
     table.add_column("Name", style="dark_orange")
     table.add_column("  Details")
 

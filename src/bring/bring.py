@@ -14,7 +14,7 @@ from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from bring.pkg_processing import BringProcessor
+from bring.pkg_processing.processor import BringProcessor
 from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
 from frtls.args.hive import ArgHive

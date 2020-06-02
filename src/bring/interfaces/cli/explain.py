@@ -6,7 +6,8 @@ import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.bring_target.local_folder import LocalFolderTarget
-from bring.doc.index import IndexExplanation, PkgInfoDisplay
+from bring.doc.index import IndexExplanation
+from bring.doc.pkg import PkgInfoDisplay
 from bring.interfaces.cli import console
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
@@ -140,11 +141,12 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, package, update, full, args):
 
+                console.line()
                 # await self._bring.add_indexes("kubernetes", "binaries")
                 pkg = await self._bring.get_pkg(name=package, raise_exception=True)
 
                 pkg_info: PkgInfoDisplay = PkgInfoDisplay(
-                    pkg=pkg, update=update, display_full=full, display_args=args
+                    pkg=pkg, update=update, full_info=True, display_args=args
                 )
                 console.print(pkg_info)
 
@@ -215,7 +217,7 @@ class PkgInfoTingCommand(Command):
 
         self._pkg: PkgTing = pkg
 
-        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(pkg=pkg)
+        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(pkg=pkg, full_info=True)
         try:
 
             # slug = self._pkg_info.slug
