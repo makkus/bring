@@ -359,10 +359,13 @@ class Bring(SimpleTing):
         }
 
         if subtopic:
-            tasks.task_desc.subtopic = subtopic
+
+            if isinstance(tasks.task_desc, BringTaskDesc):
+                tasks.task_desc.subtopic = subtopic
 
             for index, child in enumerate(tasks.children.values()):
-                child.task_desc.subtopic = f"{subtopic}.{index}"
+                if isinstance(child.task_desc, BringTaskDesc):
+                    child.task_desc.subtopic = f"{subtopic}.{index}"
 
         wid = twm.add_watcher(tlc)
         tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
