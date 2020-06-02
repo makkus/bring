@@ -27,6 +27,7 @@ from frtls.exceptions import FrklException
 from frtls.introspection.pkg_env import AppEnvironment
 from frtls.tasks import Tasks
 from frtls.tasks.task_watcher import TaskWatchManager
+from frtls.tasks.watchers.rich import RichTaskWatcher
 from frtls.types.utils import is_instance_or_subclass
 
 
@@ -159,7 +160,7 @@ class BringProcessor(metaclass=ABCMeta):
         }
 
         wid = twm.add_watcher(tlc)
-        tw = twm.get_watcher(wid)
+        tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
 
         progress = tw.progress
 
