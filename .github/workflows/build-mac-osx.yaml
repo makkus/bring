@@ -23,11 +23,12 @@ jobs:
     name: mypy check on darwin
     runs-on: macos-latest
     steps:
-      - name: Set up Python 3.7.7
+      - name: Set up Python 3.7.6
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7.7
+          python-version: 3.7.6
       - uses: actions/checkout@v2
+      - run: pip install -r requirements-build.txt
       - run: pip install -e '.[testing]'
       - name: Test with mypy
         run: mypy src
@@ -41,7 +42,6 @@ jobs:
         with:
           python-version: 3.7.7
       - uses: actions/checkout@v2
-      - run: pip install -r requirements-build.txt
       - run: pip install -e '.[testing]'
       - name: Test with flake8
         run: flake8 src/bring
