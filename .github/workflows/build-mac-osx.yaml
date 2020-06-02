@@ -6,8 +6,23 @@ env:
   MACOSX_DEPLOYMENT_TARGET: 10.11
 
 jobs:
-  build:
-    name: build
+  test-darwin:
+    name: pytest on darwin
+    runs-on: macos-latest
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: ~/.pyenv/
+          key: ${{ runner.os }}-target-10.11-bring-python
+      - run: brew install pyenv
+      - run: brew install pyenv-virtualenv
+      - uses: actions/checkout@v2
+      - run: pip install -e '.[testing]'
+      - name: Test with pytest
+        run: pytest tests
+
+  build-darwin:
+    name: build darwin binary
     runs-on: macos-latest
     steps:
       - uses: actions/cache@v2
