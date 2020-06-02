@@ -3,7 +3,7 @@ name: build bring binaries
 on: [push]
 env:
   DEVELOPER_DIR: /Applications/Xcode_10.3.app/Contents/Developer
-  MACOSX_DEPLOYMENT_TARGET: 10.11
+  MACOSX_DEPLOYMENT_TARGET: 10.14
 
 jobs:
   test-darwin:
