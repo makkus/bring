@@ -121,6 +121,7 @@ BRING_CORE_CONFIG = {
 
 BRING_DEFAULT_CONFIG = {
     "info": {"slug": "default config for bring"},
+    "defaults": {"_system_info": True},
     "indexes": [
         {
             "id": "binaries",

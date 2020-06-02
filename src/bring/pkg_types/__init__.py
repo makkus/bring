@@ -376,7 +376,12 @@ class SimplePkgType(PkgType):
 
         metadata["aliases"] = pkg_aliases
 
+        version_aliases = pkg_aliases.setdefault("version", {})
+
         for version in versions:
+
+            if "version" in version.keys() and "latest" not in version_aliases:
+                version_aliases["latest"] = version["version"]
 
             sam = source_details.get("artefact", None)
             if sam:

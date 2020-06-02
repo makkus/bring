@@ -53,7 +53,7 @@ def prepare_table_items(
             "desc": doc.get_short_help(),
             "type": v["type"],
             "required": v.get("required", True),
-            "default": v["default"],
+            "default": v.get("default", None),
             "allowed": allowed,
             "aliases": arg_aliases,
         }
@@ -81,7 +81,7 @@ def create_table_from_pkg_args(
         default = details["default"]
         if default is None:
             if not minimal:
-                default = ""
+                default = "-- no default --"
         else:
             default = f"[green]{default}[/green]"
 

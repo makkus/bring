@@ -20,6 +20,7 @@ from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
+from frtls.doc.utils import to_value_string
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.plugins import TypistryPluginManager
@@ -246,10 +247,16 @@ class PkgTing(SimpleTing):
         version = await self.find_version_data(vars=_vars, metadata=metadata)
 
         if not version:
-            raise FrklException(
-                msg=f"Can't process pkg '{self.name}'.",
-                reason=f"Can't find version match for vars: {vars}",
-            )
+            if not vars:
+                reason = "No version match for no/empty variable input."
+            elif len(vars) == 1:
+                reason = f"Can't find version match for var: {vars}"
+            else:
+                vars_string = to_value_string(_vars, reindent=2)
+                reason = (
+                    f"Can't find version match for vars combination:\n\n{vars_string}"
+                )
+            raise FrklException(msg=f"Can't process pkg '{self.name}'.", reason=reason)
         mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version["_mogrify"])
         if extra_mogrifiers:
             mogrify_list.extend(extra_mogrifiers)

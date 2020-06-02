@@ -7,7 +7,7 @@ from bring.pkg_processing.explanations import ProcessVars
 from frtls.args.arg import Arg, RecordArg
 from frtls.args.hive import ArgHive
 from frtls.dicts import dict_merge, get_seeded_dict
-from frtls.exceptions import FrklException
+from frtls.exceptions import ArgValidationError, FrklException
 
 
 class VarSetType(Enum):
@@ -379,9 +379,16 @@ class ArgsHolder(object):
 
         if self._input_vars_validated is None:
             validated = {}
+            errors = {}
+            values = {}
             for arg_name, arg in self.input_args.childs.items():
                 value = self.preprocessed_vars.get(arg_name, None)
-                v = arg.validate(value, raise_exception=True)
+                values[arg_name] = value
+                try:
+                    v = arg.validate(value, raise_exception=True)
+                except ArgValidationError as ave:
+                    errors[arg_name] = ave
+                    continue
                 validated[arg_name] = {
                     "value": value,
                     "metadata": self._vars_holder.get_var_metadata(arg_name),
@@ -393,6 +400,9 @@ class ArgsHolder(object):
                 else:
                     validated[arg_name]["validated"] = alias_for
                     validated[arg_name]["metadata"]["from_alias"] = v
+
+            if errors:
+                raise ArgValidationError(self.input_args, values, child_errors=errors)
 
             self._input_vars_validated = validated
 

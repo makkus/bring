@@ -53,7 +53,7 @@ class BringProcessor(metaclass=ABCMeta):
 
         bring_defaults = wrap_async_task(self._bring.get_defaults)
         self.add_defaults(
-            _defaults_name="bring_defaults",
+            _defaults_name="context_defaults",
             _defaults_metadata={"bring": self._bring},
             **bring_defaults,
         )
@@ -122,7 +122,6 @@ class BringProcessor(metaclass=ABCMeta):
 
         if self._input_processed is None:
             all_args = await self.get_all_required_args()
-
             self._args_holder.set_args_descs(**all_args)
 
             self._input_processed = self._args_holder.vars
@@ -130,7 +129,11 @@ class BringProcessor(metaclass=ABCMeta):
         return self._input_processed  # type: ignore
 
     async def get_user_input_args(self) -> RecordArg:
-        await self.get_processed_input_async()
+
+        all_args = await self.get_all_required_args()
+        self._args_holder.set_args_descs(**all_args)
+
+        # await self.get_processed_input_async()
         result = self._args_holder.input_args
         return result
 

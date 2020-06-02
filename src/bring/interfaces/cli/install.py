@@ -7,6 +7,7 @@ from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
 from frtls.args.arg import Arg
 from frtls.async_helpers import wrap_async_task
+from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
 
 
@@ -148,6 +149,7 @@ class BringInstallGroup(FrklBaseCommand):
 
             @click.command()
             @click.pass_context
+            @handle_exc_async
             async def command(ctx, **kwargs):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
@@ -160,6 +162,7 @@ class BringInstallGroup(FrklBaseCommand):
 
             @click.command()
             @click.pass_context
+            @handle_exc_async
             async def command(ctx, **kwargs):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
