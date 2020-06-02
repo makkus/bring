@@ -19,9 +19,39 @@ jobs:
       - name: Test with pytest
         run: pytest tests
 
+  mypy-darwin:
+    name: mypy check on darwin
+    runs-on: macos-latest
+    steps:
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.7
+      - uses: actions/checkout@v2
+      - run: pip install -e '.[testing]'
+      - name: Test with mypy
+        run: mypy src
+
+  flake8-darwin:
+    name: mypy check on darwin
+    runs-on: macos-latest
+    steps:
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.7
+      - uses: actions/checkout@v2
+      - run: pip install -e '.[testing]'
+      - name: Test with flake8
+        run: flake8 src/bring
+
   build-darwin:
     name: build darwin binary
     runs-on: macos-latest
+    needs:
+      - test-darwin
+      - mypy-darwin
+      - flake8-darwin
     steps:
       - uses: actions/cache@v2
         with:
