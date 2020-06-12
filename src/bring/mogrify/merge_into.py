@@ -3,7 +3,12 @@ import logging
 from typing import Any, Mapping
 
 from bring.defaults import BRING_TEMP_FOLDER_MARKER
-from bring.merge_strategy import FolderMerge, LocalFolder, explode_merge_strategy
+from bring.merge_strategy import (
+    FolderMerge,
+    LocalFolder,
+    MergeStrategy,
+    explode_merge_strategy,
+)
 from bring.mogrify import SimpleMogrifier
 
 
@@ -71,11 +76,10 @@ class MergeIntoMogrifier(SimpleMogrifier):
             metadata_folder=metadata_folder,
         )
 
-        merge_obj = FolderMerge(
-            typistry=self._tingistry_obj.typistry,
-            target=target,
-            merge_strategy=strategy,
+        merge_strategy = MergeStrategy.create_merge_strategy(
+            typistry=self._tingistry_obj.typistry, merge_strategy=strategy
         )
+        merge_obj = FolderMerge(target=target, merge_strategy=merge_strategy)
 
         merge_result = await merge_obj.merge_folders(source)
 

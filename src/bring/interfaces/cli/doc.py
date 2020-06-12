@@ -145,6 +145,7 @@ class PkgTypePluginGroup(BringPluginGroup):
             all.append(desc)
 
             plugin = self.get_plugin(name)
+
             args = plugin.get_args()
             record_arg = self._arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)

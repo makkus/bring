@@ -101,7 +101,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                     idx = await self._bring.get_index(index_name=indexes[0])
 
                     display = IndexExplanation(
-                        name=indexes[0], index=idx, update=update, full_info=full
+                        name=indexes[0], data=idx, update=update, full_info=full
                     )
                     console.print(display)
                     return
@@ -114,7 +114,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 for index in indexes:
                     idx = await self._bring.get_index(index_name=index)
                     display = IndexExplanation(
-                        name=index, index=idx, update=update, full_info=full
+                        name=index, data=idx, update=update, full_info=full
                     )
                     info_items.append(display)
 
@@ -148,7 +148,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 pkg = await self._bring.get_pkg(name=package, raise_exception=True)
 
                 pkg_info: PkgInfoDisplay = PkgInfoDisplay(
-                    pkg=pkg, update=update, full_info=True, display_full_args=args
+                    data=pkg, update=update, full_info=True, display_full_args=args
                 )
                 console.print(pkg_info)
 
@@ -164,7 +164,7 @@ class IndexInfoTingCommand(Command):
 
         self._index: BringIndexTing = index
         self._index_info: IndexExplanation = IndexExplanation(
-            name=name, index=self._index
+            name=name, data=self._index
         )
         try:
 
@@ -219,7 +219,7 @@ class PkgInfoTingCommand(Command):
 
         self._pkg: PkgTing = pkg
 
-        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(pkg=pkg, full_info=True)
+        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(data=pkg, full_info=True)
         try:
 
             # slug = self._pkg_info.slug

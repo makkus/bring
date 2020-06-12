@@ -191,20 +191,5 @@ def find_version(
 class BringTaskDesc(TaskDesc):
     def __init__(self, **kwargs: Any) -> None:
 
-        kwargs.setdefault("topic", BRING_TASKS_BASE_TOPIC)
+        kwargs.setdefault("basetopic", BRING_TASKS_BASE_TOPIC)
         super().__init__(**kwargs)
-        subtopic = kwargs.pop("subtopic", None)
-        if subtopic:
-            self.subtopic = subtopic
-
-    @property
-    def subtopic(self) -> Optional[str]:
-        return self._subtopic
-
-    @subtopic.setter
-    def subtopic(self, subtopic: str) -> None:
-        self._subtopic = subtopic
-        if not subtopic:
-            self.topic = BRING_TASKS_BASE_TOPIC
-        else:
-            self.topic = f"{BRING_TASKS_BASE_TOPIC}.{subtopic}"

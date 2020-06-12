@@ -12,13 +12,12 @@ from frtls.doc.explanation.info import InfoExplanation
 class PkgInfoDisplay(InfoExplanation):
     def __init__(
         self,
-        pkg: PkgTing,
+        data: PkgTing,
         update: bool = False,
         full_info: bool = False,
         display_full_args: bool = False,
     ):
 
-        self._pkg: PkgTing = pkg
         self._update: bool = update
         self._display_full: bool = full_info
         self._display_full_args: bool = display_full_args
@@ -26,8 +25,8 @@ class PkgInfoDisplay(InfoExplanation):
         self._base_metadata: Optional[Mapping[str, Any]] = None
 
         super().__init__(
-            name=pkg.pkg_id,
-            info_data=pkg,
+            data=data,
+            name=data.pkg_id,
             short_help_key="slug",
             help_key="desc",
             full_info=full_info,
@@ -68,7 +67,7 @@ class PkgInfoDisplay(InfoExplanation):
 
         if self._base_metadata is None:
             self._base_metadata = wrap_async_task(
-                self._pkg.get_value, "info", _raise_exception=True
+                self.data.get_value, "info", _raise_exception=True
             )
         return self._base_metadata
 
@@ -83,7 +82,7 @@ class PkgInfoDisplay(InfoExplanation):
     @property
     def short_help(self) -> str:
 
-        short_help = f"{self.slug} (from: {self._pkg.bring_index.name})"
+        short_help = f"{self.slug} (from: {self.data.bring_index.name})"
         return short_help
 
     @property
@@ -100,13 +99,13 @@ class PkgInfoDisplay(InfoExplanation):
     #
     #     return self._info
 
-    async def create_info(self) -> Doc:
+    async def get_info(self) -> Doc:
 
         args: Dict[str, Any] = {"include_metadata": True}
         if self.update:
             args["retrieve_config"] = {"metadata_max_age": 0}
 
-        info = await self._pkg.get_info(**args)
+        info = await self.data.get_info(**args)
 
         metadata = info["metadata"]
         age = arrow.get(metadata["timestamp"])

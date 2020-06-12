@@ -33,7 +33,12 @@ class BringExportIndexCommand(click.Command):
                 ),
                 metavar="PATH_TO_INDEX_FOLDER",
             ),
-            Option(["--output-file", "-o"], required=False),
+            Option(
+                ["--output-file", "-o"],
+                required=False,
+                metavar="PATH",
+                help="the path to the index file, defaults to <index_folder>/.bring/this.br.idx",
+            ),
             Option(
                 ["--force", "-f"],
                 is_flag=True,
@@ -96,15 +101,15 @@ class BringExportIndexCommand(click.Command):
             if inconsistent:
 
                 if not force:
-                    click.echo(
-                        f"Can't update index, inconsistencies exist for package(s): {', '.join(inconsistent)}"
+                    console.print(
+                        f"[red bold]Can't update index, inconsistencies exist for package(s): {', '.join(sorted(inconsistent))}[/red bold]"
                     )
                 else:
-                    click.echo(
-                        f"Force update old index, even though are inconsistencies for packages: {', '.join(inconsistent)}"
+                    console.print(
+                        f"Force update old index, even though are inconsistencies for packages: {', '.join(sorted(inconsistent))}"
                     )
             else:
-                click.echo("Older index file exists, no inconsistencies.")
+                console.print("Older index file exists, no inconsistencies.")
 
             console.line()
             console.print("Details:")
@@ -118,8 +123,8 @@ class BringExportIndexCommand(click.Command):
             sys.exit(1)
 
         if not check:
-
-            click.echo(f"Exporting index to file: {_path}")
+            console.line()
+            console.print(f"Exporting index to file: {_path}")
 
             json_data = json.dumps(exported_index, indent=2) + "\n"
             json_bytes = json_data.encode("utf-8")

@@ -282,22 +282,22 @@ class BringContextCommands(FrklBaseCommand):
 class ContextExplanation(InfoExplanation):
     def __init__(
         self,
-        context_name: str,
-        context: ConfigTing,
+        data: ConfigTing,
+        name: Optional[str] = None,
         full_info: bool = False,
         show_title: bool = True,
     ):
 
         super().__init__(
-            name=context_name,
-            info_data=context,
+            data=data,
+            name=name,
             short_help_key="slug",
             help_key="desc",
             full_info=full_info,
             show_title=show_title,
         )
 
-    async def create_info(self) -> Doc:
+    async def get_info(self) -> Doc:
 
         vals = await self.data.get_values()
 
@@ -327,10 +327,7 @@ async def explain_contexts(
     for ctx_name, context in contexts.items():
 
         ce = ContextExplanation(
-            context_name=ctx_name,
-            context=context,
-            full_info=full_info,
-            show_title=False,
+            data=context, name=ctx_name, full_info=full_info, show_title=False
         )
 
         explanations.append(ce)

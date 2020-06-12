@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from typing import Any
+
 from bring.merge_strategy import LocalFolderItem, MergeStrategy
 
 
@@ -8,7 +10,7 @@ class ReplaceMergeStrategy(MergeStrategy):
 
     async def merge_source(
         self, source_file: LocalFolderItem, target_file: LocalFolderItem
-    ) -> None:
+    ) -> Any:
 
         pass
         # protected_folders = ["~/.config", "~/Documents", "~/Desktop"]

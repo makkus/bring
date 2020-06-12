@@ -23,6 +23,9 @@ class LocalFolderExplanation(Explanation):
             self._managed_files = await self._local_folder.get_managed_files()
         return self._managed_files
 
+    async def create_explanation_data(self) -> Mapping[str, Any]:
+        raise NotImplementedError()
+
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:

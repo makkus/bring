@@ -6,14 +6,14 @@ import os
 import shutil
 import tempfile
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Type, Union
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.utils import BringTaskDesc
 from frtls.doc.explanation.steps import StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
-from frtls.tasks import Task, Tasks
+from frtls.tasks import Task, Tasks, TasksResult
 from frtls.templating import replace_strings_in_obj
 from frtls.types.plugins import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
@@ -136,10 +136,6 @@ class Mogrifier(Task, SimpleTing):
 
         pass
 
-    def explain(self) -> str:
-
-        return self.get_msg()
-
 
 class SimpleMogrifier(Mogrifier):
     def __init__(self, name: str, meta: TingMeta, **kwargs):
@@ -210,126 +206,31 @@ class EnvironmentStatus(object):
         return self._result
 
 
-# class CheckMogrifier(Mogrifier):
-#     """A mogrifier class that provides a 'is_ready' class that checks whether the required environment specified by the
-#     input arguments already exists.
-#
-#     This is useful for example to check whether a package (or a version of a package) already exists at a target, and
-#     thus the pipeline up to this point can be skipped.
-#
-#     When implementing such a method, make sure to not do any changes, just check the environment.
-#     """
-#
-#     def __init__(self, name: str, meta: TingMeta, **kwargs):
-#
-#         self._input_arg: Optional[RecordArg] = None
-#         self._result_arg: Optional[RecordArg] = None
-#
-#         self._status: Optional[EnvironmentStatus] = None
-#
-#         Mogrifier.__init__(self, name=name, meta=meta)
-#
-#     async def execute(self) -> Any:
-#
-#         result = await self.get_values(raise_exception=True)
-#
-#         return result
-#
-#     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
-#
-#         return await self.mogrify(*value_names, **requirements)
-#
-#     @abstractmethod
-#     async def mogrify(self, *value_names: str, **requirements) -> Mapping[str, Any]:
-#         pass
-#
-#     @property
-#     def input_arg_obj(self) -> RecordArg:
-#
-#         if self._input_arg is None:
-#             self._input_arg = self.tingistry.arg_hive.create_record_arg(
-#                 self.input_args()
-#             )
-#         return self._input_arg
-#
-#     @property
-#     def user_input(self):
-#
-#         result = {}
-#         for k, v in self.current_input.items():
-#             if v != NO_VALUE_MARKER:
-#                 result[k] = v
-#
-#         vals = self.input_arg_obj.validate(result, raise_exception=True)
-#
-#         return vals
-#
-#     def get_user_input(self, key, default=None):
-#
-#         return self.user_input.get(key, default)
-#
-#     # async def get_status(self) -> Optional[EnvironmentStatus]:
-#     #
-#     #     if self._status is not None:
-#     #         return self._status
-#     #
-#     #     user_input = self.user_input
-#     #
-#     #     self._status = await self.check_status(**user_input)
-#     #     return self._status
-#
-#     # @abstractmethod
-#     # async def check_status(self, **user_input: Any) -> Optional[EnvironmentStatus]:
-#     #
-#     #     pass
-#
-#     def input_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         if not hasattr(self.__class__, "_input_args"):
-#             raise FrklException(
-#                 f"Error processing mogrifier '{self.name}'.",
-#                 reason=f"No class attribute '_input_args' availble for {self.__class__.__name__}. This is a bug.",
-#             )
-#
-#         return self.__class__._input_args  # type: ignore
-#
-#     def pipeline_args(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         if not hasattr(self.__class__, "_pipeline_args"):
-#             raise FrklException(
-#                 f"Error processing mogrifier '{self.name}'.",
-#                 reason=f"No class attribute '_pipeline_args' availble for {self.__class__.__name__}. This is a bug.",
-#             )
-#
-#         return self.__class__._pipeline_args  # type: ignore
-#
-#     def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         return get_seeded_dict(self.input_args(), self.pipeline_args())
-#
-#     def check_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         if not hasattr(self.__class__, "_check_output"):
-#             raise FrklException(
-#                 f"Error processing mogrifier '{self.name}'.",
-#                 reason=f"No class attribute '_check_output' availble for {self.__class__.__name__}. This is a bug.",
-#             )
-#
-#         return self.__class__._check_output  # type: ignore
-#
-#     def pipeline_output(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         if not hasattr(self.__class__, "_pipeline_output"):
-#             raise FrklException(
-#                 f"Error processing mogrifier '{self.name}'.",
-#                 reason=f"No class attribute '_pipeline_output' availble for {self.__class__.__name__}. This is a bug.",
-#             )
-#
-#         return self.__class__._pipeline_output  # type: ignore
-#
-#     def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-#
-#         return get_seeded_dict(self.check_output(), self.pipeline_output())
+class TransmogrificatorResult(TasksResult):
+    def __init__(self, task: "Transmogrificator", result_value: Any = None):
+
+        super().__init__(task=task, result_value=result_value)
+
+    def get_processed_result(self) -> Any:
+
+        tasks: Transmogrificator = self.task  # type: ignore
+
+        last_mogrifier = None
+        for last_mogrifier in tasks.children.values():
+            # task_msg = child_task.task_desc.name
+            pass
+
+        result = last_mogrifier.result.get_processed_result()
+        return result
+
+    # async def create_explanation_data(self) -> Any:
+    #
+    #     result = self.get_processed_result()
+    #     exp = {}
+    #     for k, v in result.items():
+    #         exp[k.id] = v
+    #
+    #     return exp
 
 
 class Transmogrificator(Tasks):
@@ -363,8 +264,6 @@ class Transmogrificator(Tasks):
         self._target_folder = os.path.join(BRING_WORKSPACE_FOLDER, "results", self._id)
         ensure_folder(os.path.dirname(self._target_folder))
 
-        self._result: Optional[Mapping[str, Any]] = None
-
         super().__init__(**kwargs)
 
         self._current: Optional[Mogrifier] = None
@@ -384,36 +283,7 @@ class Transmogrificator(Tasks):
         self._current = mogrifier
         self._last_item = self._current
 
-    # async def is_ready(self) -> bool:
-    #
-    #     if not issubclass(self._last_item.__class__, CheckMogrifier):
-    #         return False
-    #
-    #     status: EnvironmentStatus = await self._last_item.get_status()  # type: ignore
-    #
-    #     if status is None:
-    #         return False
-    #     elif isinstance(status, bool):
-    #         return status
-    #     else:
-    #         return status.is_ready
-
-    # async def transmogrify(self) -> Mapping[str, Any]:
-    #
-    #     # if await self.is_ready():
-    #     #     if self._result is None:
-    #     #         raise Exception("No result value, this is a bug.")
-    #     #     return self._result
-    #
-    #     await self.run_async()
-    #     self._result = self._last_item.current_state  # type: ignore
-    #     return self._result  # type: ignore
-    #
-    def get_result(self) -> Mapping[str, Any]:
-
-        return self._last_item.current_state  # type: ignore
-
-    async def execute(self) -> Any:
+    async def run_children(self) -> None:
 
         for child in self._children.values():
             await child.run_async()
@@ -427,7 +297,11 @@ class Transmogrificator(Tasks):
 
         # result.append(self._result_mogrifier.explain())  # type: ignore
 
-        return StepsExplanation(steps_map=result)
+        return StepsExplanation(data=result)
+
+    def get_result_type(self) -> Type:
+
+        return TransmogrificatorResult
 
 
 class Transmogritory(SimpleTing):

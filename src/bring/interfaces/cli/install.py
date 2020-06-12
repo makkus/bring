@@ -5,6 +5,7 @@ import asyncclick as click
 from bring.bring import Bring
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
+from freckles.core.frecklet import BringInstallFrecklet, Frecklet
 from frtls.args.arg import Arg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.exceptions import handle_exc_async
@@ -131,15 +132,33 @@ class BringInstallGroup(FrklBaseCommand):
         if not load_details:
             return None
 
-        pkg = await self._bring.get_pkg(name, raise_exception=True)
-        install_args["pkg_name"] = pkg.name
-        install_args["pkg_index"] = pkg.bring_index.id
+        prototing_name = "bring.frecklets.install_pkg"
+        self._bring.tingistry.register_prototing(
+            prototing_name, BringInstallFrecklet, init_values={"bring": self._bring}
+        )
 
-        processor = self._bring.create_processor("install_pkg")
+        ting_name = f"bring.frecklets.install_pkg.{name}"
+        if not name.endswith(".br"):
 
-        processor.add_constants(_constants_name="install_param", **install_args)
+            pkg = await self._bring.get_pkg(name, raise_exception=True)
+            install_args["pkg_name"] = pkg.name
+            install_args["pkg_index"] = pkg.bring_index.id
 
-        args = await processor.get_user_input_args()
+            frecklet: Frecklet = self._bring.tingistry.create_ting(
+                prototing_name, ting_name
+            )
+            frecklet.input_sets.add_constants(_id="install_param", **install_args)
+
+        else:
+
+            install_args["path"] = name
+
+            frecklet: Frecklet = self._bring.tingistry.create_ting(
+                prototing_name, ting_name
+            )
+            frecklet.input_sets.add_constants(_id="install_param", **install_args)
+
+        args = await frecklet.input_args
 
         args_renderer = args.create_arg_renderer(
             "cli", add_defaults=False, remove_required=True
@@ -152,10 +171,13 @@ class BringInstallGroup(FrklBaseCommand):
             @handle_exc_async
             async def command(ctx, **kwargs):
 
+                console.line()
                 arg_value = args_renderer.create_arg_value(kwargs)
-                processor.set_user_input(**arg_value.processed_input)
-                explanation = processor.explain()
+                frecklet.input_sets.add_input_values(
+                    _id="cli_input", **arg_value.processed_input
+                )
 
+                explanation = frecklet.explain()
                 console.print(explanation)
 
         else:
@@ -166,21 +188,21 @@ class BringInstallGroup(FrklBaseCommand):
             async def command(ctx, **kwargs):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
-
-                processor.set_user_input(**arg_value.processed_input)
+                frecklet.input_sets.add_input_values(
+                    _id="cli_input", **arg_value.processed_input
+                )
 
                 console.line()
-                msg = await processor.get_msg()
+                msg = await frecklet.get_msg()
                 console.print(f"[title]Task[/title]: {msg}")
                 console.line()
                 console.print("[title]Variables[/title]:")
-                console.line()
 
-                pi = processor.explain_vars(show_title=False, as_table=False)
+                pi = frecklet.input_sets.explain()
                 console.print(pi)
 
-                console.line()
-                result = await processor.process()
+                result = await frecklet.get_frecklet_result()
+                console.print("[title]Result:[/title]")
                 console.print(result)
 
         command.params = args_renderer.rendered_arg

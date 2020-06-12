@@ -64,4 +64,4 @@ class ParallelPkgMergeMogrifier(Mogrifier, Tasks):
         inp: Dict[str, Any] = {"folder_paths": folders}
         self._merge_task.set_input(**inp)
         vals = await self._merge_task.run_async()
-        return vals
+        return vals.result_value

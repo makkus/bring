@@ -187,7 +187,7 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.list_pkgs import BringListPkgsGroup
 
             command = BringListPkgsGroup(bring=self.bring, name="info")
-            command.short_help = "display information for packages"
+            command.short_help = "list packages for all registered indexes"
 
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
@@ -209,13 +209,13 @@ class BringCommandGroup(FrklBaseCommand):
             from bring.interfaces.cli.explain import BringInfoPkgsGroup
 
             command = BringInfoPkgsGroup(bring=self.bring, name="info")
-            command.short_help = "display index or pkg information"
+            command.short_help = "display index, pkg, and target information"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
 
             command = BringUpdateCommand(bring=self.bring, name="update")
-            command.short_help = "update package metadata for all indexes"
+            command.short_help = "update index metadata"
 
         elif name == "doc":
             from bring.interfaces.cli.doc import BringDocGroup
@@ -230,7 +230,7 @@ class BringCommandGroup(FrklBaseCommand):
         elif name == "export-index":
 
             command = BringExportIndexCommand(bring=self.bring, name="export")
-            command.short_help = "export all indexes"
+            command.short_help = "export index folder metadata to file"
 
         elif name == "self":
 

@@ -123,8 +123,8 @@ class IndexDiff(object):
             else:
                 _ps = "packages"
             yield f"- [title]added {_ps}:[/title]"
-            for a in added:
-                yield f"  - {a.name}"
+            for a in sorted([a.name for a in added]):
+                yield f"  - {a}"
         else:
             yield "- [title]no added packages[/title]"
         yield ""
@@ -136,12 +136,13 @@ class IndexDiff(object):
                 _ps = "packages"
             yield f"- [title]added versions in {_ps}:[/title]"
             versions_set = set()
-            for pkg, versions in added_versions.items():
+
+            for pkg, versions in sorted(added_versions.items()):
                 yield f"    [key2]{pkg.name}[/key2]:"
                 for v in versions:
                     _v = v.get("version", "n/a")
                     versions_set.add(_v)
-                for v in versions_set:
+                for v in sorted(versions_set):
                     yield f"      - {v}"
         else:
             yield "- [title]no versions added to any packages[/title]"
@@ -154,7 +155,7 @@ class IndexDiff(object):
             else:
                 _ps = "packages"
             yield f"- [title][red]removed {_ps}:[/red][/title]"
-            for r in removed:
+            for r in sorted(removed):
                 yield f"  - {r.name}"
         else:
             yield "- [title]no removed packages[/title]"
@@ -167,12 +168,13 @@ class IndexDiff(object):
                 _ps = "packages"
             yield f"- [bold red]removed versions in {_ps}:[/bold red]"
             versions_set = set()
-            for pkg, versions in removed_versions.items():
+            for pkg, versions in sorted(removed_versions.items()):
+
                 yield f"    [key2]{pkg.name}[/key2]:"
                 for v in versions:
                     _v = v.get("version", "n/a")
                     versions_set.add(_v)
-                for v in versions_set:
+                for v in sorted(versions_set):
                     yield f"      - {v}"
 
 

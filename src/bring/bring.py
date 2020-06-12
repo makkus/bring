@@ -15,14 +15,13 @@ from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from bring.pkg_processing.processor import BringProcessor
 from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
 from frtls.args.hive import ArgHive
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.introspection.pkg_env import AppEnvironment
-from frtls.tasks import SerialTasksAsync, Tasks
+from frtls.tasks import ParallelTasksAsync, Tasks
 from frtls.tasks.task_watcher import TaskWatchManager
 from frtls.tasks.watchers.rich import RichTaskWatcher
 from frtls.types.utils import is_instance_or_subclass
@@ -329,8 +328,8 @@ class Bring(SimpleTing):
         td = BringTaskDesc(
             name="update metadata", msg="updating metadata for all indexes"
         )
-        # tasks = ParallelTasksAsync(task_desc=td)
-        tasks = SerialTasksAsync(task_desc=td)
+        tasks = ParallelTasksAsync(task_desc=td)
+        # tasks = SerialTasksAsync(task_desc=td)
         for index_name in index_names:
             index = await self.get_index(index_name)
             if index is None:
@@ -364,8 +363,7 @@ class Bring(SimpleTing):
                 tasks.task_desc.subtopic = subtopic
 
             for index, child in enumerate(tasks.children.values()):
-                if isinstance(child.task_desc, BringTaskDesc):
-                    child.task_desc.subtopic = f"{subtopic}.{index}"
+                child.task_desc.subtopic = f"{subtopic}.{index}"
 
         wid = twm.add_watcher(tlc)
         tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
@@ -522,13 +520,13 @@ class Bring(SimpleTing):
 
         return pkg is not None
 
-    def create_processor(self, processor_type: str) -> BringProcessor:
-
-        pm = self._tingistry_obj.get_plugin_manager(BringProcessor)
-
-        plugin_class = pm.get_plugin(processor_type, raise_exception=True)
-        proc = plugin_class(self)
-        return proc
+    # def create_processor(self, processor_type: str) -> BringProcessor:
+    #
+    #     pm = self._tingistry_obj.get_plugin_manager(BringProcessor)
+    #
+    #     plugin_class = pm.get_plugin(processor_type, raise_exception=True)
+    #     proc = plugin_class(self)
+    #     return proc
 
     # async def process(self, processor_type: str, **input_vars) -> Mapping[str, Any]:
     #

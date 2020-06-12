@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from anyio import aopen
 from bring.defaults import BRING_BACKUP_FOLDER
 from bring.merge_strategy import LocalFolder, LocalFolderItem, MergeStrategy
+from deepdiff import DeepHash
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 
@@ -21,36 +22,40 @@ class BringMergeStrategy(MergeStrategy):
     _plugin_name = "bring"
 
     @property
-    def pkg_metadata(self) -> Mapping[str, Any]:
+    def item_metadata(self) -> Mapping[str, Any]:
 
-        return self.get_config("pkg_metadata")
+        return self.get_config("item_metadata")
 
     @property
-    def pkg_metadata_hash(self) -> str:
+    def item_metadata_hash(self) -> str:
 
-        if "_pkg_hash" not in self._config.keys():
-            _pkg_hash = self.pkg_metadata["hash"]
-            self._config["_pkg_hash"] = _pkg_hash
+        if "_item_hash" not in self._config.keys():
 
-        return self.get_config("_pkg_hash")
+            hashes = DeepHash(self.item_metadata)
 
-    def get_pkg_hash_file_path(self, target_folder: LocalFolder):
+            h = hashes[self.item_metadata]
+
+            self._config["_item_hash"] = h
+
+        return self.get_config("_item_hash")
+
+    def get_item_hash_file_path(self, target_folder: LocalFolder):
 
         full_path = os.path.join(
             target_folder._item_metadata_path,
             "hashes",
-            f"{self.pkg_metadata_hash}.json",
+            f"{self.item_metadata_hash}.json",
         )
         return full_path
 
-    async def ensure_pkg_hash_file(self, target_folder: LocalFolder):
+    async def ensure_item_hash_file(self, target_folder: LocalFolder):
 
-        full_path = self.get_pkg_hash_file_path(target_folder=target_folder)
+        full_path = self.get_item_hash_file_path(target_folder=target_folder)
 
         if os.path.isfile(full_path):
             return
 
-        md_string = json.dumps(self.pkg_metadata)
+        md_string = json.dumps(self.item_metadata)
         ensure_folder(os.path.dirname(full_path))
         async with await aopen(full_path, "w") as f:
             await f.write(md_string)
@@ -61,7 +66,7 @@ class BringMergeStrategy(MergeStrategy):
             os.unlink(target_file.metadata_file_path)
 
         ensure_folder(os.path.dirname(target_file.metadata_file_path))
-        pkg_hash_files = self.get_pkg_hash_file_path(
+        pkg_hash_files = self.get_item_hash_file_path(
             target_folder=target_file.base_folder
         )
         mirror_link = target_file.metadata_file_path
@@ -74,7 +79,7 @@ class BringMergeStrategy(MergeStrategy):
         merge_map: Mapping[LocalFolderItem, LocalFolderItem],
     ) -> None:
 
-        await self.ensure_pkg_hash_file(target_folder=target_folder)
+        await self.ensure_item_hash_file(target_folder=target_folder)
 
     async def write_target_file(
         self, source_file: LocalFolderItem, target_file: LocalFolderItem

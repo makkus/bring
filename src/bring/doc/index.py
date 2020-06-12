@@ -20,34 +20,33 @@ log = logging.getLogger("bring")
 class IndexExplanation(InfoExplanation):
     def __init__(
         self,
-        name: str,
-        index: BringIndexTing,
+        data: BringIndexTing,
+        name: Optional[str],
         update: bool = False,
         full_info: bool = False,
         display_packages: bool = True,
     ):
 
         super().__init__(
+            data=data,
             name=name,
-            info_data=index,
             short_help_key="slug",
             help_key="desc",
             full_info=full_info,
         )
-        self._index: BringIndexTing = index
         self._update: bool = update
         self._display_packages: bool = display_packages
 
         self._base_metadata: Optional[Mapping[str, Any]] = None
         # self._info: Optional[Mapping[str, Any]] = None
 
-    async def create_info(self) -> Doc:
+    async def get_info(self) -> Doc:
 
         args: Dict[str, Any] = {"include_metadata": True}
         if self.update:
             args["retrieve_config"] = {"metadata_max_age": 0}
 
-        info: MutableMapping[str, Any] = await self._index.get_values(  # type: ignore
+        info: MutableMapping[str, Any] = await self.data.get_values(  # type: ignore
             resolve=True
         )  # type: ignore
 
@@ -81,7 +80,7 @@ class IndexExplanation(InfoExplanation):
 
         if self.display_packages:
 
-            pkg_infos = wrap_async_task(self._index.get_all_pkg_values, "info")
+            pkg_infos = wrap_async_task(self.data.get_all_pkg_values, "info")
 
             table = Table(box=box.SIMPLE, show_header=False, padding=(0, 2, 0, 0))
             table.add_column("Name", no_wrap=True, style="bold deep_sky_blue4")
@@ -135,7 +134,7 @@ class IndexExplanation(InfoExplanation):
 
         if self._base_metadata is None:
             self._base_metadata = wrap_async_task(
-                self._index.get_value, "info", _raise_exception=True
+                self.data.get_value, "info", _raise_exception=True
             )
         return self._base_metadata
 

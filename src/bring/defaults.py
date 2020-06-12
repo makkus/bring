@@ -46,11 +46,11 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring_target.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
-    "bring.pkg_processing.*",
     "bring.pkg_index.*",
     "bring.config",
     "bring.merge_strategy.*",
     "frtls.tasks.watchers.*",
+    "freckles.core.*",
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.indexes"

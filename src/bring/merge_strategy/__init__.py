@@ -5,12 +5,25 @@ import json
 import logging
 import os
 import shutil
+import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from anyio import aopen, create_task_group
 from bring.defaults import (
+    BRING_BACKUP_FOLDER,
     BRING_GLOBAL_METADATA_FOLDER,
     BRING_ITEM_METADATA_FOLDER_NAME,
     BRING_METADATA_FILE_NAME,
@@ -21,6 +34,7 @@ from frtls.cli.vars import DictType
 from frtls.defaults import DEFAULT_EXCLUDE_DIRS
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
+from frtls.introspection.pkg_env import AppEnvironment
 from frtls.types.typistry import Typistry
 from frtls.types.utils import is_instance_or_subclass
 
@@ -493,6 +507,64 @@ class MergeStrategy(metaclass=ABCMeta):
 
     _plugin_type = "instance"
 
+    @classmethod
+    def create_merge_strategy_config(
+        cls,
+        merge_strategy: Optional[Union[str, Mapping[str, Any]]] = None,
+        typistry: Optional[Typistry] = None,
+    ) -> Tuple[Type, MutableMapping[str, Any]]:
+
+        if typistry is None:
+            app_env: AppEnvironment = AppEnvironment()
+            typistry = app_env.get_global("typistry")
+            if typistry is None:
+                raise ValueError(
+                    "No typistry object provided, and none registered in the app environment."
+                )
+
+        if merge_strategy is None:
+            merge_strategy = "default"
+
+        if isinstance(merge_strategy, str):
+            merge_strategy = explode_merge_strategy(merge_strategy)
+
+        if isinstance(merge_strategy, collections.Mapping):
+            ms_type = merge_strategy.get("type", "default")
+            _ms_config = merge_strategy.get("config", None)
+            if _ms_config is None:
+                ms_config = {}
+            else:
+                ms_config = copy.deepcopy(_ms_config)
+
+            pm = typistry.get_plugin_manager(MergeStrategy)
+            ms_cls = pm.get_plugin(ms_type)
+            if ms_cls is None:
+                raise FrklException(
+                    msg=f"Can't create merge strategy object of type '{ms_type}'.",
+                    reason=f"Invalid merge strategy type, valid ones are: {', '.join(pm.plugin_names)}",
+                )
+        else:
+            raise TypeError(f"Invalid merge strategy type: {type(merge_strategy)}")
+
+        return (ms_cls, ms_config)
+
+    @classmethod
+    def create_merge_strategy(
+        cls,
+        merge_strategy: Optional[Union[str, Mapping[str, Any], "MergeStrategy"]] = None,
+        typistry: Optional[Typistry] = None,
+    ) -> "MergeStrategy":
+
+        if is_instance_or_subclass(merge_strategy, MergeStrategy):
+            return merge_strategy  # type: ignore
+
+        merge_strategy_cls, merge_strategy_config = MergeStrategy.create_merge_strategy_config(
+            merge_strategy=merge_strategy, typistry=typistry  # type: ignore
+        )
+
+        _merge_strategy_obj: MergeStrategy = merge_strategy_cls(**merge_strategy_config)
+        return _merge_strategy_obj
+
     def __init__(self, **config):
 
         self._config: MutableMapping[str, Any] = config
@@ -533,6 +605,16 @@ class MergeStrategy(metaclass=ABCMeta):
             raise FrklException(
                 f"Can't move file '{source}', invalid move method '{self.move_method}'. Allowed: {', '.join(['move', 'copy'])}"
             )
+
+    def backup_file(self, target_file: LocalFolderItem):
+
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        ensure_folder(BRING_BACKUP_FOLDER)
+        backup_file = (
+            f"{BRING_BACKUP_FOLDER}{os.path.sep}{target_file.file_name}.{timestamp}.bak"
+        )
+        shutil.move(target_file.full_path, backup_file)
+        log.debug(f"Backed up file '{target_file.rel_path}' to: {backup_file}")
 
     async def pre_merge_hook(
         self,
@@ -632,23 +714,24 @@ class MergeStrategy(metaclass=ABCMeta):
     @abstractmethod
     async def merge_source(
         self, source_file: LocalFolderItem, target_file: LocalFolderItem
-    ) -> None:
+    ) -> Any:
         pass
 
 
 class FolderMerge(object):
     def __init__(
         self,
-        typistry: Typistry,
         target: Union[str, Path, LocalFolder],
-        merge_strategy: Optional[Union[str, Mapping[str, Any], MergeStrategy]] = None,
+        merge_strategy: Optional[MergeStrategy],
         flatten: bool = False,
     ):
 
-        self._typistry = typistry
-
         if merge_strategy is None:
-            merge_strategy = "default"
+            from bring.merge_strategy.default import DefaultMergeStrategy
+
+            merge_strategy = DefaultMergeStrategy()
+
+        self._merge_strategy = merge_strategy
 
         # if isinstance(target, str):
         #     _target = os.path.realpath(os.path.expanduser(target))
@@ -660,29 +743,6 @@ class FolderMerge(object):
         if isinstance(target, (str, Path)):
             target = LocalFolder(target)
         self._target: LocalFolder = target
-
-        if isinstance(merge_strategy, str):
-            merge_strategy = explode_merge_strategy(merge_strategy)
-        if isinstance(merge_strategy, collections.Mapping):
-            ms_type = merge_strategy.get("type", "default")
-            _ms_config = merge_strategy.get("config", None)
-            if _ms_config is None:
-                ms_config = {}
-            else:
-                ms_config = copy.deepcopy(_ms_config)
-
-            pm = self._typistry.get_plugin_manager(MergeStrategy)
-            ms_cls = pm.get_plugin(ms_type)
-            if ms_cls is None:
-                raise FrklException(
-                    msg=f"Can't merge into folder '{self._target.path}' using merge strategy '{ms_type}'.",
-                    reason=f"Invalid merge strategy, valid: {', '.join(pm.plugin_names)}",
-                )
-            self._merge_strategy = ms_cls(**ms_config)
-        elif is_instance_or_subclass(merge_strategy, MergeStrategy):
-            self._merge_strategy = merge_strategy  # type: ignore
-        else:
-            raise TypeError(f"Invalid merge strategy type: {type(merge_strategy)}")
 
         self._flatten: bool = flatten
 

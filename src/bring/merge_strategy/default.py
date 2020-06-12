@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+from typing import Any
+
 from bring.merge_strategy import LocalFolderItem, MergeStrategy
-from frtls.exceptions import FrklException
 
 
 class DefaultMergeStrategy(MergeStrategy):
@@ -9,16 +10,24 @@ class DefaultMergeStrategy(MergeStrategy):
 
     async def merge_source(
         self, source_file: LocalFolderItem, target_file: LocalFolderItem
-    ) -> None:
+    ) -> Any:
 
-        raise_exception = False
+        force = self.get_config("force", False)
+        backup = self.get_config("backup", True)
+
         if target_file.exists:
-            if raise_exception:
-                raise FrklException(
-                    msg=f"Can't merge/copy file '{target_file.rel_path}'.",
-                    reason=f"File already exists in target: {target_file.base_folder}",
-                )
+            if not force:
+                return "file already exists, and 'force' not set"
             else:
-                return
+                if backup:
+                    self.backup_file(target_file=target_file)
+                    msg = "installed (existing file backed up)"
+                else:
+                    target_file.unlink()
+                    msg = "installed (existing file deleted)"
+        else:
+            msg = "installed"
 
         self._move_or_copy_file(source_file, target_file)
+
+        return msg

@@ -20,7 +20,7 @@ from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frtls.args.arg import RecordArg
 from frtls.dicts import get_seeded_dict
-from frtls.doc.utils import to_value_string
+from frtls.doc.explanation import to_value_string
 from frtls.exceptions import FrklException
 from frtls.tasks import TaskDesc
 from frtls.types.plugins import TypistryPluginManager
