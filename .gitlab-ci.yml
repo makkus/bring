@@ -98,7 +98,12 @@ binary_linux:
     name: registry.gitlab.com/frkl/frkl-python-build:dev
     entrypoint: [""]
   stage: build
-  needs: ["python37"]
+  needs:
+    - "python37"
+    - "commitlint"
+    - "flake8"
+    - "mypy"
+
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
@@ -114,7 +119,11 @@ binary_windows:
     name: registry.gitlab.com/frkl/frkl-python-build:dev-win
     entrypoint: [""]
   stage: build
-  needs: ["python37"]
+  needs:
+    - "python37"
+    - "commitlint"
+    - "flake8"
+    - "mypy"
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
@@ -163,7 +172,11 @@ pkg_python_dev:
   stage: release
   only:
     - develop
-  needs: ["python38"]
+  needs:
+    - "python38"
+    - "commitlint"
+    - "flake8"
+    - "mypy"
   script:
     - pip install devpi-client
     - rm -rf dist build
@@ -178,7 +191,11 @@ pkg_python_dev:
 
 pkg_python_stable:
   stage: release
-  needs: ["python38"]
+  needs:
+    - "python38"
+    - "commitlint"
+    - "flake8"
+    - "mypy"
   only:
     - /^\d+\.\d+\.\d+$/
   except:
@@ -201,7 +218,11 @@ pkg_python_stable:
 
 pkg_python_beta:
   stage: release
-  needs: ["python38"]
+  needs:
+    - "python38"
+    - "commitlint"
+    - "flake8"
+    - "mypy"
   only:
     - /^\d+\.\d+\.\d+b\d+$/
   except:
