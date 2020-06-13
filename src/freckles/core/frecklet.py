@@ -1,31 +1,38 @@
 # -*- coding: utf-8 -*-
+import collections
 import copy
 from abc import abstractmethod
 from functools import lru_cache
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Type,
+    Union,
+)
 
 from anyio import create_task_group
-from bring.bring import Bring
 from bring.defaults import BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli import console
-from bring.merge_strategy import FolderMerge, MergeStrategy
-from bring.mogrify import Transmogrificator
-from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from freckles.core.explanation import FreckletExplanation, FreckletInputExplanation
 from freckles.core.vars import FreckletInputSet, FreckletInputType, Var, VarSet
 from frtls.args.arg import Arg, RecordArg
 from frtls.async_helpers import wrap_async_task
 from frtls.dicts import get_seeded_dict
+from frtls.doc.explanation import to_value_string
 from frtls.doc.utils.rich import to_key_value_table
-from frtls.files import create_temp_dir
 from frtls.introspection.pkg_env import AppEnvironment
 from frtls.tasks import PostprocessTask, Task, Tasks, TasksResult
 from frtls.tasks.task_watcher import TaskWatchManager
 from frtls.tasks.watchers.rich import RichTaskWatcher
 from frtls.types.utils import is_instance_or_subclass
 from rich.console import Console, ConsoleOptions, RenderResult
-from sortedcontainers import SortedDict
 from tings.ting import SimpleTing, TingMeta
 
 
@@ -33,15 +40,32 @@ class FreckletInput(object):
     def __init__(self):
 
         self._input_sets: Dict[str, FreckletInputSet] = {}
+        self._aliases: Dict[str, MutableMapping[Hashable, Any]] = {}
         self._processed_values: MutableMapping[str, Any] = {}
+
+    @property
+    def aliases(self) -> Mapping[str, Mapping[Hashable, Any]]:
+        return self._aliases
+
+    def add_alias(self, arg_name: str, alias: Hashable, value: Any):
+        self._aliases.setdefault(arg_name, {})[alias] = value
+        self.invalidate()
+
+    def add_aliases(self, aliases: Mapping[str, Mapping[Hashable, Any]]):
+
+        for arg_name, a in aliases.items():
+            self._aliases.setdefault(arg_name, {}).update(a)
+
+        self.invalidate()
+
+    def clear_aliases(self) -> None:
+        self._aliases.clear()
 
     @property
     def input_sets(self) -> Mapping[str, FreckletInputSet]:
         return self._input_sets
 
     def invalidate(self) -> None:
-        # print(self.merged_values_for_input_type.cache_info())
-        # self.merged_values_for_input_type.cache_clear()
         self.get_merged_values.cache_clear()
         self._processed_values.clear()
 
@@ -136,7 +160,20 @@ class FreckletInput(object):
                 if key in result.keys():
                     continue
 
-                result[key] = {"origin": input_set, "raw_value": value}
+                if (
+                    key in self.aliases.keys()
+                    and isinstance(value, collections.abc.Hashable)
+                    and value in self.aliases[key].keys()
+                ):
+                    alias = value
+                    value = self.aliases[key][alias]
+                    result[key] = {
+                        "origin": input_set,
+                        "raw_value": value,
+                        "from_alias": alias,
+                    }
+                else:
+                    result[key] = {"origin": input_set, "raw_value": value}
 
         return result
 
@@ -179,10 +216,16 @@ class FreckletResult(TasksResult):
 
         result_data: Mapping[str, Any] = self.explanation_data
 
-        table = to_key_value_table(
-            result_data["result"], show_headers=False, console=console, sort=True
-        )
-        yield table
+        result = result_data["result"]
+
+        if isinstance(result, collections.abc.Mapping):
+
+            table = to_key_value_table(
+                result_data["result"], show_headers=False, console=console, sort=True
+            )
+            yield table
+        else:
+            yield to_value_string(result)
 
 
 class FreckletTask(Tasks):
@@ -317,7 +360,9 @@ class Frecklet(SimpleTing):
 
         if self._required_args is None:
             base_vars: VarSet = await self.get_base_vars()
-            frecklet_args = await self.get_required_args(**base_vars.values())
+            frecklet_args = await self.get_required_args(
+                **base_vars.create_values_dict()
+            )
             if frecklet_args is None:
                 frecklet_args = {}
             # TODO: maybe check for duplicate keys?
@@ -362,7 +407,7 @@ class Frecklet(SimpleTing):
         return self._processed_vars
 
     async def process_vars(self, input_vars: VarSet) -> Mapping[str, Any]:
-        vars = input_vars.values()
+        vars = input_vars.create_values_dict()
         return vars
 
     async def get_vars(self) -> Mapping[str, Any]:
@@ -436,16 +481,25 @@ class Frecklet(SimpleTing):
         input_vars = copy.deepcopy(vars)
         _tasks_list = await self.create_processing_tasks(**input_vars)
 
-        if is_instance_or_subclass(_tasks_list, Task):
-            tasks_list: Iterable[Task] = [_tasks_list]  # type: ignore
+        if is_instance_or_subclass(_tasks_list, Frecklet):
+            tasks_list: Iterable[Union[Task, Frecklet]] = [_tasks_list]  # type: ignore
+        elif is_instance_or_subclass(_tasks_list, Task):
+            tasks_list = [_tasks_list]  # type: ignore
         else:
             tasks_list = _tasks_list  # type: ignore
+
+        final_list: List[Task] = []
+        for item in tasks_list:
+            if is_instance_or_subclass(item, Frecklet):
+                final_list.append(await item._create_task())  # type: ignore
+            else:
+                final_list.append(item)  # type: ignore
 
         msg = await self.get_msg()
         desc = BringTaskDesc(name=self.name, msg=msg)
         frecklet_task = FreckletTask(task_desc=desc, result_type=self.get_result_type())
 
-        for t in tasks_list:
+        for t in final_list:
             frecklet_task.add_task(t)
 
         input_vars = copy.deepcopy(vars)
@@ -464,185 +518,10 @@ class Frecklet(SimpleTing):
     @abstractmethod
     async def create_processing_tasks(
         self, **input_vars: Any
-    ) -> Union[Task, Iterable[Task]]:
+    ) -> Union[Task, Iterable[Task], "Frecklet", Iterable["Frecklet"]]:
         pass
 
     async def create_postprocess_task(
         self, **input_vars: Any
     ) -> Optional[PostprocessTask]:
         return None
-
-
-class BringInstallResult(FreckletResult):
-
-    pass
-
-
-class BringInstallFrecklet(Frecklet):
-
-    # def __init__(self, name: str, meta: TingMeta, init_values: Mapping[str, Any]):
-    #
-    #     super().__init__(name=name, meta=meta, init_values=init_values)
-
-    async def init_frecklet(self, init_values: Mapping[str, Any]):
-
-        self._bring = init_values["bring"]
-        bring_defaults = await self._bring.get_defaults()
-        self.input_sets.add_defaults(
-            _id="bring_defaults", _priority=10, **bring_defaults
-        )
-
-    @property
-    def bring(self) -> Bring:
-
-        return self._bring  # type: ignore
-
-    def get_result_type(self) -> Type[FreckletResult]:
-
-        return BringInstallResult
-
-    async def get_base_args(self) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
-
-        return {
-            "pkg_name": {"type": "string", "doc": "the package name", "required": True},
-            "pkg_index": {
-                "type": "string",
-                "doc": "the name of the index that contains the package",
-                "required": True,
-            },
-            "target": {"type": "string", "doc": "the target folder", "required": False},
-            "merge_strategy": {
-                "type": "merge_strategy",
-                "doc": "the merge strategy to use",
-                "default": "bring",
-                "required": True,
-            },
-        }
-
-    async def get_msg(self) -> str:
-
-        return f"installing package '{self.name}'"
-
-    async def get_pkg(self) -> PkgTing:
-
-        if self.input_sets.get_processed_value("pkg") is None:
-
-            _base_vars: VarSet = await self.get_base_vars()
-            base_vars = _base_vars.values()
-
-            pkg_name = base_vars["pkg_name"]
-            pkg_index = base_vars["pkg_index"]
-
-            pkg = await self._bring.get_pkg(name=pkg_name, index=pkg_index)
-            self.input_sets.add_processed_value("pkg", pkg)
-
-        return self.input_sets.get_processed_value("pkg")
-
-    async def get_required_args(
-        self, **base_vars: Any
-    ) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
-
-        pkg = await self.get_pkg()
-        index_defaults = await pkg.bring_index.get_index_defaults()
-        pkg_defaults = await pkg.get_defaults()
-        self.input_sets.add_defaults(
-            _id="index_defaults", _priority=100, **index_defaults
-        )
-        self.input_sets.add_defaults(_id="pkg_defaults", _priority=0, **pkg_defaults)
-        pkg_args: RecordArg = await pkg.get_pkg_args()
-
-        result: MutableMapping[str, Union[str, Arg, Mapping[str, Any]]] = dict(
-            pkg_args.childs
-        )
-
-        return result
-
-    async def create_processing_tasks(
-        self, **input_vars: Mapping[str, Any]
-    ) -> Union[Iterable[Task], Task]:
-
-        pkg = await self.get_pkg()
-        # extra_mogrifiers = await self.get_mogrifiers(**copy.deepcopy(input_vars))
-        extra_mogrifiers = None
-
-        transmogrificator: Transmogrificator = await pkg.create_transmogrificator(
-            vars=input_vars, extra_mogrifiers=extra_mogrifiers
-        )
-
-        return transmogrificator
-
-    async def create_postprocess_task(
-        self, **input_vars: Mapping[str, Any]
-    ) -> Optional[PostprocessTask]:
-
-        target: Any = input_vars.pop("target", None)
-        if target is None:
-            _target: str = create_temp_dir(prefix="install_target")
-        else:
-            if not isinstance(target, str):
-                raise TypeError(
-                    f"Invalid type for target value '{target}': {type(target)}"
-                )
-            _target = target
-        merge_strategy_input = input_vars.pop("merge_strategy", None)
-
-        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy_input, typistry=self._bring.typistry
-        )
-
-        _merge_strategy_config["item_metadata"] = SortedDict(input_vars)
-        _merge_strategy_config["move_method"] = "move"
-
-        _merge_strategy = _merge_strategy_cls(**_merge_strategy_config)
-
-        async def merge_folders(*tasks: Task):
-
-            source_folders = []
-            for transmogrificator in tasks:
-                result = transmogrificator.result.get_processed_result()
-                folder = result["folder_path"]
-                source_folders.append(folder)
-
-            merge_obj = FolderMerge(target=_target, merge_strategy=_merge_strategy)
-
-            result = await merge_obj.merge_folders(*source_folders)
-
-            return {
-                "target": _target,
-                "merge_result": result,
-                "item_metadata": input_vars,
-            }
-
-        if target is None:
-            _target_msg = "<temp folder>"
-        else:
-            _target_msg = target
-
-        if hasattr(_merge_strategy_cls, "_plugin_name"):
-            merge_strategy_type = _merge_strategy_cls._plugin_name
-        else:
-            merge_strategy_type = _merge_strategy_cls.__name__
-
-        pp_desc = BringTaskDesc(
-            name=f"merge_{self.name}_pkg_files",
-            msg=f"merging files into: {_target_msg} (merge strategy: {merge_strategy_type})",
-        )
-        task = PostprocessTask(func=merge_folders, task_desc=pp_desc)
-
-        return task
-
-
-# class BringInstallAssemblyFrecklet(Frecklet):
-#     async def create_processing_tasks(
-#         self, **input_vars: Mapping[str, Any]
-#     ) -> Iterable[Task]:
-#
-#         pkg = await self.get_pkg()
-#         # extra_mogrifiers = await self.get_mogrifiers(**copy.deepcopy(input_vars))
-#         extra_mogrifiers = None
-#
-#         transmogrificator: Transmogrificator = await pkg.create_transmogrificator(
-#             vars=input_vars, extra_mogrifiers=extra_mogrifiers
-#         )
-#
-#         return transmogrificator

@@ -12,11 +12,7 @@ from pathspec import PathSpec, patterns
 log = logging.getLogger("bring")
 
 
-def find_matches(
-    path: str,
-    include_patterns: Optional[Union[str, Iterable[str]]] = None,
-    output_absolute_paths=False,
-) -> Iterable:
+def resolve_include_patterns(include_patterns: Optional[Union[str, Iterable[str]]]):
 
     if not include_patterns:
         _include_patterns: Iterable[str] = ["*", ".*"]
@@ -24,6 +20,17 @@ def find_matches(
         _include_patterns = [include_patterns]
     else:
         _include_patterns = include_patterns
+
+    return _include_patterns
+
+
+def find_matches(
+    path: str,
+    include_patterns: Optional[Union[str, Iterable[str]]] = None,
+    output_absolute_paths=False,
+) -> Iterable:
+
+    _include_patterns = resolve_include_patterns(include_patterns)
 
     path_spec = PathSpec.from_lines(patterns.GitWildMatchPattern, _include_patterns)
 

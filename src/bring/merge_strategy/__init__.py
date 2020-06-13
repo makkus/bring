@@ -434,16 +434,41 @@ class LocalFolder(object):
         return f"[LocalFolder: path={self.path}]"
 
 
-class LocalFolderItem(object):
-    def __init__(self, local_folder: LocalFolder, rel_path: str):
+class FileItem(metaclass=ABCMeta):
+    @property
+    def full_path(self) -> str:
 
-        self._base_folder: LocalFolder = local_folder
-        self._rel_path: str = rel_path
-        self._metadata: Optional[Mapping[str, Any]] = None
+        return self._get_full_path()
+
+    async def get_metadata(self) -> Mapping[str, Any]:
+
+        return await self._get_file_metadata()
+
+    @abstractmethod
+    def _get_full_path(self) -> str:
+        pass
+
+    @abstractmethod
+    async def _get_file_metadata(self) -> Mapping[str, Any]:
+        pass
+
+    @property
+    def exists(self):
+        return os.path.exists(self.full_path)
+
+    @property
+    def file_name(self) -> str:
+        return os.path.basename(self.full_path)
+
+    def unlink(self):
+        os.unlink(self.full_path)
+
+    def ensure_parent_exists(self):
+        ensure_folder(os.path.dirname(self.full_path))
 
     def __eq__(self, other):
 
-        if not isinstance(other, LocalFolderItem):
+        if not isinstance(other, self.__class__):
             return False
 
         return self.full_path == other.full_path
@@ -452,12 +477,40 @@ class LocalFolderItem(object):
 
         return hash(self.full_path)
 
+    def __str__(self):
+
+        return self.full_path
+
+    def __repr__(self):
+
+        return self.full_path
+
+
+class MetadataFileItem(FileItem):
+    def __init__(self, file_path: str, metadata: Mapping[str, Any]):
+
+        self._file_path: str = os.path.abspath(os.path.expanduser(file_path))
+        self._metadata: Mapping[str, Any] = metadata
+
+    def _get_full_path(self) -> str:
+        return self._file_path
+
+    async def _get_file_metadata(self) -> Mapping[str, Any]:
+        return self._metadata
+
+
+class LocalFolderItem(FileItem):
+    def __init__(self, local_folder: LocalFolder, rel_path: str):
+
+        self._base_folder: LocalFolder = local_folder
+        self._rel_path: str = rel_path
+        self._metadata: Optional[Mapping[str, Any]] = None
+
     @property
     def rel_path(self) -> str:
         return self._rel_path
 
-    @property
-    def full_path(self):
+    def _get_full_path(self) -> str:
         return self._base_folder.get_full_path(self._rel_path)
 
     @property
@@ -465,42 +518,18 @@ class LocalFolderItem(object):
         return self._base_folder
 
     @property
-    def file_name(self) -> str:
-        return os.path.basename(self.rel_path)
-
-    @property
-    def exists(self):
-        return os.path.exists(self.full_path)
-
-    def unlink(self):
-
-        os.unlink(self.full_path)
-
-    def ensure_parent_exists(self):
-
-        ensure_folder(os.path.dirname(self.full_path))
-
-    @property
     def metadata_file_path(self) -> str:
 
         path = self._base_folder.get_metadata_path_for_item(self)
         return path
 
-    async def get_metadata(self) -> Mapping[str, Any]:
+    async def _get_file_metadata(self) -> Mapping[str, Any]:
 
         if self._metadata is None:
             self._metadata = await self._base_folder.get_metadata_for_item(
                 self.rel_path
             )
         return self._metadata
-
-    def __str__(self):
-
-        return self.rel_path
-
-    def __repr__(self):
-
-        return self.rel_path
 
 
 class MergeStrategy(metaclass=ABCMeta):
@@ -591,9 +620,7 @@ class MergeStrategy(metaclass=ABCMeta):
         method = self._config.get("move_method", "copy")
         return method
 
-    def _move_or_copy_file(
-        self, source: LocalFolderItem, target: LocalFolderItem
-    ) -> None:
+    def _move_or_copy_file(self, source: FileItem, target: LocalFolderItem) -> None:
 
         target.base_folder.ensure_exists()
 
@@ -617,14 +644,12 @@ class MergeStrategy(metaclass=ABCMeta):
         log.debug(f"Backed up file '{target_file.rel_path}' to: {backup_file}")
 
     async def pre_merge_hook(
-        self,
-        target_folder: LocalFolder,
-        merge_map: Mapping[LocalFolderItem, LocalFolderItem],
+        self, target_folder: LocalFolder, merge_map: Mapping[FileItem, FileItem]
     ) -> None:
 
         pass
 
-    async def merge(
+    async def merge_folders(
         self,
         target_folder: Union[LocalFolder, str, Path],
         *sources: Union[str, Path, LocalFolder],
@@ -656,7 +681,7 @@ class MergeStrategy(metaclass=ABCMeta):
             else:
                 _sources.append(source)
 
-        merge_map: Dict[LocalFolderItem, LocalFolderItem] = {}
+        merge_map: Dict[FileItem, LocalFolderItem] = {}
 
         for _source_folder in _sources:
 
@@ -711,9 +736,28 @@ class MergeStrategy(metaclass=ABCMeta):
 
         return merge_result
 
+    # async def merge_files(
+    #     self,
+    #     target_folder: Union[LocalFolder, str, Path],
+    #     sources: Mapping[Union[str, Path, FileItem], str],
+    # ) -> Mapping[str, Any]:
+    #
+    #     merge_result = {}
+    #     async with create_task_group() as tg:
+    #
+    #         async def merge(_source_file, _target_file):
+    #             r = await self.merge_source(_source_file, _target_file)
+    #             merge_result[_source_file] = {"target": _target_file, "result": r}
+    #
+    #         for src, target in merge_map.items():
+    #
+    #             await tg.spawn(merge, src, target)
+    #
+    #     return merge_result
+
     @abstractmethod
     async def merge_source(
-        self, source_file: LocalFolderItem, target_file: LocalFolderItem
+        self, source_file: FileItem, target_file: LocalFolderItem
     ) -> Any:
         pass
 
@@ -758,8 +802,23 @@ class FolderMerge(object):
     async def merge_folders(self, *sources: Union[str, Path]) -> Mapping[str, Any]:
 
         self._target.ensure_exists()
-        result = await self.merge_strategy.merge(self._target, *sources)
+        result = await self.merge_strategy.merge_folders(self._target, *sources)
         return result
+
+
+# class FileMerge(object):
+#
+#     def __init__(self,
+#                  target: Union[str, Path, LocalFolder],
+#                  merge_strategy: Optional[MergeStrategy],
+#                  flatten: bool = False):
+#
+#         if merge_strategy is None:
+#             from bring.merge_strategy.default import DefaultMergeStrategy
+#
+#             merge_strategy = DefaultMergeStrategy()
+#
+#         self._merge_strategy = merge_strategy
 
 
 class MergeStrategyClickType(DictType):

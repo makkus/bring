@@ -2,7 +2,7 @@
 from typing import Any, Iterable, Mapping, Union
 
 from bring.mogrify import SimpleMogrifier
-from bring.utils.paths import copy_filtered_files
+from bring.utils.paths import copy_filtered_files, resolve_include_patterns
 
 
 class FileFilterMogrifier(SimpleMogrifier):
@@ -28,7 +28,8 @@ class FileFilterMogrifier(SimpleMogrifier):
         vals = self.user_input
 
         if vals.get("include", None):
-            result = result + f" matching: '{', '.join(vals['include'])}'"
+            _include_patterns = resolve_include_patterns(vals["include"])
+            result = result + f" matching: '{', '.join(_include_patterns)}'"
 
         if vals.get("flatten", None):
             result = result + ", then flatten all files into a single folder"

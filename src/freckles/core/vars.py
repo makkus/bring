@@ -156,7 +156,7 @@ class VarSet(object):
 
         return self._vars
 
-    def values(self) -> Mapping[str, Any]:
+    def create_values_dict(self) -> Mapping[str, Any]:
 
         result = {}
         for k, v in self._vars.items():

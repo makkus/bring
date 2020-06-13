@@ -264,8 +264,8 @@ class PkgTing(SimpleTing):
         pipeline_id = generate_valid_identifier(prefix="pipe_", length_without_prefix=6)
 
         task_desc = BringTaskDesc(
-            name=f"install pkg '{self.name}'",
-            msg=f"installing pkg {self.name}",
+            name=f"prepare package '{self.name}'",
+            msg=f"preparing file(s) for package '{self.name}'",
             subtopic=pipeline_id,
         )
 

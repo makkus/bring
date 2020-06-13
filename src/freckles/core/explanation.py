@@ -173,6 +173,7 @@ class FreckletExplanation(Explanation):
                 yield f"  - [key2]{task['meta']['msg']}[/key2]"
                 yield ""
                 for st in task["subtasks"]:
-                    yield f"      - [value]{st['meta']['msg']}[/value"
+                    yield f"      - [value]{st['meta']['msg']}[/value]"
 
-            yield f"      - [value]{_postprocess_task['meta']['msg']}[/value]"
+            if _postprocess_task is not None:
+                yield f"      - [value]{_postprocess_task['meta']['msg']}[/value]"

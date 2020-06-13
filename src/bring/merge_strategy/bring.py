@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 from anyio import aopen
 from bring.defaults import BRING_BACKUP_FOLDER
-from bring.merge_strategy import LocalFolder, LocalFolderItem, MergeStrategy
+from bring.merge_strategy import FileItem, LocalFolder, LocalFolderItem, MergeStrategy
 from deepdiff import DeepHash
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
@@ -74,22 +74,20 @@ class BringMergeStrategy(MergeStrategy):
         os.symlink(rel_path, mirror_link)
 
     async def pre_merge_hook(
-        self,
-        target_folder: LocalFolder,
-        merge_map: Mapping[LocalFolderItem, LocalFolderItem],
+        self, target_folder: LocalFolder, merge_map: Mapping[FileItem, FileItem]
     ) -> None:
 
         await self.ensure_item_hash_file(target_folder=target_folder)
 
     async def write_target_file(
-        self, source_file: LocalFolderItem, target_file: LocalFolderItem
+        self, source_file: FileItem, target_file: LocalFolderItem
     ):
 
         self._move_or_copy_file(source_file, target_file)
         self.link_metadata_file(target_file=target_file, force=True)
 
     async def merge_source(
-        self, source_file: LocalFolderItem, target_file: LocalFolderItem
+        self, source_file: FileItem, target_file: LocalFolderItem
     ) -> Any:
 
         force = self.get_config("force", False)

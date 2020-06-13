@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Any
 
-from bring.merge_strategy import LocalFolderItem, MergeStrategy
+from bring.merge_strategy import FileItem, LocalFolderItem, MergeStrategy
 
 
 class DefaultMergeStrategy(MergeStrategy):
@@ -9,7 +9,7 @@ class DefaultMergeStrategy(MergeStrategy):
     _plugin_name = "default"
 
     async def merge_source(
-        self, source_file: LocalFolderItem, target_file: LocalFolderItem
+        self, source_file: FileItem, target_file: LocalFolderItem
     ) -> Any:
 
         force = self.get_config("force", False)

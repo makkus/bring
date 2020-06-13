@@ -51,6 +51,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.merge_strategy.*",
     "frtls.tasks.watchers.*",
     "freckles.core.*",
+    "freckles.frecklets.*",
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.indexes"
