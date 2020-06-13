@@ -78,7 +78,7 @@ class BringInstallFrecklet(Frecklet):
             pkg_name = base_vars["pkg_name"]
             pkg_index = base_vars["pkg_index"]
 
-            pkg: PkgTing = await self._bring.get_pkg(
+            pkg: PkgTing = await self._bring.get_pkg(  # type: ignore
                 name=pkg_name, index=pkg_index, raise_exception=True
             )  # type: ignore
             aliases = await pkg.get_aliases()
@@ -208,7 +208,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
         )
 
         async def add_pkg(_pkg_name: str):
-            _pkg: PkgTing = await self._bring.get_pkg(
+            _pkg: PkgTing = await self._bring.get_pkg(  # type: ignore
                 _pkg_name, raise_exception=True
             )  # type: ignore
             pkg_map[_pkg_name]["pkg"] = _pkg
