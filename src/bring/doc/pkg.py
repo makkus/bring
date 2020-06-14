@@ -137,6 +137,7 @@ class PkgInfoDisplay(InfoExplanation):
             show_headers=False,
             minimal=not self._display_full_args,
         )
+
         result["args"] = args_table
 
         # result["args"] = metadata["pkg_args"]

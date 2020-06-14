@@ -2,6 +2,7 @@
 from typing import Any, List, Mapping, MutableMapping, Optional
 
 from frtls.doc.doc import Doc
+from frtls.doc.explanation import to_value_string
 from rich import box
 from rich.table import Table
 
@@ -101,17 +102,25 @@ def create_table_from_pkg_args(
             d_name = details["name"]
 
         table.add_row(d_name, f"  [italic]{details['desc']}[/italic]")
-        arg_table = Table(show_header=False, box=box.SIMPLE)
-        arg_table.add_column("key")
-        arg_table.add_column("value", style="italic")
-        if not minimal or default is not None:
-            arg_table.add_row("default", default)
-        if not minimal:
-            arg_table.add_row("required", required)
-        if not minimal:
-            arg_table.add_row("type", details["type"])
+        if minimal:
+            table.add_row("", f"    type:    {details['type']}")
+            if default is not None:
+                d = to_value_string(default)
+                if "\n" not in d:
+                    table.add_row("", f"    default: {d}")
+                else:
+                    lines = d.split("\n")
+                    table.add_row("", f"  default: {lines[0]}")
+                    for line in lines[1:]:
+                        table.add_row(f"             {line}")
+        else:
+            arg_table = Table(show_header=False, box=box.SIMPLE)
+            arg_table.add_column("key")
+            arg_table.add_column("value", style="italic")
 
-        if not minimal:
+            arg_table.add_row("default", default)
+            arg_table.add_row("required", required)
+            arg_table.add_row("type", details["type"])
             if allowed and limit_allowed:
                 _allowed: MutableMapping[str, List[str]] = {}
 
@@ -140,7 +149,7 @@ def create_table_from_pkg_args(
                 for a in _allowed_strings[1:]:
                     arg_table.add_row("", a)
 
-        table.add_row("", arg_table)
+            table.add_row("", arg_table)
 
     return table
 

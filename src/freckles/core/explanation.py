@@ -44,15 +44,15 @@ class FreckletInputExplanation(Explanation):
         table.add_column("Name", no_wrap=True, style="key2")
         table.add_column("Value", style="value")
 
-        use_alias = False
-        for data in value_dict.values():
-
-            if "from_alias" in data.keys():
-                use_alias = True
-                break
-
-        if use_alias:
-            table.add_column("from Alias", style="value")
+        # use_alias = False
+        # for data in value_dict.values():
+        #
+        #     if "from_alias" in data.keys():
+        #         use_alias = True
+        #         break
+        #
+        # if use_alias:
+        #     table.add_column("from Alias", style="value")
 
         table.add_column("Origin", style="value")
 
@@ -62,11 +62,11 @@ class FreckletInputExplanation(Explanation):
 
             value_string = to_value_string(value)
 
-            if not use_alias:
-                table.add_row(arg_name, value_string, f"origin: {origin}")
-            else:
-                alias = data.get("from_alias", "")
-                table.add_row(arg_name, value_string, alias, f"origin: {origin}")
+            # if not use_alias:
+            table.add_row(arg_name, value_string, f"origin: {origin}")
+            # else:
+            #     alias = data.get("from_alias", "")
+            #     table.add_row(arg_name, value_string, alias, f"origin: {origin}")
 
         yield table
 

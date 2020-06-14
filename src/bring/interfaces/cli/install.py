@@ -164,7 +164,14 @@ class BringInstallGroup(FrklBaseCommand):
 
         args = await frecklet.input_args
 
-        args_renderer = args.create_arg_renderer(
+        args_user = {}
+        for name, arg in args.childs.items():
+            if name in ["merge_strategy", "target"]:
+                continue
+            args_user[name] = arg
+
+        record_args_user = self._arg_hive.create_record_arg(args_user)
+        args_renderer = record_args_user.create_arg_renderer(
             "cli", add_defaults=False, remove_required=True
         )
 
