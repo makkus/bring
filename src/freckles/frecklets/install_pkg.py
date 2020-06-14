@@ -58,7 +58,7 @@ class BringInstallFrecklet(Frecklet):
             "merge_strategy": {
                 "type": "merge_strategy",
                 "doc": "the merge strategy to use",
-                "default": "bring",
+                "default": "auto",
                 "required": True,
             },
         }
@@ -128,6 +128,16 @@ class BringInstallFrecklet(Frecklet):
     ) -> Optional[PostprocessTask]:
 
         target: Any = input_vars.pop("target", None)
+
+        merge_strategy_input = input_vars.pop("merge_strategy", None)
+
+        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
+            merge_strategy=merge_strategy_input,
+            typistry=self._bring.typistry,
+            target=target,
+            default_merge_strategy="tracked",
+        )
+
         if target is None:
             _target: str = create_temp_dir(
                 prefix="install_target", parent_dir=BRING_RESULTS_FOLDER
@@ -138,11 +148,6 @@ class BringInstallFrecklet(Frecklet):
                     f"Invalid type for target value '{target}': {type(target)}"
                 )
             _target = target
-        merge_strategy_input = input_vars.pop("merge_strategy", None)
-
-        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy_input, typistry=self._bring.typistry
-        )
 
         item_metadata = {"pkg": SortedDict(input_vars)}
         _merge_strategy_config["item_metadata"] = item_metadata
@@ -268,6 +273,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
                 "type": "merge_strategy",
                 "doc": "the merge strategy to use",
                 "required": True,
+                "default": "auto",
             },
         }
 
@@ -363,6 +369,14 @@ class BringInstallAssemblyFrecklet(Frecklet):
         target = value_dict_replaced["target"]
         merge_strategy_input = value_dict_replaced["merge_strategy"]
 
+        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
+            merge_strategy=merge_strategy_input,
+            typistry=self._bring.typistry,
+            target=target,
+            default_merge_strategy="tracked",
+        )
+        _merge_strategy_config["move_method"] = "move"
+
         if target is None:
             _target: str = create_temp_dir(
                 prefix="install_assembly_target", parent_dir=BRING_RESULTS_FOLDER
@@ -373,12 +387,6 @@ class BringInstallAssemblyFrecklet(Frecklet):
                     f"Invalid type for target value '{target}': {type(target)}"
                 )
             _target = target
-
-        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy_input, typistry=self._bring.typistry
-        )
-
-        _merge_strategy_config["move_method"] = "move"
 
         async def merge_folders(*tasks: Task):
 

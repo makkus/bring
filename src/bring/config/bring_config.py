@@ -43,7 +43,7 @@ def register_args(arg_hive: ArgHive):
             id="merge_strategy",
             arg_type="dict",
             required=False,
-            default=["bring"],
+            default=["auto"],
             click_type=MergeStrategyClickType,
         )
 

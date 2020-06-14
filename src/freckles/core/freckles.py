@@ -29,11 +29,15 @@ class Freckles(SimpleTing):
             tingistry.register_prototing(DEFAULT_FRECKLES_PROTOTYPE_NAME, Freckles)
 
         if DEFAULT_FRECKLES_TING_NAME not in tingistry.ting_names:
-            ting = tingistry.create_ting(
+            ting: Freckles = tingistry.create_ting(  # type: ignore
                 DEFAULT_FRECKLES_PROTOTYPE_NAME, DEFAULT_FRECKLES_TING_NAME
             )
         else:
-            ting = tingistry.get_ting(DEFAULT_FRECKLES_TING_NAME)
+            ting = tingistry.get_ting(DEFAULT_FRECKLES_TING_NAME)  # type: ignore
+            if not isinstance(ting, Freckles):
+                raise TypeError(
+                    f"Invalid type for registered default freckles object: {type(ting)}"
+                )
         return ting
 
     def __init__(self, name: str, meta: TingMeta):

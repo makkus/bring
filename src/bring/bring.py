@@ -600,4 +600,4 @@ def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
         to_add["install_assembly"] = prototing_name_install_assembly
 
     if to_add:
-        wrap_async_task(freckles.add_frecklet_types, **to_add)
+        wrap_async_task(freckles.add_frecklet_types, _raise_exception=True, **to_add)

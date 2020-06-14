@@ -17,9 +17,9 @@ from frtls.files import ensure_folder
 log = logging.getLogger("bring")
 
 
-class BringMergeStrategy(MergeStrategy):
+class TrackedMergeStrategy(MergeStrategy):
 
-    _plugin_name = "bring"
+    _plugin_name = "tracked"
 
     @property
     def item_metadata(self) -> Mapping[str, Any]:

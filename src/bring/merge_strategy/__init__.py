@@ -48,7 +48,7 @@ def explode_merge_strategy(
 ):
 
     if not strategy:
-        strategy = {"type": "default", "config": {"move_method": default_move_method}}
+        strategy = {"type": "auto", "config": {"move_method": default_move_method}}
 
     if isinstance(strategy, str):
         strategy = {"type": strategy, "config": {"move_method": default_move_method}}
@@ -532,6 +532,25 @@ class LocalFolderItem(FileItem):
         return self._metadata
 
 
+def guess_merge_strategy_type(
+    target: Optional[Any], default_merge_strategy: str = "default"
+) -> str:
+
+    if not target:
+        return "default"
+
+    if not os.path.exists(target):
+        return default_merge_strategy
+
+    bring_metadata_folder = os.path.join(
+        target, BRING_METADATA_FOLDER_NAME, BRING_ITEM_METADATA_FOLDER_NAME
+    )
+    if os.path.isdir(bring_metadata_folder):
+        return "tracked"
+
+    return default_merge_strategy
+
+
 class MergeStrategy(metaclass=ABCMeta):
 
     _plugin_type = "instance"
@@ -541,6 +560,8 @@ class MergeStrategy(metaclass=ABCMeta):
         cls,
         merge_strategy: Optional[Union[str, Mapping[str, Any]]] = None,
         typistry: Optional[Typistry] = None,
+        target: Optional[Any] = None,
+        default_merge_strategy: str = "default",
     ) -> Tuple[Type, MutableMapping[str, Any]]:
 
         if typistry is None:
@@ -552,13 +573,14 @@ class MergeStrategy(metaclass=ABCMeta):
                 )
 
         if merge_strategy is None:
-            merge_strategy = "default"
+            merge_strategy = "auto"
 
         if isinstance(merge_strategy, str):
             merge_strategy = explode_merge_strategy(merge_strategy)
 
         if isinstance(merge_strategy, collections.Mapping):
-            ms_type = merge_strategy.get("type", "default")
+
+            ms_type = merge_strategy.get("type", "auto")
             _ms_config = merge_strategy.get("config", None)
             if _ms_config is None:
                 ms_config = {}
@@ -566,6 +588,12 @@ class MergeStrategy(metaclass=ABCMeta):
                 ms_config = copy.deepcopy(_ms_config)
 
             pm = typistry.get_plugin_manager(MergeStrategy)
+
+            if ms_type == "auto":
+                ms_type = guess_merge_strategy_type(
+                    target, default_merge_strategy=default_merge_strategy
+                )
+
             ms_cls = pm.get_plugin(ms_type)
             if ms_cls is None:
                 raise FrklException(
@@ -582,13 +610,18 @@ class MergeStrategy(metaclass=ABCMeta):
         cls,
         merge_strategy: Optional[Union[str, Mapping[str, Any], "MergeStrategy"]] = None,
         typistry: Optional[Typistry] = None,
+        target: Optional[Any] = None,
+        default_merge_strategy: str = "default",
     ) -> "MergeStrategy":
 
         if is_instance_or_subclass(merge_strategy, MergeStrategy):
             return merge_strategy  # type: ignore
 
-        merge_strategy_cls, merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy, typistry=typistry  # type: ignore
+        merge_strategy_cls, merge_strategy_config = MergeStrategy.create_merge_strategy_config(  # type: ignore
+            merge_strategy=merge_strategy,  # type:ignore
+            typistry=typistry,
+            target=target,
+            default_merge_strategy=default_merge_strategy,
         )
 
         _merge_strategy_obj: MergeStrategy = merge_strategy_cls(**merge_strategy_config)
