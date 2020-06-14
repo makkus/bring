@@ -65,8 +65,29 @@ If you don't specify the ``--target`` parameter, and the index does not have a d
 
 {{ cli("bring", "install", "kubernetes.cert-manager") }}
 
+### Install arguments
+
+Arguments for the ``install`` sub-command are split into two parts:
+
+#### 'target'-related arguments
+
+The ``install`` command needs to know the name of the package to install, where to install it to, and as how (e.g. ignore existing files, overwrite them, etc.). Use the ``--help`` command line argument to display available options:
+
+{{ cli("bring", "install", "--help", max_height=240) }}
+
+Note: explaining the ``merge_strategy`` parameter is out of scope for this quick-start guide. Check the [reference documentation](/reference/merge_strategies) for details.
+
+#### 'package'-related arguments
+
+Packages often come in different flavours (e.g. which architecture, OS, etc.), as well as several versions, which can be specified in the ``install`` command after the package name. Depending on the *index* configuration, ``bring`` assumes certain default values which often make it so that no package arguments at all need to be provided (assuming one is happy with those defaults).
+
+But, often it is advisable to exactly specify the version of a package to install. If that is desired, you can use the ``--help`` parameter some-where after the package name to get ``bring`` to display information about the supported arguments:
+
+{{ cli("bring", "install", "binaries.fd", "--help") }}
+
+
 ### Install details
 
 In case you are wondering what the install command actually does, you can use the ``--explain`` flag to get some information about the variables used, and the tasks that compose the install process:
 
-{{ cli("bring", "install", "--explain", "binaries.fd") }}
+{{ cli("bring", "install", "--explain", "binaries.fd", "--os", "darwin") }}

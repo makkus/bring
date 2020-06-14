@@ -12,6 +12,7 @@
 
 `bring` is a package manager for generic files and file-sets. It's main use is to install, keep track of, and update single-binary applications and scripts, but it can easily be used to manage other file types, such as configuration files, kubernetes manifests, templates, etc.
 
+
 ## Download/Install
 
 The easiest way to install `bring` is via pre-build single-file binaries. Currently, only development builds are available:
@@ -19,6 +20,31 @@ The easiest way to install `bring` is via pre-build single-file binaries. Curren
  - [Linux](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/linux-gnu/bring)
  - [Windows](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/windows/bring.exe)  (not tested at all)
  - [Mac OS X](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/darwin/bring)  (not available yet)
+
+There also is a 'curly' shell script you can use:
+
+    curl https://bring.frkl.sh | bash
+
+... which also lets you run `bring` right away:
+
+    curl https://bring.frkl.sh | bash -s bring install binaries.fd
+
+## Examples
+
+### Install the latest version of the *kubectl* binary
+
+The following command installs the latest version of the [``kubectl``](https://kubernetes.io/docs/tasks/tools/install-kubectl/) binary into ``$HOME/.local/share/bring``, for the architecture/OS combination of the machine you are running the command:
+
+    > bring install binaries.kubectl
+
+### Show available versions of the *helm* binary
+
+    > bring explain package binaries.helm --args
+
+### Show all available indexes and packages of the default context
+
+    > bring list
+
 
 ## Links
 
