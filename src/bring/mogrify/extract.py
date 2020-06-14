@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+import gzip
 import os
 import shutil
 from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from frtls.exceptions import FrklException
+from frtls.files import ensure_folder
 
 
 class ExtractMogrifier(SimpleMogrifier):
@@ -51,7 +53,16 @@ class ExtractMogrifier(SimpleMogrifier):
         target_folder = os.path.join(base_target, "extracted")
 
         extract_folder = os.path.join(base_target, "extract")
-        shutil.unpack_archive(artefact_path, extract_folder)
+
+        if artefact_path.endswith(".gz") and not artefact_path.endswith(".tar.gz"):
+            new_file_name = os.path.basename(artefact_path)[0:-3]
+            ensure_folder(extract_folder)
+            new_path = os.path.join(extract_folder, new_file_name)
+            with gzip.open(artefact_path, "rb") as f_in:
+                with open(new_path, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+        else:
+            shutil.unpack_archive(artefact_path, extract_folder)
 
         if remove_root is None:
             childs = os.listdir(extract_folder)
