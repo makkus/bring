@@ -119,7 +119,7 @@ class Freckles(SimpleTing):
                 f"Can't create frecklet: frecklet type '{_frecklet_type}' not registered. Registered types: {', '.join(frecklet_types.keys())}"
             )
 
-        frecklet: Frecklet = self.tingistry.create_ting(
+        frecklet: Frecklet = self.tingistry.create_ting(  # type: ignore
             prototing=prototing_name, ting_name=ting_name
         )  # type: ignore
         frecklet.set_input(**_frecklet_data)
