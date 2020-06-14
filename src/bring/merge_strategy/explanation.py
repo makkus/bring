@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import copy
 from typing import Any, Mapping, Optional
 
 from bring.merge_strategy import LocalFolder
 from frtls.async_helpers import wrap_async_task
-from frtls.doc.explanation import Explanation
+from frtls.doc.explanation import Explanation, to_value_string
 from rich.console import Console, ConsoleOptions, RenderResult
 
 
@@ -42,16 +43,12 @@ class LocalFolderExplanation(Explanation):
         result.append("")
         for rel_path, data in sorted(self._managed_files.items()):  # type: ignore
 
+            data = copy.copy(data)
+            data.pop("hash", None)
             result.append(f"  [bold italic]{rel_path}[/bold italic]:")
-            for k, v in sorted(data.items()):
-                if k == "hash":
-                    continue
-                elif k == "vars":
-                    result.append(f"     {k}:")
-                    for vk, vv in v.items():
-                        result.append(f"       {vk}: [italic]{vv}[/italic]")
-                else:
-                    result.append(f"     {k}: [italic]{v}[/italic]")
+
+            value_string = to_value_string(data, reindent=4)
+            result.append(value_string)
             result.append("")
 
         return result

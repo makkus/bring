@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 
 from anyio import create_task_group
 from bring.bring import Bring
+from bring.defaults import BRING_RESULTS_FOLDER
 from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.mogrify import Transmogrificator
 from bring.pkg_index.pkg import PkgTing
@@ -128,7 +129,9 @@ class BringInstallFrecklet(Frecklet):
 
         target: Any = input_vars.pop("target", None)
         if target is None:
-            _target: str = create_temp_dir(prefix="install_target")
+            _target: str = create_temp_dir(
+                prefix="install_target", parent_dir=BRING_RESULTS_FOLDER
+            )
         else:
             if not isinstance(target, str):
                 raise TypeError(
@@ -141,7 +144,8 @@ class BringInstallFrecklet(Frecklet):
             merge_strategy=merge_strategy_input, typistry=self._bring.typistry
         )
 
-        _merge_strategy_config["item_metadata"] = SortedDict(input_vars)
+        item_metadata = {"pkg": SortedDict(input_vars)}
+        _merge_strategy_config["item_metadata"] = item_metadata
         _merge_strategy_config["move_method"] = "move"
 
         _merge_strategy = _merge_strategy_cls(**_merge_strategy_config)
@@ -161,7 +165,7 @@ class BringInstallFrecklet(Frecklet):
             return {
                 "target": _target,
                 "merge_result": result,
-                "item_metadata": input_vars,
+                "item_metadata": item_metadata,
             }
 
         if target is None:
@@ -337,7 +341,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
             # TODO: validate vars
 
             frecklet: Frecklet = self._bring.tingistry.create_ting(  # type: ignore
-                "bring.frecklets.install_pkg",
+                f"{self._bring.full_name}.frecklets.install_pkg",
                 f"{self.full_name}.pkgs.pkg_{pkg.name}_{index}",
             )
             frecklet.input_sets.add_constants(
@@ -360,7 +364,9 @@ class BringInstallAssemblyFrecklet(Frecklet):
         merge_strategy_input = value_dict_replaced["merge_strategy"]
 
         if target is None:
-            _target: str = create_temp_dir(prefix="install_assembly_target")
+            _target: str = create_temp_dir(
+                prefix="install_assembly_target", parent_dir=BRING_RESULTS_FOLDER
+            )
         else:
             if not isinstance(target, str):
                 raise TypeError(
@@ -387,7 +393,9 @@ class BringInstallAssemblyFrecklet(Frecklet):
                 _merge_strategy = _merge_strategy_cls(**_merge_strategy_config)
 
                 merge_obj = FolderMerge(target=_target, merge_strategy=_merge_strategy)
-                merge_result = await merge_obj.merge_folders(folder)
+                merge_result = await merge_obj.merge_folders(
+                    folder, delete_source_folders=True
+                )
                 merge_results.append(merge_result)
 
             return {"target": _target, "merge_results": merge_results}

@@ -799,10 +799,18 @@ class FolderMerge(object):
     def target(self) -> LocalFolder:
         return self._target
 
-    async def merge_folders(self, *sources: Union[str, Path]) -> Mapping[str, Any]:
+    async def merge_folders(
+        self, *sources: Union[str, Path], delete_source_folders: bool = False
+    ) -> Mapping[str, Any]:
 
         self._target.ensure_exists()
         result = await self.merge_strategy.merge_folders(self._target, *sources)
+
+        if delete_source_folders:
+            for f in sources:
+                if isinstance(f, Path):
+                    f = f.as_posix()
+                shutil.rmtree(f)
         return result
 
 

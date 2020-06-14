@@ -8,11 +8,11 @@ from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT
 from bring.interfaces.cli.export_index import BringExportIndexCommand
+from freckles.core.freckles import Freckles
 from frtls.cli.group import FrklBaseCommand
 from frtls.cli.logging import logzero_option_obj_async
 from frtls.cli.terminal import create_terminal
 from frtls.types.utils import load_modules
-from tings.tingistry import Tingistries
 
 
 COMMAND_GROUP_HELP = """'bring' is a package manager for files and file-sets.
@@ -34,7 +34,8 @@ class BringCommandGroup(FrklBaseCommand):
 
         terminal = create_terminal()
 
-        self._tingistry_obj = Tingistries.create("bring")
+        self._freckles = Freckles.get_default()
+        self._tingistry_obj = self._freckles.tingistry
 
         self._bring_config: Optional[BringConfig] = None
         self._bring: Optional[Bring] = None
@@ -99,7 +100,7 @@ class BringCommandGroup(FrklBaseCommand):
     def bring_config(self):
 
         if self._bring_config is None:
-            self._bring_config = BringConfig(tingistry=self._tingistry_obj)
+            self._bring_config = BringConfig(freckles=self._freckles)
 
         return self._bring_config
 
@@ -220,7 +221,7 @@ class BringCommandGroup(FrklBaseCommand):
         elif name == "doc":
             from bring.interfaces.cli.doc import BringDocGroup
 
-            command = BringDocGroup(tingistry=self._tingistry_obj)
+            command = BringDocGroup(freckles=self._freckles)
 
         elif name == "dev":
             from bring.interfaces.cli.dev import dev

@@ -24,7 +24,9 @@ os_env_vars = get_seeded_dict(os.environ, {"BRING_CONSOLE_WIDTH": "100"})
 modules: Iterable[str] = BRINGISTRY_INIT["modules"]  # type: ignore
 load_modules(*modules)
 tingistry = Tingistries.create("bring")
-bring_config = BringConfig(tingistry=tingistry, name="doc")
+freckles = None
+
+bring_config = BringConfig(name="doc")
 bring = bring_config.get_bring()
 
 

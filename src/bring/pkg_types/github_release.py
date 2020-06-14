@@ -53,9 +53,9 @@ class GithubRelease(SimplePkgType):
     ```
     More than one such regular expressions can be provided (in which case the value for *url_regex* should be a list), all matches for all regexes will be added to the resulting list.
 
-    Most of the regexes for different packages look fairly similar, but unfortunately Github release-urls don't follow a standard),
-    so it's impossible to come up with one that works for all of them. *bring* comes with a default regex that works for quite
-    a few Github projects, and almost for a lot of others. In fact, the regex in the example above is the default regex that will
+    Most of the regexes for different packages look fairly similar, but unfortunately Github release-urls don't follow a standard, which
+    makes it impossible to come up with one that can be used for all of them. *bring* comes with a default regex that works for quite
+    a few Github projects (and almost for a lot of others). In fact, the regex in the example above is the default regex that will
     be used if no '*url_regex*' value is provided, and it so happens that it works for '*fd*' (which means we could have omitted it for that particular application).
 
     Nonetheless, whoever creates a new package manifest needs to manually verify whether the default regex works, and then adjust or create a totally different one if necessary.

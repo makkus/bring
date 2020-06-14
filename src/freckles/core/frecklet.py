@@ -27,6 +27,7 @@ from frtls.async_helpers import wrap_async_task
 from frtls.dicts import get_seeded_dict
 from frtls.doc.explanation import to_value_string
 from frtls.doc.utils.rich import to_key_value_table
+from frtls.exceptions import ArgValidationError, ArgsValidationError
 from frtls.introspection.pkg_env import AppEnvironment
 from frtls.tasks import PostprocessTask, Task, Tasks, TasksResult
 from frtls.tasks.task_watcher import TaskWatchManager
@@ -182,6 +183,7 @@ class FreckletInput(object):
         result = {}
         merged_values = self.get_merged_values()
 
+        errors = {}
         for arg_name, arg in args.childs.items():
 
             input_data = merged_values.get(arg_name, None)
@@ -192,7 +194,13 @@ class FreckletInput(object):
                 raw_value = input_data["raw_value"]
                 origin = input_data["origin"]
 
-            validated = arg.validate(raw_value, raise_exception=True)
+            try:
+                validated = arg.validate(raw_value, raise_exception=True)
+            except ArgValidationError as ave:
+                errors[arg_name] = ave
+
+            if errors:
+                raise ArgsValidationError(error_args=errors)
 
             var = Var(raw_value=raw_value, value=validated, origin=origin, arg=arg)
             result[arg_name] = var
@@ -301,12 +309,12 @@ class Frecklet(SimpleTing):
         return self._input_sets
 
     def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-        return {"id": "str", "input": "dict"}
+        return {"id": "string", "input": "dict"}
 
     def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {
-            "id": "str",
+            "id": "string",
             "input": "dict",
             "base_args": "dict",
             "required_args": "dict",

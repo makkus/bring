@@ -6,15 +6,11 @@ import asyncclick as click
 from bring.bring import Bring
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
-from freckles.core.frecklet import Frecklet
-from freckles.frecklets.install_pkg import (
-    BringInstallAssemblyFrecklet,
-    BringInstallFrecklet,
-)
 from frtls.args.arg import Arg
 from frtls.async_helpers import wrap_async_task
 from frtls.cli.exceptions import handle_exc_async
 from frtls.cli.group import FrklBaseCommand
+from frtls.types.utils import generate_valid_identifier
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -137,46 +133,33 @@ class BringInstallGroup(FrklBaseCommand):
         if not load_details:
             return None
 
-        prototing_name_install_pkg = "bring.frecklets.install_pkg"
-        self._bring.tingistry.register_prototing(
-            prototing_name_install_pkg,
-            BringInstallFrecklet,
-            init_values={"bring": self._bring},
-        )
-
-        prototing_name_install_assembly = "bring.frecklets.install_assembly"
-        self._bring.tingistry.register_prototing(
-            prototing_name_install_assembly,
-            BringInstallAssemblyFrecklet,
-            init_values={"bring": self._bring},
-        )
-
         if not name.endswith(".br"):
 
-            ting_name = f"bring.frecklets.install_pkg.{name}"
             pkg = await self._bring.get_pkg(name, raise_exception=True)
             install_args["pkg_name"] = pkg.name
             install_args["pkg_index"] = pkg.bring_index.id
 
-            frecklet: Frecklet = self._bring.tingistry.create_ting(
-                prototing_name_install_pkg, ting_name
-            )
+            frecklet_config = {"type": "install_pkg"}
+
+            frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
             frecklet.input_sets.add_constants(_id="install_param", **install_args)
 
         else:
-            filename = os.path.basename(name)
+            full_path = os.path.abspath(os.path.expanduser(name))
 
-            ting_name = f"bring.frecklets.install_assembly.{filename[0:-3]}"
-            install_args["path"] = name
+            install_args["path"] = full_path
             install_args["pkgs"] = [
                 "binaries.fd",
                 "binaries.${helm_name}",
                 "binaries.k3d",
                 "binaries.ytop",
             ]
-            frecklet: Frecklet = self._bring.tingistry.create_ting(
-                prototing_name_install_assembly, ting_name
-            )
+            frecklet_config = {
+                "id": generate_valid_identifier(full_path, sep="_"),
+                "type": "install_assembly",
+            }
+
+            frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
             frecklet.input_sets.add_constants(_id="install_param", **install_args)
 
         args = await frecklet.input_args

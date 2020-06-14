@@ -22,13 +22,13 @@ from bring.defaults import (
     BRING_TASKS_BASE_TOPIC,
 )
 from bring.merge_strategy import MergeStrategyArgType, MergeStrategyClickType
+from freckles.core.freckles import Freckles
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
 from frtls.dicts import get_seeded_dict
 from frtls.exceptions import FrklException
 from frtls.introspection.pkg_env import AppEnvironment
 from frtls.tasks.task_watcher import TaskWatchManager
-from tings.tingistry import Tingistry
 
 
 if TYPE_CHECKING:
@@ -53,16 +53,20 @@ class BringConfig(object):
 
     def __init__(
         self,
-        tingistry: Tingistry,
+        freckles: Optional[Freckles] = None,
         name: Optional[str] = None
         # config_input: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
     ):
+
+        if freckles is None:
+            freckles = Freckles.get_default()
 
         if name is None:
             name = "default"
 
         self._name = name
-        self._tingistry_obj = tingistry
+        self._freckles = freckles
+        self._tingistry_obj = self._freckles.tingistry
 
         register_args(self._tingistry_obj.arg_hive)
 
@@ -93,6 +97,10 @@ class BringConfig(object):
             AppEnvironment().set_global("task_watcher", twm)
         self._task_watch_manager: TaskWatchManager = twm
         self._task_watcher_ids: List[str] = []
+
+    @property
+    def freckles(self) -> Freckles:
+        return self._freckles
 
     async def _get_config_dict_lock(self):
 
@@ -246,6 +254,7 @@ class BringConfig(object):
     def get_bring(self) -> "Bring":
 
         if self._bring is None:
+
             self._bring = self._tingistry_obj.create_singleting(  # type: ignore
                 f"bring.{self.name}", "bring", bring_config=self
             )

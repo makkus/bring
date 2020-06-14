@@ -29,6 +29,8 @@ class FreckletInputExplanation(Explanation):
             raw_value = v["raw_value"]
             origin: FreckletInputSet = v["origin"]
             values[k] = {"value": raw_value, "origin": origin.id}
+            if "from_alias" in v.keys():
+                values[k]["from_alias"] = v["from_alias"]
 
         return values
 
@@ -41,6 +43,17 @@ class FreckletInputExplanation(Explanation):
         table = Table(show_header=False, box=box.SIMPLE)
         table.add_column("Name", no_wrap=True, style="key2")
         table.add_column("Value", style="value")
+
+        use_alias = False
+        for data in value_dict.values():
+
+            if "from_alias" in data.keys():
+                use_alias = True
+                break
+
+        if use_alias:
+            table.add_column("from Alias", style="value")
+
         table.add_column("Origin", style="value")
 
         for arg_name, data in value_dict.items():
@@ -49,7 +62,11 @@ class FreckletInputExplanation(Explanation):
 
             value_string = to_value_string(value)
 
-            table.add_row(arg_name, value_string, f"origin: {origin}")
+            if not use_alias:
+                table.add_row(arg_name, value_string, f"origin: {origin}")
+            else:
+                alias = data.get("from_alias", "")
+                table.add_row(arg_name, value_string, alias, f"origin: {origin}")
 
         yield table
 
@@ -77,7 +94,9 @@ class FreckletExplanation(Explanation):
 
         vars_dict = {}
         for k, v in sorted(vars.items()):
+
             metadata = frecklet_input_dict.get(k, None)
+
             if metadata is None:
                 origin = "-- n/a --"
             else:
@@ -94,6 +113,8 @@ class FreckletExplanation(Explanation):
                 "origin": origin,
                 "is_set": is_set,
             }
+            if metadata and "from_alias" in metadata.keys():
+                vars_dict[k]["from_alias"] = metadata["from_alias"]
 
         result = {
             "task": task_expl,
@@ -106,11 +127,11 @@ class FreckletExplanation(Explanation):
     def render_vars_table(self, vars_dict: Mapping[str, Mapping[str, Any]]) -> Table:
 
         aliases: bool = False
-        # for arg_name, data in self.arg_map.items():
-        #     _alias = data.get("from_alias", None)
-        #     if _alias:
-        #         aliases = True
-        #         break
+        for arg_name, data in vars_dict.items():
+            _alias = data.get("from_alias", None)
+            if _alias:
+                aliases = True
+                break
 
         table = Table(show_header=True, box=box.SIMPLE)
         table.add_column("Name", no_wrap=True, style="key2")

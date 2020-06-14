@@ -9,6 +9,7 @@ from bring.interfaces.cli import bring_code_theme, bring_style, console
 from bring.mogrify import Mogrifier
 from bring.pkg_types import PkgType
 from bring.utils.doc import create_pkg_type_markdown_string
+from freckles.core.freckles import Freckles
 from frtls.args.renderers.rich import to_rich_table
 from frtls.cli.group import FrklBaseCommand
 from frtls.types.typistry import Typistry
@@ -25,11 +26,12 @@ PLUGIN_HELP = """documentation for application components"""
 
 
 class BringDocGroup(FrklBaseCommand):
-    def __init__(self, tingistry: Tingistry, name: str = "doc", **kwargs):
+    def __init__(self, freckles: Freckles, name: str = "doc", **kwargs):
         """Install"""
 
         # self.print_version_callback = print_version_callback
-        self._tingistry: Tingistry = tingistry
+        self._freckles: Freckles = freckles
+        self._tingistry: Tingistry = freckles.tingistry
         self._typistry: Typistry = self._tingistry.typistry
         kwargs["help"] = PLUGIN_HELP
 
@@ -58,7 +60,7 @@ class BringDocGroup(FrklBaseCommand):
     def bring(self) -> Bring:
 
         if self._bring is None:
-            bring_config = BringConfig(tingistry=self._tingistry)
+            bring_config = BringConfig(freckles=self._freckles)
             self._bring = bring_config.get_bring()
         return self._bring
 
@@ -95,7 +97,7 @@ class BringPluginGroup(FrklBaseCommand):
     def bring(self) -> Bring:
 
         if self._bring is None:
-            bring_config = BringConfig(tingistry=self._tingistry, name="doc")
+            bring_config = BringConfig(freckles=self._freckles, name="doc")
             self._bring = bring_config.get_bring()
         return self._bring
 

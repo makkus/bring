@@ -17,7 +17,9 @@ from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
+from freckles.core.freckles import Freckles
 from frtls.args.hive import ArgHive
+from frtls.async_helpers import wrap_async_task
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.introspection.pkg_env import AppEnvironment
@@ -25,6 +27,7 @@ from frtls.tasks import ParallelTasksAsync, Tasks
 from frtls.tasks.task_watcher import TaskWatchManager
 from frtls.tasks.watchers.rich import RichTaskWatcher
 from frtls.types.utils import is_instance_or_subclass
+from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
 
@@ -104,12 +107,16 @@ class Bring(SimpleTing):
         self._index_lock: Optional[Lock] = None
 
         self._bring_config: Optional[BringConfig] = bring_config
+        self._freckles: Optional[Freckles] = None
+
         self._index_factory = IndexFactory(
             tingistry=self._tingistry_obj, bring_config=self._bring_config
         )
 
         if self._bring_config is not None:
             self._bring_config.set_bring(self)
+            self._freckles = self._bring_config.freckles
+            register_bring_frecklet_types(bring=self, freckles=self._freckles)
 
         self._indexes: Dict[str, Optional[BringIndexTing]] = {}
 
@@ -123,11 +130,21 @@ class Bring(SimpleTing):
     def config(self) -> BringConfig:
 
         if self._bring_config is None:
-            self._bring_config = BringConfig(tingistry=self._tingistry_obj)
+            freckles = Freckles.get_default()
+            self._bring_config = BringConfig(freckles=freckles)
             self._bring_config.set_bring(self)
             self._index_factory.bring_config = self._bring_config
+            self._freckles = self._bring_config.freckles
+            register_bring_frecklet_types(bring=self, freckles=self._freckles)
 
         return self._bring_config
+
+    @property
+    def freckles(self) -> Freckles:
+
+        if self._freckles is None:
+            self.config
+        return self._freckles  # type: ignore
 
     def _invalidate(self) -> None:
 
@@ -544,3 +561,43 @@ class Bring(SimpleTing):
         target = plugin_class(self, **input_vars)
 
         return target
+
+
+def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
+
+    current = freckles.current_input
+
+    if current.get("frecklet_types") == NO_VALUE_MARKER:
+        current = {}
+
+    to_add = {}
+
+    if "install_pkg" not in current.keys():
+
+        from freckles.frecklets.install_pkg import BringInstallFrecklet
+
+        prototing_name_install_pkg = f"{bring.full_name}.frecklets.install_pkg"
+        if prototing_name_install_pkg not in freckles.tingistry.ting_names:
+            freckles.tingistry.register_prototing(
+                prototing_name_install_pkg,
+                BringInstallFrecklet,
+                init_values={"bring": bring},
+            )
+        to_add["install_pkg"] = prototing_name_install_pkg
+
+    if "install_assembly" not in current.keys():
+        from freckles.frecklets.install_pkg import BringInstallAssemblyFrecklet
+
+        prototing_name_install_assembly = (
+            f"{bring.full_name}.frecklets.install_assembly"
+        )
+        if prototing_name_install_assembly not in freckles.tingistry.ting_names:
+            freckles.tingistry.register_prototing(
+                prototing_name_install_assembly,
+                BringInstallAssemblyFrecklet,
+                init_values={"bring": bring},
+            )
+        to_add["install_assembly"] = prototing_name_install_assembly
+
+    if to_add:
+        wrap_async_task(freckles.add_frecklet_types, **to_add)
