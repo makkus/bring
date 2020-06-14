@@ -1,17 +1,19 @@
 # Quick start
 
-The purpose of `bring` is to copy files and file-sets onto the local system, in a reliable, replicable way. The main two concepts to understand in regards to `bring` are:
+The purpose of `bring` is to copy files and file-sets onto the local system, in a reliable, replicable way. The three main concepts to understand in regards to `bring` are:
 
-- [packages](/docs/reference/packages/overview)
-- [indexes](/docs/reference/indexes)
+- **[packages](/docs/reference/packages/overview)**: A *package* is a specific file or file-set, usually versioned in some way (via git, releases, etc.). In most cases, a package is uniquely identified by an index namespace and the package name as the right-most part of the string: ``[index.name.space].[package_name]``, e.g. ``binaries.kubectl``.
 
-In short, a *package* is a specific file or file-set, usually versioned in some way (via git, releases, etc.), and a *index* is a space that contains one or several *packages*, usually of one category (single-file binaries, templates, etc...) or otherwise belonging together.
+- **[indexes](/docs/reference/indexes)**: An *index* is a list that contains metadata for one or several *packages*, usually of one category (single-file binaries, templates, etc...) or otherwise belonging together.  
+  Indexes can be of different types, the most common ones will be pointing to git repositories on GitLab/GitHub/etc in the form of ``[service_name.user_name.repo_name]``, e.g. ``gitlab.tingistries.binaries``. In addition, the *indexes* that are included in ``bring`` usually have single-name aliases (e.g. ``binaries``).
 
-By default, `bring` comes with a set of default *indexes* which are deemed of interest for a general audience. Even though this is not covered in this quick-start guide -- and it is indeed the main use-case for *bring* -- it is easily possible to create and share your own *indexes*. Check out the [usage documentation](/docs/usage) for more details.
+- **[contexts](/docs/reference/contexts)**: Sets of indexes are managed within so-called *contexts*; by default `bring` uses a pre-defined default *context* that comes with a set of *indexes* which are deemed of interest for a general audience. Like for example the already mentioned ``binaries`` index, which contains single-file executables.
 
-## List indexes and packages
+Even though this is not covered in this quick-start guide it is easily possible to create and share your own *indexes*. Check out the [usage documentation](/docs/usage) for more details. In fact, this is actually the main use-case for ``bring``. But for the purpose of this quick start we will only concern ourselves with the default context, and it's default set of *indexes*. It pays to keep all that in mind though, as that will allow you to extrapolate other, more specific use-cases on your own.
 
-Before installing a `bring` package, it is useful to know which packages are available. For this, use the ``list`` sub-command:
+## List the contents of the current context
+
+Before installing a `bring` package, it is useful to know which *indexes* and *packages* are available in the current context. For this, use the ``list`` sub-command:
 
 <div class="code-max-height">
 {{ cli("bring", "list", max_height=400) }}
@@ -23,35 +25,41 @@ You can limit the results to a single index by providing it's name:
 
 ## Display information
 
-In order to get more information about a index or package, you can use the ``info`` sub-command. It takes one string as argument, if the string matches the name of a index, it'll display information about it, otherwise it will search all packages for a match. Packages are usually specified in the form of ``[index_name].[package_name]``, which means that there should not be any overlap in namespaces between indexes and packages.
+In order to get more information about a context, index or package, you can use the ``explain`` sub-command. It takes they type of the thing you want to know more about as the first argument, and the name of it as the second.
+
+### Context metadata
+
+In line with this, here's how to get information about the default context:
+
+{{ cli("bring", "explain", "context", "default") }}
 
 ### Index metadata
 
-This is how to get metadata for the ``binaries`` index:
+Similarly, this is how to get metadata for the ``binaries`` index (as configured in the ``default`` context):
 
-{{ cli("bring", "info", "index", "binaries") }}
+{{ cli("bring", "explain", "index", "binaries", max_height=400) }}
 
 ### Package metadata
 
-And this is how to get the details for the ``fd`` package that is a contained in that index:
+And lastly, here is how we get the details for the ``fd`` package that is a contained in that index:
 
-{{ cli("bring", "info", "package", "binaries.fd", max_height=400) }}
-
-Note: since the ``fd`` package lives in the default index, it is allowed to omit the index name: ``bring info fd``).
+{{ cli("bring", "explain", "package", "binaries.fd", max_height=400) }}
 
 ## Install a package
 
-Installing a package looks similar to using the ``info`` command. Packages are specified the same way (use the ``[index_name].[package_name]`` format, or just ``[package]`` for packages of the default index).
+To install one of the packages in any of the available indexes, all we need to do is specify the full name for the package (index- as well as package name within that index).
 
 ### Install
 
-{{ cli("bring", "install", "--target", "/tmp/bin", "binaries.fd") }}
-
-As you can see in the example above, you can specify the target directory where the file(s) of the package should be installed using the ``--target`` parameter. That folder (as well as any intermediate ones) will be created should it not exist yet.
-
-Some index (like the ``binaries`` one) have a default target (check with ``bring info index [index_name]`` to find out). If that is the case, you can omit the ``target`` parameter and the default target will be used:
-
 {{ cli("bring", "install", "binaries.fd") }}
+
+As you can see from the output of that command, the ``fd`` binary file was installed into the local ``$HOME/.local/bring`` folder. This is because that is the default folder for the ``binaries`` *index*, configured in the *default* context (check the config above).  
+
+If you want to install a package into a different directory, you can use the ``--target`` parameter:
+
+{{ cli("bring", "install", "--target", "/tmp/bring", "binaries.fd", max_height=200) }}
+
+ the target directory where the file(s) of the package should be installed using the ``--target`` parameter. That folder (as well as any intermediate ones) will be created should it not exist yet.
 
 If you don't specify the ``--target`` parameter, and the index does not have a default target set, the files will be copied into a temporary directory somewhere under `~/.local/share/bring/workspace/results/`:
 

@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+from typing import Iterable, Optional
 
 import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.bring_target.local_folder import LocalFolderTarget
+from bring.config.bring_config import BringConfig
 from bring.doc.index import IndexExplanation
 from bring.doc.pkg import PkgInfoDisplay
 from bring.interfaces.cli import console
+from bring.interfaces.cli.config import BringContextGroup
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from frtls.args.hive import ArgHive
 from frtls.cli.group import FrklBaseCommand
 from frtls.doc.explanation.info import InfoListExplanation
 
@@ -25,9 +29,18 @@ be displayed. Otherwise all indexes will be looked up to find a matching package
 
 
 class BringInfoPkgsGroup(FrklBaseCommand):
-    def __init__(self, bring: Bring, name=None, **kwargs):
+    def __init__(
+        self,
+        bring_config: BringConfig,
+        config_list: Iterable[str],
+        name: str,
+        arg_hive: ArgHive,
+        **kwargs,
+    ):
 
-        self._bring: Bring = bring
+        self._bring_config: BringConfig = bring_config
+        self._bring: Optional[Bring] = None
+        self._config_list: Iterable[str] = config_list
 
         kwargs["help"] = INFO_HELP
 
@@ -38,15 +51,26 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             # callback=self.all_info,
-            arg_hive=bring.arg_hive,
+            arg_hive=arg_hive,
             subcommand_metavar="CONTEXT_OR_PKG_NAME",
             **kwargs,
         )
 
+    async def get_bring(self):
+
+        if self._bring is not None:
+            return self._bring
+
+        self._bring = self._bring_config.get_bring()
+        self._bring.config.set_config(*self._config_list)
+        await self._bring.add_all_config_indexes()
+
+        return self._bring
+
     async def _list_commands(self, ctx):
 
         ctx.obj["list_info_commands"] = True
-        return ["index", "package", "target"]
+        return ["context", "index", "package", "target"]
 
     async def _get_command(self, ctx, name):
 
@@ -60,6 +84,11 @@ class BringInfoPkgsGroup(FrklBaseCommand):
         # if not load_details:
         #     return None
 
+        if name == "context":
+
+            command = BringContextGroup(bring_config=self._bring_config, name="context")
+            return command
+
         if name == "target":
 
             @click.command()
@@ -68,7 +97,8 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             async def command(ctx, path):
                 if path is None:
                     path = os.path.abspath(".").split(os.path.sep)[0] + os.path.sep
-                target = LocalFolderTarget(bring=self._bring, path=path)
+                bring = await self.get_bring()
+                target = LocalFolderTarget(bring=bring, path=path)
                 console.line()
                 console.print(target)
                 # print(await tf.get_managed_files())
@@ -95,10 +125,11 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             async def command(ctx, indexes, update):
 
                 full = True
+                bring = await self.get_bring()
                 if len(indexes) == 1:
 
                     console.line()
-                    idx = await self._bring.get_index(index_name=indexes[0])
+                    idx = await bring.get_index(index_name=indexes[0])
 
                     display = IndexExplanation(
                         name=indexes[0], data=idx, update=update, full_info=full
@@ -107,12 +138,12 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                     return
 
                 if not indexes:
-                    indexes = self._bring.index_ids
+                    indexes = bring.index_ids
                     full = False
 
                 info_items = []
                 for index in indexes:
-                    idx = await self._bring.get_index(index_name=index)
+                    idx = await bring.get_index(index_name=index)
                     display = IndexExplanation(
                         name=index, data=idx, update=update, full_info=full
                     )
@@ -143,9 +174,10 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             @click.pass_context
             async def command(ctx, package, update, args):
 
+                bring = await self.get_bring()
                 console.line()
                 # await self._bring.add_indexes("kubernetes", "binaries")
-                pkg = await self._bring.get_pkg(name=package, raise_exception=True)
+                pkg = await bring.get_pkg(name=package, raise_exception=True)
 
                 pkg_info: PkgInfoDisplay = PkgInfoDisplay(
                     data=pkg, update=update, full_info=True, display_full_args=args

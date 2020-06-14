@@ -245,10 +245,7 @@ class BringContextCommands(FrklBaseCommand):
 
         console.line()
         ce = ContextExplanation(
-            context_name=self.name,
-            context=self._bring_context,
-            full_info=True,
-            show_title=True,
+            name=self.name, data=self._bring_context, full_info=True, show_title=True
         )
 
         console.print(ce)
@@ -268,8 +265,8 @@ class BringContextCommands(FrklBaseCommand):
 
                 console.line()
                 ce = ContextExplanation(
-                    context_name=self.name,
-                    context=self._bring_context,
+                    name=self.name,
+                    data=self._bring_context,
                     full_info=True,
                     show_title=True,
                 )

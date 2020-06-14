@@ -178,6 +178,18 @@ class BringCommandGroup(FrklBaseCommand):
 
             return command
 
+        elif name in ["explain", "exp", "x"]:
+
+            from bring.interfaces.cli.explain import BringInfoPkgsGroup
+
+            command = BringInfoPkgsGroup(
+                bring_config=self.bring_config,
+                config_list=config_list,
+                name="info",
+                arg_hive=self._tingistry_obj.arg_hive,
+            )
+            command.short_help = "display index, pkg, and target information"
+
         if not is_list_command:
 
             self.bring.config.set_config(*config_list)
@@ -205,12 +217,6 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = BringPluginGroup(bring=self.bring, name="plugin")
             command.short_help = "install one or a list of packages"
-
-        elif name in ["explain", "exp", "x"]:
-            from bring.interfaces.cli.explain import BringInfoPkgsGroup
-
-            command = BringInfoPkgsGroup(bring=self.bring, name="info")
-            command.short_help = "display index, pkg, and target information"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
