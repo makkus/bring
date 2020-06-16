@@ -72,18 +72,19 @@ class BringDocGroup(FrklBaseCommand):
 
         command = None
         if name == "pkg-type":
-            command = PkgTypePluginGroup(tingistry=self._tingistry)
+            command = PkgTypePluginGroup(freckles=self._freckles)
 
         elif name == "mogrifier":
-            command = MogrifyPluginGroup(tingistry=self._tingistry)
+            command = MogrifyPluginGroup(freckles=self._freckles)
 
         return command
 
 
 class BringPluginGroup(FrklBaseCommand):
-    def __init__(self, tingistry: Tingistry, plugin_class: Type):
+    def __init__(self, freckles: Freckles, plugin_class: Type):
 
-        self._tingistry: Tingistry = tingistry
+        self._freckles: Freckles = freckles
+        self._tingistry: Tingistry = self._freckles.tingistry
         self._plugin_manager = self._tingistry.get_plugin_manager(plugin_class)
 
         self._bring: Optional[Bring] = None
@@ -115,9 +116,9 @@ class BringPluginGroup(FrklBaseCommand):
 
 
 class PkgTypePluginGroup(BringPluginGroup):
-    def __init__(self, tingistry: Tingistry):
+    def __init__(self, freckles: Freckles):
 
-        super().__init__(tingistry=tingistry, plugin_class=PkgType)
+        super().__init__(freckles=freckles, plugin_class=PkgType)
 
     async def _get_command(self, ctx, name):
 
@@ -172,9 +173,9 @@ class PkgTypePluginGroup(BringPluginGroup):
 
 
 class MogrifyPluginGroup(BringPluginGroup):
-    def __init__(self, tingistry: Tingistry):
+    def __init__(self, freckles: Freckles):
 
-        super().__init__(tingistry=tingistry, plugin_class=Mogrifier)
+        super().__init__(freckles=freckles, plugin_class=Mogrifier)
 
     async def _get_command(self, ctx, name):
         @click.command()

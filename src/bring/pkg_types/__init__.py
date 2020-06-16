@@ -320,6 +320,12 @@ class SimplePkgType(PkgType):
         """
         return None
 
+    def get_pkg_type_mogrify(
+        self, source_details: Mapping[str, Any], version: Mapping[str, Any]
+    ) -> Optional[Union[Mapping, Iterable]]:
+
+        return None
+
     async def _get_pkg_metadata(
         self,
         source_details: Mapping[str, Any],
@@ -412,6 +418,14 @@ class SimplePkgType(PkgType):
                     version["_mogrify"].append(mogrifiers)
                 else:
                     version["_mogrify"].extend(mogrifiers)
+
+        # for version in versions:
+        #     pkg_type_mogrifier = self.get_pkg_type_mogrify(source_details, version)
+        #     if pkg_type_mogrifier:
+        #         if isinstance(pkg_type_mogrifier, Mapping):
+        #             version["_mogrify"].append(pkg_type_mogrifier)
+        #         else:
+        #             version["_mogrify"]
 
         pkg_vars = await self.process_vars(
             source_args=source_details.get("args", None),

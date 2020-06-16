@@ -115,7 +115,7 @@ class TrackedMergeStrategy(MergeStrategy):
         if not force:
             return FrklException(
                 msg=f"Can't merge/copy file '{target_file.rel_path}'.",
-                reason=f"File already exists in target and 'force' not set: {target_file.base_folder}",
+                reason=f"File already exists in target and 'force' not set.",
             )
 
         if backup:

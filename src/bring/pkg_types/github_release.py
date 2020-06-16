@@ -136,11 +136,13 @@ class GithubRelease(SimplePkgType):
         url: str = version["_meta"].get("url")
 
         match = False
-        for ext in [".zip", "tar.gz", "tar.bz2"]:
+        for ext in [".zip", ".gz", "tar.bz2"]:
             if url.endswith(ext):
                 match = True
                 break
 
+        print("MATCH")
+        print(url)
         if match:
             return {"type": "archive"}
         else:

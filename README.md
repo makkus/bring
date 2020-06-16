@@ -31,6 +31,10 @@ There also is a 'curly' shell script you can use:
 
 ## Examples
 
+### Show all available indexes and packages (in the default context)
+
+    > bring list
+
 ### Install the latest version of the *kubectl* binary
 
 The following command installs the latest version of the [``kubectl``](https://kubernetes.io/docs/tasks/tools/install-kubectl/) binary into ``$HOME/.local/share/bring``, for the architecture/OS combination of the machine you are running the command:
@@ -40,10 +44,6 @@ The following command installs the latest version of the [``kubectl``](https://k
 ### Show available versions of the *helm* binary
 
     > bring explain package binaries.helm --args
-
-### Show all available indexes and packages of the default context
-
-    > bring list
 
 
 ## Links
