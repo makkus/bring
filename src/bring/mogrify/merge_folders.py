@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Mapping, MutableMapping
 
-from bring.merge_strategy import FolderMerge, MergeStrategy
+# from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.mogrify import SimpleMogrifier
 
 
@@ -40,12 +40,13 @@ class MergeFoldersMogrifier(SimpleMogrifier):
 
         target_path = self.create_temp_dir("merge_")
 
-        merge_strategy = MergeStrategy.create_merge_strategy(
-            typistry=self._tingistry_obj.typistry, merge_strategy=strategy
-        )
-
-        merge_obj = FolderMerge(target=target_path, merge_strategy=merge_strategy)
-
-        await merge_obj.merge_folders(*folder_paths)
+        raise NotImplementedError()
+        # merge_strategy = MergeStrategy.create_merge_strategy(
+        #     typistry=self._tingistry_obj.typistry, merge_strategy=strategy
+        # )
+        #
+        # merge_obj = FolderMerge(target=target_path, merge_strategy=merge_strategy)
+        #
+        # await merge_obj.merge_folders(*folder_paths)
 
         return {"folder_path": target_path}

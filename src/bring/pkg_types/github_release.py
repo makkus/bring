@@ -141,8 +141,6 @@ class GithubRelease(SimplePkgType):
                 match = True
                 break
 
-        print("MATCH")
-        print(url)
         if match:
             return {"type": "archive"}
         else:

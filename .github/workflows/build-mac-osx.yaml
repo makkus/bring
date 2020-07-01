@@ -1,4 +1,4 @@
-name: build bring binaries
+name: build bring binaries darwin
 # This workflow is triggered on pushes to the repository.
 on: [push]
 env:
@@ -23,10 +23,10 @@ jobs:
     name: mypy check on darwin
     runs-on: macos-latest
     steps:
-      - name: Set up Python 3.7.6
+      - name: Set up Python 3.7.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7.6
+          python-version: 3.7.7
       - uses: actions/checkout@v2
       - run: pip install -r requirements-build.txt
       - run: pip install -e '.[testing]'

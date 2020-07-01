@@ -4,7 +4,7 @@ import sys
 from typing import Any, Dict, Mapping
 
 from appdirs import AppDirs
-from frtls.templating import get_global_jinja_env
+from frtls.templating.jinja import get_global_jinja_env
 
 
 BRING_APP_DIRS = AppDirs("bring", "frkl")
@@ -32,9 +32,6 @@ BRING_RESULTS_FOLDER = os.path.join(BRING_WORKSPACE_FOLDER, "results")
 BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
 BRING_PLUGIN_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "plugins")
 
-BRING_GLOBAL_METADATA_FOLDER = os.path.join(
-    BRING_APP_DIRS.user_data_dir, "managed_files"
-)
 BRING_BACKUP_FOLDER = os.path.join(BRING_APP_DIRS.user_data_dir, "backup")
 
 DEFAULT_CONTEXT_NAME = "binaries"
@@ -43,12 +40,10 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring",
     "bring.pkg_types.*",
     "bring.mogrify.*",
-    "bring.bring_target.*",
     "bring.plugins.*",
     "bring.plugins.templating.*",
     "bring.pkg_index.*",
     "bring.config",
-    "bring.merge_strategy.*",
     "frtls.tasks.watchers.*",
     "freckles.core.*",
     "freckles.frecklets.*",
@@ -221,5 +216,5 @@ BRING_METADATA_FILE_NAME = "meta.json"
 BRING_METADATA_REL_PATH = os.path.join(
     BRING_METADATA_FOLDER_NAME, BRING_METADATA_FILE_NAME
 )
-BRING_ITEM_METADATA_FOLDER_NAME = "items"
+
 DEFAULT_FOLDER_INDEX_NAME = "this.br.idx"

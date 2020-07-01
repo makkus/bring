@@ -6,7 +6,6 @@ import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from anyio import Lock, create_lock, create_task_group
-from bring.bring_target import BringTarget
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.interfaces.cli import console
@@ -553,14 +552,14 @@ class Bring(SimpleTing):
     #     result = await proc.process()
     #     return result
 
-    async def create_target(self, target_type: str, **input_vars: Any) -> BringTarget:
-
-        pm = self._tingistry_obj.get_plugin_manager(BringTarget)
-
-        plugin_class = pm.get_plugin(target_type, raise_exception=True)
-        target = plugin_class(self, **input_vars)
-
-        return target
+    # async def create_target(self, target_type: str, **input_vars: Any) -> BringTarget:
+    #
+    #     pm = self._tingistry_obj.get_plugin_manager(BringTarget)
+    #
+    #     plugin_class = pm.get_plugin(target_type, raise_exception=True)
+    #     target = plugin_class(self, **input_vars)
+    #
+    #     return target
 
 
 def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:

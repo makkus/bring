@@ -6,7 +6,7 @@ from typing import Any, Iterable, List, Mapping, Union
 
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_types import SimplePkgType
-from frtls.templating import process_string_template
+from frtls.templating.jinja import process_string_template
 
 
 class TemplateUrlResolver(SimplePkgType):

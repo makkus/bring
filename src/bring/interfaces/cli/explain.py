@@ -6,7 +6,6 @@ from typing import Iterable, Optional
 import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
-from bring.bring_target.local_folder import LocalFolderTarget
 from bring.config.bring_config import BringConfig
 from bring.doc.index import IndexExplanation
 from bring.doc.pkg import PkgInfoDisplay
@@ -17,6 +16,7 @@ from bring.pkg_index.pkg import PkgTing
 from frtls.args.hive import ArgHive
 from frtls.cli.group import FrklBaseCommand
 from frtls.doc.explanation.info import InfoListExplanation
+from frtls.targets.local_folder import TrackingLocalFolder
 
 
 log = logging.getLogger("bring")
@@ -97,10 +97,13 @@ class BringInfoPkgsGroup(FrklBaseCommand):
             async def command(ctx, path):
                 if path is None:
                     path = os.path.abspath(".").split(os.path.sep)[0] + os.path.sep
-                bring = await self.get_bring()
-                target = LocalFolderTarget(bring=bring, path=path)
-                console.line()
-                console.print(target)
+                target = TrackingLocalFolder(path=path)
+
+                console.print(target.explain())
+
+                # target = LocalFolderTarget(bring=bring, path=path)
+                # console.line()
+                # console.print(target)
                 # print(await tf.get_managed_files())
 
             return command

@@ -5,7 +5,6 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 from anyio import create_task_group
 from bring.bring import Bring
 from bring.defaults import BRING_RESULTS_FOLDER
-from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.mogrify import Transmogrificator
 from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
@@ -13,8 +12,9 @@ from freckles.core.frecklet import Frecklet
 from freckles.core.vars import VarSet
 from frtls.args.arg import Arg, RecordArg
 from frtls.files import create_temp_dir
+from frtls.targets.local_folder import TrackingLocalFolder
 from frtls.tasks import PostprocessTask, Task
-from frtls.templating import (
+from frtls.templating.regex import (
     create_var_regex,
     find_var_names_in_obj,
     replace_var_names_in_obj,
@@ -24,6 +24,38 @@ from tings.ting import TingMeta
 
 
 BRING_IN_DEFAULT_DELIMITER = create_var_regex()
+
+
+def parse_target_data(
+    target: Optional[Union[Mapping, str]] = None,
+    temp_folder_prefix: Optional[str] = None,
+):
+
+    if isinstance(target, collections.abc.Mapping):
+        _target_data: Dict = dict(target)
+        _target_path: Optional[str] = _target_data.pop("target", None)
+    elif target is None:
+        _target_data = {}
+        _target_path = None
+    elif isinstance(target, str):
+        _target_data = {}
+        _target_path = target
+    else:
+        raise TypeError(f"Invalid type for target value '{target}': {type(target)}")
+
+    if _target_path is None:
+        _target_path = create_temp_dir(
+            prefix=temp_folder_prefix, parent_dir=BRING_RESULTS_FOLDER
+        )
+        _target_msg = f"new temporary folder: '{_target_path}'"
+    else:
+        _target_msg = f"folder: {_target_path}"
+
+    return {
+        "merge_config": _target_data,
+        "target_path": _target_path,
+        "target_msg": _target_msg,
+    }
 
 
 class BringInstallFrecklet(Frecklet):
@@ -55,12 +87,12 @@ class BringInstallFrecklet(Frecklet):
                 "required": True,
             },
             "target": {"type": "string", "doc": "the target folder", "required": False},
-            "merge_strategy": {
-                "type": "merge_strategy",
-                "doc": "the merge strategy to use",
-                "default": "auto",
-                "required": True,
-            },
+            # "merge_strategy": {
+            #     "type": "merge_strategy",
+            #     "doc": "the merge strategy to use",
+            #     "default": "auto",
+            #     "required": True,
+            # },
         }
 
     async def get_msg(self) -> str:
@@ -129,33 +161,17 @@ class BringInstallFrecklet(Frecklet):
 
         target: Any = input_vars.pop("target", None)
 
-        merge_strategy_input = input_vars.pop("merge_strategy", None)
+        target_details = parse_target_data(target, temp_folder_prefix="install_pkg")
 
-        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy_input,
-            typistry=self._bring.typistry,
-            target=target,
-            default_merge_strategy="tracked",
-        )
-
-        if target is None:
-            _target: str = create_temp_dir(
-                prefix="install_target", parent_dir=BRING_RESULTS_FOLDER
-            )
-        else:
-            if not isinstance(target, str):
-                raise TypeError(
-                    f"Invalid type for target value '{target}': {type(target)}"
-                )
-            _target = target
+        _target_path = target_details["target_path"]
+        _target_msg = target_details["target_msg"]
+        _merge_config = target_details["merge_config"]
 
         item_metadata = {"pkg": SortedDict(input_vars)}
-        _merge_strategy_config["item_metadata"] = item_metadata
-        _merge_strategy_config["move_method"] = "move"
-
-        _merge_strategy = _merge_strategy_cls(**_merge_strategy_config)
 
         async def merge_folders(*tasks: Task):
+
+            target_folder = TrackingLocalFolder(path=_target_path)
 
             source_folders = []
             for transmogrificator in tasks:
@@ -163,26 +179,21 @@ class BringInstallFrecklet(Frecklet):
                 folder = result["folder_path"]
                 source_folders.append(folder)
 
-            merge_obj = FolderMerge(target=_target, merge_strategy=_merge_strategy)
-
-            result = await merge_obj.merge_folders(*source_folders)
+            result = await target_folder.merge_folders(
+                *source_folders, item_metadata=item_metadata, merge_config=_merge_config
+            )
 
             return {
-                "target": _target,
+                "target": _target_path,
                 "merge_result": result,
                 "item_metadata": item_metadata,
             }
 
-        if target is None:
-            _target_msg = f"new temporary folder: '{_target}'"
-        else:
-            _target_msg = f"folder: {_target}"
-
-        if hasattr(_merge_strategy_cls, "_plugin_name"):
-            merge_strategy_type = _merge_strategy_cls._plugin_name
-        else:
-            merge_strategy_type = _merge_strategy_cls.__name__
-
+        # if hasattr(_merge_strategy_cls, "_plugin_name"):
+        #     merge_strategy_type = _merge_strategy_cls._plugin_name
+        # else:
+        #     merge_strategy_type = _merge_strategy_cls.__name__
+        merge_strategy_type = "TODO"
         pp_desc = BringTaskDesc(
             name=f"merge_{self.name}_pkg_files",
             msg=f"merging prepared files into {_target_msg} (merge strategy: {merge_strategy_type})",
@@ -269,12 +280,6 @@ class BringInstallAssemblyFrecklet(Frecklet):
                 "doc": "a list of packages to install",
             },
             "target": {"type": "string", "doc": "the target folder", "required": False},
-            "merge_strategy": {
-                "type": "merge_strategy",
-                "doc": "the merge strategy to use",
-                "required": True,
-                "default": "auto",
-            },
         }
 
     async def get_required_args(
@@ -316,7 +321,6 @@ class BringInstallAssemblyFrecklet(Frecklet):
         value_dict = {
             "target": input_vars.get("target", None),
             "pkgs": input_vars.get("pkgs", None),
-            "merge_strategy": input_vars.get("merge_strategy", None),
         }
 
         value_dict_replaced = replace_var_names_in_obj(
@@ -367,60 +371,40 @@ class BringInstallAssemblyFrecklet(Frecklet):
         value_dict_replaced = self.calculate_replaced_vars(input_vars)
 
         target = value_dict_replaced["target"]
-        merge_strategy_input = value_dict_replaced["merge_strategy"]
 
-        _merge_strategy_cls, _merge_strategy_config = MergeStrategy.create_merge_strategy_config(
-            merge_strategy=merge_strategy_input,
-            typistry=self._bring.typistry,
-            target=target,
-            default_merge_strategy="tracked",
+        target_details = parse_target_data(
+            target, temp_folder_prefix="install_assembly"
         )
-        _merge_strategy_config["move_method"] = "move"
 
-        if target is None:
-            _target: str = create_temp_dir(
-                prefix="install_assembly_target", parent_dir=BRING_RESULTS_FOLDER
-            )
-        else:
-            if not isinstance(target, str):
-                raise TypeError(
-                    f"Invalid type for target value '{target}': {type(target)}"
-                )
-            _target = target
+        _target_path = target_details["target_path"]
+        _target_msg = target_details["target_msg"]
+        _merge_config = target_details["merge_config"]
 
         async def merge_folders(*tasks: Task):
 
+            target_folder = TrackingLocalFolder(path=_target_path)
+
             merge_results = []
 
-            for transmogrificator in tasks:
+            for task in tasks:
 
-                pkg_install_result = transmogrificator.result.get_processed_result()
-                folder = pkg_install_result["target"]
-                item_metadata = pkg_install_result["item_metadata"]
-                _merge_strategy_config["item_metadata"] = item_metadata
-                _merge_strategy = _merge_strategy_cls(**_merge_strategy_config)
+                result_data = task.result.data
 
-                merge_obj = FolderMerge(target=_target, merge_strategy=_merge_strategy)
-                merge_result = await merge_obj.merge_folders(
-                    folder, delete_source_folders=True
+                item_metadata = result_data["item_metadata"]
+                source_folder = result_data["target"]
+
+                merge_result = await target_folder.merge_folders(
+                    source_folder,
+                    item_metadata=item_metadata,
+                    merge_config=_merge_config,
                 )
                 merge_results.append(merge_result)
 
-            return {"target": _target, "merge_results": merge_results}
-
-        if target is None:
-            _target_msg = f"new temporary folder: '{_target}'"
-        else:
-            _target_msg = f"folder: {_target}"
-
-        if hasattr(_merge_strategy_cls, "_plugin_name"):
-            merge_strategy_type = _merge_strategy_cls._plugin_name
-        else:
-            merge_strategy_type = _merge_strategy_cls.__name__
+            return {"target": _target_path, "merge_results": merge_results}
 
         pp_desc = BringTaskDesc(
             name=f"merge_{self.name}_pkg_files",
-            msg=f"merging prepared files into {_target_msg} (merge strategy: {merge_strategy_type})",
+            msg=f"merging prepared files into {_target_msg}",
         )
         task = PostprocessTask(func=merge_folders, task_desc=pp_desc)
 

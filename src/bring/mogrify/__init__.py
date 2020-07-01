@@ -14,7 +14,7 @@ from frtls.doc.explanation.steps import StepsExplanation
 from frtls.exceptions import FrklException
 from frtls.files import ensure_folder
 from frtls.tasks import Task, Tasks, TasksResult
-from frtls.templating import replace_strings_in_obj
+from frtls.templating.jinja import replace_strings_in_obj
 from frtls.types.plugins import TypistryPluginManager
 from frtls.types.utils import generate_valid_identifier
 from tings.defaults import NO_VALUE_MARKER
@@ -37,7 +37,7 @@ def assemble_mogrifiers(
 ) -> Iterable[Union[Mapping, Iterable[Mapping]]]:
 
     # TODO: validate vars
-    if not vars or not args:
+    if not vars and not args:
         _data: Iterable[Union[Mapping, str]] = mogrifier_list
     else:
         relevant_vars = {}
@@ -79,6 +79,21 @@ class Mogrifiception(FrklException):
         self._mogrifier = mogrifier
 
         super().__init__(*args, **kwargs)
+
+
+class MogrifierException(FrklException):
+    def __init__(self, mogrifier: "Mogrifier"):
+
+        self._mogrifier: "Mogrifier" = mogrifier
+
+        msg = "MSG"
+        reason = "REASON"
+
+        super().__init__(msg=msg, reason=reason)
+
+    @property
+    def mogrifier(self):
+        return self._mogrifier
 
 
 class Mogrifier(Task, SimpleTing):
@@ -287,6 +302,9 @@ class Transmogrificator(Tasks):
 
         for child in self._children.values():
             await child.run_async()
+            if not child.success:
+                exc = MogrifierException(child)  # type: ignore
+                raise exc
 
     def explain_steps(self) -> StepsExplanation:
 

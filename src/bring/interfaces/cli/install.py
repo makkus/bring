@@ -97,11 +97,11 @@ class BringInstallGroup(FrklBaseCommand):
                 "required": False,
                 "cli": {"is_flag": True},
             },
-            "merge_strategy": {
-                "doc": "Strategy on how to deal with existing files, options",
-                "type": "merge_strategy",
-                "required": False,
-            },
+            # "merge_strategy": {
+            #     "doc": "Strategy on how to deal with existing files, options",
+            #     "type": "merge_strategy",
+            #     "required": False,
+            # },
         }
 
         return default_args
@@ -116,19 +116,21 @@ class BringInstallGroup(FrklBaseCommand):
         load_details = not ctx.obj.get("list_install_commands", False)
         target = self._group_params_parsed.get("target", None)
 
-        force = self._group_params_parsed.get("force", False)
-        update = self._group_params_parsed.get("update", False)
+        # force = self._group_params_parsed.get("force", False)
+        # update = self._group_params_parsed.get("update", False)
 
-        merge_strategy = self._group_params_parsed.get("merge_strategy")
-
-        merge_strategy["config"]["force"] = force
-        merge_strategy["config"]["update"] = update
+        # merge_strategy = self._group_params_parsed.get("merge_strategy")
+        #
+        # merge_strategy["config"]["force"] = force
+        # merge_strategy["config"]["update"] = update
 
         install_args = {}
 
-        install_args["merge_strategy"] = merge_strategy
+        # install_args["merge_strategy"] = merge_strategy
         if target:
-            install_args["target"] = target
+            install_args["target"] = {"target": target, "write_metadata": True}
+        else:
+            install_args["target"] = {"target": None, "write_metadata": True}
 
         if not load_details:
             return None
@@ -166,7 +168,7 @@ class BringInstallGroup(FrklBaseCommand):
 
         args_user = {}
         for name, arg in args.childs.items():
-            if name in ["merge_strategy", "target"]:
+            if name == "target":
                 continue
             args_user[name] = arg
 

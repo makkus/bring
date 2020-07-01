@@ -475,6 +475,12 @@ class Frecklet(SimpleTing):
             result: FreckletResult = await main_task.run_async()  # type: ignore
             twm.remove_watcher(wid)
 
+        if not main_task.success:
+            if main_task.error is None:
+                # TODO: better exception class
+                raise Exception(main_task.task_desc.get_failed_msg())
+            else:
+                raise main_task.error
         self._current_console = None
 
         return result

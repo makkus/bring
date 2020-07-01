@@ -21,7 +21,6 @@ from bring.defaults import (
     BRING_DEFAULT_CONFIG_PROFILE,
     BRING_TASKS_BASE_TOPIC,
 )
-from bring.merge_strategy import MergeStrategyArgType, MergeStrategyClickType
 from freckles.core.freckles import Freckles
 from frtls.args.hive import ArgHive
 from frtls.async_helpers import wrap_async_task
@@ -37,15 +36,17 @@ if TYPE_CHECKING:
 
 def register_args(arg_hive: ArgHive):
 
-    if "merge_strategy" not in arg_hive.args.keys():
-        arg_hive.register_arg_type(
-            arg=MergeStrategyArgType,
-            id="merge_strategy",
-            arg_type="dict",
-            required=False,
-            default=["auto"],
-            click_type=MergeStrategyClickType,
-        )
+    pass
+
+    # if "merge_strategy" not in arg_hive.args.keys():
+    #     arg_hive.register_arg_type(
+    #         arg=MergeStrategyArgType,
+    #         id="merge_strategy",
+    #         arg_type="dict",
+    #         required=False,
+    #         default=["auto"],
+    #         click_type=MergeStrategyClickType,
+    #     )
 
 
 class BringConfig(object):

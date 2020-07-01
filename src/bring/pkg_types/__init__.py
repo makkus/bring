@@ -23,7 +23,8 @@ from bring.defaults import BRING_PKG_CACHE, DEFAULT_ARGS_DICT, PKG_RESOLVER_DEFA
 from frtls.dicts import dict_merge, get_seeded_dict
 from frtls.files import ensure_folder, generate_valid_filename
 from frtls.strings import from_camel_case
-from frtls.templating import get_template_schema, template_schema_to_args
+from frtls.templating.jinja import get_template_schema, template_schema_to_args
+from frtls.templating.regex import find_var_names_in_obj, replace_var_names_in_obj
 
 
 if TYPE_CHECKING:
@@ -320,11 +321,23 @@ class SimplePkgType(PkgType):
         """
         return None
 
-    def get_pkg_type_mogrify(
+    def get_pkg_content_mogrify(
         self, source_details: Mapping[str, Any], version: Mapping[str, Any]
     ) -> Optional[Union[Mapping, Iterable]]:
 
-        return None
+        content: Any = source_details.get("content", None)
+        pkg_vars = {}
+        for k, v in version.items():
+            if k.startswith("_"):
+                continue
+            pkg_vars[k] = v
+
+        pkg_content_mogrifier = {
+            "type": "pkg_content",
+            "pkg_vars": pkg_vars,
+            "pkg_spec": content,
+        }
+        return pkg_content_mogrifier
 
     async def _get_pkg_metadata(
         self,
@@ -356,7 +369,7 @@ class SimplePkgType(PkgType):
             result: Mapping[str, Any] = await self._process_pkg_versions(
                 source_details=source_details, bring_index=bring_index
             )
-            versions: List[Mapping] = result["versions"]
+            versions: List[MutableMapping[str, Any]] = result["versions"]
             aliases: MutableMapping[str, str] = result.get("aliases", None)
             pkg_args: Mapping[str, Mapping] = result.get("args", None)
             default_args = copy.deepcopy(DEFAULT_ARGS_DICT)
@@ -419,20 +432,35 @@ class SimplePkgType(PkgType):
                 else:
                     version["_mogrify"].extend(mogrifiers)
 
-        # for version in versions:
-        #     pkg_type_mogrifier = self.get_pkg_type_mogrify(source_details, version)
-        #     if pkg_type_mogrifier:
-        #         if isinstance(pkg_type_mogrifier, Mapping):
-        #             version["_mogrify"].append(pkg_type_mogrifier)
-        #         else:
-        #             version["_mogrify"]
+        for version in versions:
+            pkg_type_mogrifier = self.get_pkg_content_mogrify(source_details, version)
+            if pkg_type_mogrifier:
+                if isinstance(pkg_type_mogrifier, Mapping):
+                    version["_mogrify"].append(pkg_type_mogrifier)
+                else:
+                    version["_mogrify"]
+
+        for version in versions:
+            mog = version["_mogrify"]
+            # print(version)
+            var_names = find_var_names_in_obj(mog)
+            if var_names:
+                vars = {}
+                for k, v in version.items():
+                    if k.startswith("_"):
+                        continue
+                    vars[k] = v
+                new_mog = replace_var_names_in_obj(mog, vars)
+                # print(vars)
+                # print(new_mog)
+                version["_mogrify"] = new_mog
 
         pkg_vars = await self.process_vars(
             source_args=source_details.get("args", None),
             pkg_args=pkg_args,
             mogrifiers=mogrifiers,
             source_vars=source_details.get("vars", None),
-            versions=versions,
+            versions=versions,  # type: ignore
             aliases=pkg_aliases,
         )
         metadata["pkg_vars"] = pkg_vars
