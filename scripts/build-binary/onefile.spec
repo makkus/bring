@@ -11,8 +11,8 @@ block_cipher = None
 # remove tkinter dependency ( https://github.com/pyinstaller/pyinstaller/wiki/Recipe-remove-tkinter-tcl )
 sys.modules["FixTk"] = None
 
-
-pkg_md = PythonEnvMetadata()
+project_dir = os.path.abspath(os.path.join(DISTPATH, "..", ".."))
+pkg_md = PythonEnvMetadata(project_dir=project_dir, main_pkg="bring")
 
 analysis_args = pkg_md.analysis_data
 

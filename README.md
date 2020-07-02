@@ -4,64 +4,59 @@
 [![Pipeline status](https://gitlab.com/frkl/bring/badges/develop/pipeline.svg)](https://gitlab.com/frkl/bring/pipelines)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-# ``bring``
+# bring
 
-*A package manager for files.*
+*a package manager for files and file-sets*
+
 
 ## Description
 
-`bring` is a package manager for generic files and file-sets. It's main use is to install, keep track of, and update single-binary applications and scripts, but it can easily be used to manage other file types, such as configuration files, kubernetes manifests, templates, etc.
-
-
-## Download/Install
-
-The easiest way to install `bring` is via pre-build single-file binaries. Currently, only development builds are available:
-
- - [Linux](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/linux-gnu/bring)
- - [Windows](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/windows/bring.exe)  (not tested at all)
- - [Mac OS X](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/darwin/bring)  (not available yet)
-
-There also is a 'curly' shell script you can use:
-
-    curl https://bring.frkl.sh | bash
-
-... which also lets you run `bring` right away:
-
-    curl https://bring.frkl.sh | bash -s bring install binaries.fd
-
-## Examples
-
-### Show all available indexes and packages (in the default context)
-
-    > bring list
-
-### Install the latest version of the *kubectl* binary
-
-The following command installs the latest version of the [``kubectl``](https://kubernetes.io/docs/tasks/tools/install-kubectl/) binary into ``$HOME/.local/share/bring``, for the architecture/OS combination of the machine you are running the command:
-
-    > bring install binaries.kubectl
-
-### Show available versions of the *helm* binary
-
-    > bring explain package binaries.helm --args
-
-
-## Links
-
- - [Documentation](https://bring.frkl.io)
- - [Code](https://gitlab.com/frkl/bring)
+Documentation still to be done.
 
 # Development
 
-Assuming you use [pyenv](https://github.com/pyenv/pyenv) and [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) for development, here's how to setup a 'bring' development environment manually:
+## Requirements
 
-    pyenv install 3.7.3
-    pyenv virtualenv 3.7.3 bring
-    git clone https://gitlab.com/frkl/bring
-    cd <bring_dir>
-    pyenv local bring
-    pip install -e .[all-dev]
-    pre-commit install
+- git
+- [direnv](https://direnv.net/) (optional)
+
+## Quickstart
+
+Notes:
+
+- to adjust the Python version to create the development virtualenv from, edit ``.envrc``
+- if not using [direnv](https://direnv.net), you have to setup and activate your Python virtualenv yourself, manually, before running ``make init``
+
+```
+> git clone https://gitlab.com/frkl/bring
+> cd bring
+> direnv allow   # if using direnv, otherwise activate virtualenv
+> make init
+```
+
+## ``make`` targets
+
+- ``init``: init development project (install project & dev dependencies & pre-commit hook)
+- ``binary``: create binary for project (will install *pyenv* -- check ``scripts/build-binary`` for details)
+- ``flake``: run *flake8* tests
+- ``mypy``: run mypy tests
+- ``test``: run unit tests
+- ``docs``: create static documentation pages
+- ``serve-docs``: serve documentation pages (incl. auto-reload)
+- ``clean``: clean build directories
+
+For details (and other, minor targets), check the ``Makefile``.
+
+## Update project template
+
+This project uses [cruft](https://github.com/timothycrosley/cruft) to manage the base Python project template. Check
+out it's documentation for more information.
+
+    > cruft update
+    # interactively approve changes, make changes if necessary
+    > git add *
+    > git commit -m "chore: updated project from template"
+
 
 
 ## Copyright & license
@@ -70,4 +65,4 @@ Please check the [LICENSE](/LICENSE) file in this repository (it's a short licen
 
 [Parity Public License 6.0.0](https://licensezero.com/licenses/parity)
 
-[Copyright (c) 2019 frkl OÜ](https://frkl.io)
+[Copyright (c) 2020 frkl OÜ](https://frkl.io)

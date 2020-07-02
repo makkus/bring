@@ -65,11 +65,26 @@ help:
 serve-docs:
 	@python -c "$$SERVE_HELP_PYSCRIPT"
 
-build-docs:
+docs:
 	@python -c "$$GEN_DOC_PYSCRIPT"
 
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
+
+init: clean ## install the package to the active Python's site-packages
+	git init
+	pip install -U pip
+	pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -U -e '.[all-dev]'
+	pre-commit install
+	git add "*" ".*"
+	pre-commit run --all-files || true
+	git add "*" ".*"
+
+install: clean ## install the package to the active Python's site-packages
+	python setup.py install
+
+binary: clean ## build single-file binary
+	scripts/build-binary/build.sh
 
 clean-build: ## remove build artifacts
 	rm -fr build/
@@ -90,34 +105,36 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-binary: ## build a binary with pyinstaller
-	binary_build/build.sh --spec-file binary_build/onefile.spec
-
-requirements: ## create requirements.txt
-	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all --to requirements.txt
-
-dev-requirements: ## create requirements-dev.txt
-	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all-dev --to-path requirements-dev.txt --to-format pip
-
-docs-requirements: ## create requirements-dev.txt
-	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all docs --to-path requirements-docs.txt --to-format pip
-
-test-requirements: ## create requirements-testing.txt
-	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all testing --to-path requirements-testing.txt --to-format pip
-
-requirement-files: requirements dev-requirements test-requirements docs-requirements
-
 pre-commit:
 	pre-commit run --all-files
 
 flake: ## check style with flake8
 	flake8 src/bring tests
 
-black: ## run black
-	black --config pyproject.toml setup.py src/bring tests
-
 mypy: ## run mypy
 	mypy src/
+
+check: black flake mypy test ## run dev-related checks
+
+#requirements: ## create requirements.txt
+#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all --to requirements.txt
+#
+#dev-requirements: ## create requirements-dev.txt
+#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all-dev --to-path requirements-dev.txt --to-format pip
+#
+#build-requirements: ## create requirements-dev.txt
+#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs build cli --to-path requirements-build.txt --to-format pip
+#
+#docs-requirements: ## create requirements-dev.txt
+#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all docs --to-path requirements-docs.txt --to-format pip
+#
+#test-requirements: ## create requirements-testing.txt
+#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all testing --to-path requirements-testing.txt --to-format pip
+#
+#requirement-files: requirements dev-requirements build-requirements test-requirements docs-requirements
+
+black: ## run black
+	black --config pyproject.toml setup.py src/bring tests
 
 test: ## run tests quickly with the default Python
 	py.test
@@ -135,6 +152,3 @@ dist: clean ## builds source and wheel package
 	python setup.py sdist
 	python setup.py bdist_wheel
 	ls -l dist
-
-install: clean ## install the package to the active Python's site-packages
-	python setup.py install

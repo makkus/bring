@@ -1,8 +1,0 @@
-formic2
-livereload
-markdown-blockdiag
-markdown-include
-mkdocs-macros-plugin
-mkdocs-material
-portray
-pymdown-extensions

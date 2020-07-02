@@ -7,11 +7,8 @@ include README.md
 include src/bring/frkl.info
 include src/bring/py.typed
 
-
 recursive-include tests *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 
 recursive-include docs *.rst conf.py Makefile *.jpg *.png *.gif
-
-recursive-include src/bring/resources/ *

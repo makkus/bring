@@ -15,8 +15,9 @@ image: python:3.8
 
 stages:
   - test
+  - python_pkg
   - build
-  - release
+#  - release
 
 python36:
   image: python:3.6
@@ -51,24 +52,22 @@ python38:
     - pip install tox
     - tox -e py38
 
+mypy:
+  image: python:3.8
+  stage: test
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
+  script:
+    - mypy src
+
 pages:
   before_script:
-    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -r requirements-docs.txt"
-    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev ."
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[docs,all]"
   script:
     - portray as_html -o public
   artifacts:
     paths:
       - public
-
-mypy:
-  image: python:3.8
-  stage: test
-  before_script:
-    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -r requirements-dev.txt"
-    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev ."
-  script:
-    - mypy src
 
 flake8:
   image: python:3.8
@@ -93,90 +92,11 @@ commitlint:
     - export LAST_TAG=$(git describe --abbrev=0 --tags) # get last tag
     - commitlint --from=$LAST_TAG   # check commit convention from last tag
 
-binary_linux:
-  image:
-    name: registry.gitlab.com/frkl/frkl-python-build:dev
-    entrypoint: [""]
-  stage: build
-  needs:
-    - "python37"
-    - "commitlint"
-    - "flake8"
-    - "mypy"
-
-  variables:
-    SRCDIR: $CI_PROJECT_DIR
-    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
-  script:
-    - "/entrypoint.sh"
-  artifacts:
-    paths:
-      - dist/linux-gnu/bring
-    expire_in: 1 week
-
-binary_windows:
-  image:
-    name: registry.gitlab.com/frkl/frkl-python-build:dev-win
-    entrypoint: [""]
-  stage: build
-  needs:
-    - "python37"
-    - "commitlint"
-    - "flake8"
-    - "mypy"
-  variables:
-    SRCDIR: $CI_PROJECT_DIR
-    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
-  script:
-    - "/entrypoint.sh"
-  artifacts:
-    paths:
-      - dist/windows/bring.exe
-    expire_in: 1 week
-
-#binary_darwin:
-#  stage: build
-#  needs: ["python37"]
-#  tags:
-#    - darwin
-#  script:
-#    - ./binary_build/build.sh --spec-file binary_build/onefile.spec
-#    - "security unlock-keychain -p ${KEYCHAIN_PASSWORD} /Users/freckles/Library/Keychains/code.keychain"
-#    - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' dist/darwin15/bring"
-##    - "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' binary/dist/darwin15/freckles.app"
-##    - "appdmg freckles.json binary/dist/darwin15/freckles.dmg"
-#  artifacts:
-#    paths:
-#    - dist/darwin15/freckles
-##    - binary/dist/darwin15/freckles.dmg
-#    expire_in: 1 week
-
-release_binaries:
-  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
-  stage: release
-  only:
-    - develop
-  environment:
-    name: dev
-  needs:
-    - binary_linux
-    - binary_windows
-#    - binary_darwin
-  script:
-  - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
-  - aws s3 cp --content-type binary/octet-stream dist/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
-#  - aws s3 cp --content-type binary/octet-stream dist/darwin15/bring s3://dev.dl.frkl.io/darwin/bring
-#  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/freckles
-
 pkg_python_dev:
-  stage: release
-  only:
-    - develop
-  needs:
-    - "python38"
-    - "commitlint"
-    - "flake8"
-    - "mypy"
+  stage: python_pkg
+
+#  only:
+#    - develop
   script:
     - pip install devpi-client
     - rm -rf dist build
@@ -190,12 +110,7 @@ pkg_python_dev:
     expire_in: 1 month
 
 pkg_python_stable:
-  stage: release
-  needs:
-    - "python38"
-    - "commitlint"
-    - "flake8"
-    - "mypy"
+  stage: python_pkg
   only:
     - /^\d+\.\d+\.\d+$/
   except:
@@ -217,12 +132,7 @@ pkg_python_stable:
     expire_in: 1 month
 
 pkg_python_beta:
-  stage: release
-  needs:
-    - "python38"
-    - "commitlint"
-    - "flake8"
-    - "mypy"
+  stage: python_pkg
   only:
     - /^\d+\.\d+\.\d+b\d+$/
   except:
@@ -243,30 +153,48 @@ pkg_python_beta:
       - dist/
     expire_in: 1 month
 
-container_image_dev:
-   stage: release
-   image: docker:19
-   needs: ["binary_linux"]
-   only:
-     - develop
-   environment:
-     name: dev
-   services:
-     - docker:19-dind
-   script:
-     - cp dist/linux-gnu/bring docker/bring
-     - cd docker
-     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-     - docker pull $CI_REGISTRY_IMAGE:dev || true
-     - >
-       docker build
-       --pull
-       --build-arg http_proxy=$http_proxy
-       --build-arg https_proxy=$https_proxy
-       --build-arg no_proxy=$no_proxy
-       --build-arg VCS_REF=$CI_COMMIT_SHA
-       --build-arg VCS_URL=$CI_PROJECT_URL
-       --cache-from $CI_REGISTRY_IMAGE:dev
-       --tag $CI_REGISTRY_IMAGE:dev
-       .
-     - docker push $CI_REGISTRY_IMAGE:dev
+binary_linux:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev
+    entrypoint: [""]
+  stage: build
+  needs:
+    - "pkg_python_dev"
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "/entrypoint.sh"
+  artifacts:
+    paths:
+      - dist_binary/linux-gnu/bring
+    expire_in: 1 week
+
+
+#release_binary_linux:
+#  stage: release
+#  image: registry.gitlab.com/gitlab-org/cloud-deploy:latest
+#  only:
+#    - develop
+#  environment:
+#    name: dev
+#  script:
+#  - /root/.local/bin/aws s3 cp --content-type binary/octet-stream binary/dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+##  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/bring
+
+binary_windows:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev-win
+    entrypoint: [""]
+  stage: build
+  needs:
+    - "pkg_python_dev"
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "/entrypoint.sh"
+  artifacts:
+    paths:
+      - dist_binary/windows/bring.exe
+    expire_in: 1 week

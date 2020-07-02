@@ -3,6 +3,8 @@
 
 """Tests for `bring` package."""
 
+import pytest  # noqa
+
 
 def test_assert():
 

@@ -31,8 +31,6 @@ DEFAULT_URL_REGEXES = [
 
 log = logging.getLogger("bring")
 
-# noqa: W605
-
 
 class GithubRelease(SimplePkgType):
     """A package type that tracks GitHub release artefacts.
@@ -49,7 +47,7 @@ class GithubRelease(SimplePkgType):
         user_name: sharkdp
         repo_name: fd
 
-        url_regex: 'https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\..*$'
+        url_regex: 'https://github.com/.*/releases/download/v(?P<version>.*)/.*-v(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$'
     ```
     More than one such regular expressions can be provided (in which case the value for *url_regex* should be a list), all matches for all regexes will be added to the resulting list.
 

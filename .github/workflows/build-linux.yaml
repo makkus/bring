@@ -1,14 +1,11 @@
-name: "build darwin binaries for 'bring'"
+name: "build linux binaries for 'bring'"
 # This workflow is triggered on pushes to the repository.
 on: [push]
-env:
-  DEVELOPER_DIR: /Applications/Xcode_10.3.app/Contents/Developer
-  MACOSX_DEPLOYMENT_TARGET: 10.14
 
 jobs:
-  test-darwin:
-    name: pytest on darwin
-    runs-on: macos-latest
+  test-linux:
+    name: pytest on linux
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.7.7
         uses: actions/setup-python@v2
@@ -19,9 +16,9 @@ jobs:
       - name: Test with pytest
         run: pytest tests
 
-  mypy-darwin:
-    name: mypy check on darwin
-    runs-on: macos-latest
+  mypy-linux:
+    name: mypy check on linux
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.7.7
         uses: actions/setup-python@v2
@@ -32,9 +29,9 @@ jobs:
       - name: Test with mypy
         run: mypy src
 
-  flake8-darwin:
-    name: flake8 on darwin
-    runs-on: macos-latest
+  flake8-linux:
+    name: flake8 on linux
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.7.7
         uses: actions/setup-python@v2
@@ -45,32 +42,23 @@ jobs:
       - name: Test with flake8
         run: flake8 src/bring
 
-  build-darwin:
-    name: build darwin binary
-    runs-on: macos-latest
+  build-linux:
+    name: build linux binary
+    runs-on: ubuntu-16.04
     needs:
-      - test-darwin
-      - mypy-darwin
-      - flake8-darwin
+      - test-linux
+      - mypy-linux
+      - flake8-linux
     steps:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
           key: ${{ runner.os }}-target-10.11-bring-python-build
-      - run: brew install pyenv
-      - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
       - name: build_binary
         run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec
-      - name: Add MacOS certs
-        run: chmod +x ./scripts/build-binary/add-osx-cert.sh && ./scripts/build-binary/add-osx-cert.sh
-        env:
-          CERTIFICATE_OSX_APPLICATION: ${{ secrets.CERTIFICATE_OSX_APPLICATION }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-      - name: sign binary
-        run: "codesign -f -s 'Developer ID Application: Markus Binsteiner (4Q559SZWTL)' dist/darwin19/bring"
-      - name: Archive Mac OS X binary
+      - name: Archive Linux binary
         uses: actions/upload-artifact@v1
         with:
           name: bring
-          path: dist/darwin19/bring
+          path: dist/linux-gnu/bring

@@ -51,10 +51,7 @@ pip-wheel-metadata/
 .python-version
 src/bring/version.txt
 .direnv
-.envrc
 public
 .dephell_report
 .direnv
-repos/
 .mypy_cache
-site/

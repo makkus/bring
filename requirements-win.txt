@@ -1,5 +1,0 @@
-bring
-frtls
-pp-ez
-pyinstaller
-tings

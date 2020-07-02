@@ -1,0 +1,4 @@
+frkl.jinja2schema
+frtls
+jinja2>=2.10.3
+pp-ez

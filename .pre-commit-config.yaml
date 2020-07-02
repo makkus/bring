@@ -43,10 +43,12 @@ repos:
   - id: check-yaml
   - id: debug-statements
   - id: end-of-file-fixer
+    exclude: .cruft.json
   - id: requirements-txt-fixer
   - id: fix-encoding-pragma
   - id: mixed-line-ending
     args: ['--fix=no']
   - id: flake8
+    args: ['--config=setup.cfg']
   #- id: no-commit-to-branch
   #  args: [--branch, master]

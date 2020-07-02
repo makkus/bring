@@ -33,7 +33,8 @@ function prepare () {
     local python_version="${3}"
     local pyinstaller_version="${4}"
     local requirements_file="${5}"
-    local output_dir="${6}"
+    local project_root="${6}"
+    local output_dir="${7}"
 
     mkdir -p "${build_dir}"
 
@@ -42,11 +43,15 @@ function prepare () {
     echo " -> dependencies all good"
     echo
 
+    local venv_path="${HOME}/.pyenv/versions/${venv_name}"
     if [ -n "${venv_name}" ] && [ -n "${requirements_file}" ]; then
       echo "preparing build"
-      local venv_path="${HOME}/.pyenv/versions/${venv_name}"
       install_requirements "${venv_path}" "${requirements_file}" "${pyinstaller_version}"
     fi
+
+    source "${venv_path}/bin/activate"
+
+    pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev "${project_root}[all]"
 
     mkdir -p "${output_dir}"
 
@@ -57,6 +62,8 @@ function ensure_dependencies () {
 
     local python_version="${1}"
     local venv_name="${2}"
+
+    export PATH="${HOME}/.pyenv/bin:$PATH"
 
     # pyenv
     if ! command_exists pyenv; then
@@ -109,7 +116,7 @@ function install_requirements () {
     pip install -U pp-ez
     pip install "pyinstaller==${pyinstaller_version}"
 
-    pip install -U -r "${requirements_file}"
+    pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -r "${requirements_file}"
 
     deactivate
 
@@ -174,7 +181,7 @@ function main () {
 
     if [ -f /.dockerenv ]; then
 
-           prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${output_dir}"
+           prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${project_root}" "${output_dir}"
            source "${venv_path}/bin/activate"
            build_artifact "${project_root}" "${build_dir}" "${venv_path}" "${output_dir}" "${OS_TYPE}" "${spec_file}"
 
@@ -187,7 +194,7 @@ function main () {
 
         else
 
-            prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${output_dir}"
+            prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${project_root}" "${output_dir}"
             build_artifact "${project_root}" "${build_dir}" "${venv_path}" "${output_dir}" "${OSTYPE}" "${spec_file}"
 
         fi
@@ -283,7 +290,7 @@ fi
 
 if [ -z "${REQUIREMENTS_FILE}" ]
 then
-  REQUIREMENTS_FILE="${PROJECT_ROOT}/requirements-build.txt"
+  REQUIREMENTS_FILE="${PROJECT_ROOT}/ci/build-binary/requirements-build.txt"
 fi
 if [ ! -f "${REQUIREMENTS_FILE}" ]
 then
@@ -306,7 +313,7 @@ OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
 
 if [ -z ${SPEC_FILE} ]
 then
-  SPEC_FILE="${PROJECT_ROOT}/onefile.spec"
+  SPEC_FILE="${PROJECT_ROOT}/scripts/build-binary/onefile.spec"
 fi
 if [ ! -f "${SPEC_FILE}" ]
 then
