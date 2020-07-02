@@ -52,6 +52,9 @@ function prepare () {
     source "${venv_path}/bin/activate"
 
     pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev "${project_root}[all]"
+    pip list
+
+    deactivate
 
     mkdir -p "${output_dir}"
 
