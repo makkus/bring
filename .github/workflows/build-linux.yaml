@@ -1,0 +1,64 @@
+name: "build linux binaries for 'bring'"
+# This workflow is triggered on pushes to the repository.
+on: [push]
+
+jobs:
+  test-linux:
+    name: pytest on linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.7
+      - uses: actions/checkout@v2
+      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: Test with pytest
+        run: pytest tests
+
+  mypy-linux:
+    name: mypy check on linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.7
+      - uses: actions/checkout@v2
+      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: Test with mypy
+        run: mypy src
+
+  flake8-linux:
+    name: flake8 on linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.7.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.7
+      - uses: actions/checkout@v2
+      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: Test with flake8
+        run: flake8 src/bring
+
+  build-linux:
+    name: build linux binary
+    runs-on: ubuntu-16.04
+    needs:
+      - test-linux
+      - mypy-linux
+      - flake8-linux
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: ~/.pyenv/
+          key: ${{ runner.os }}-target-10.11-bring-python-build
+      - uses: actions/checkout@v2
+      - name: build_binary
+        run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec
+      - name: Archive Linux binary
+        uses: actions/upload-artifact@v1
+        with:
+          name: bring
+          path: dist/linux-gnu/bring

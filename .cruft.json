@@ -1,0 +1,14 @@
+{
+    "template": "https://gitlab.com/frkl/template-python-project.git",
+    "commit": "55837d093c3f9f80707ba626f74e2b2fedd72e5e",
+    "context": {
+        "cookiecutter": {
+            "full_name": "Markus Binsteiner",
+            "email": "markus@frkl.io",
+            "project_name": "bring",
+            "project_slug": "bring",
+            "project_short_description": "a package manager for files and file-sets",
+            "_template": "https://gitlab.com/frkl/template-python-project.git"
+        }
+    }
+}

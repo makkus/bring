@@ -1,0 +1,40 @@
+[build-system]
+requires = [
+    "setuptools >= 41.6.0",
+    "setuptools_scm >= 3.3.3, <4",
+    "wheel >= 0.33.6",
+]
+build-backend = 'setuptools.build_meta'
+
+[tool.black]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | external
+)/
+'''
+
+[tool.portray]
+output_dir = "site"
+modules = [
+  "bring",
+]
+
+[tool.portray.mkdocs.theme]
+name = "material"
+
+[tool.portray.mkdocs]
+repo_url = "https://gitlab.com/frkl/bring"
+repo_name = "bring"
+
+[tool.dephell.main]
+from = {format = "setuppy", path = "setup.py"}

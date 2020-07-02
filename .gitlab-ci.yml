@@ -1,0 +1,200 @@
+---
+variables:
+  GIT_STRATEGY: fetch
+  GIT_DEPTH: 0
+  GIT_SUBMODULE_STRATEGY: recursive
+  LM_PYTHON_VERSION: "2"
+  DS_PYTHON_VERSION: "3"
+  PIP_EXTRA_INDEX_URL: "https://pkgs.frkl.io/frkl/dev"
+
+# include:
+#  - template: Dependency-Scanning.gitlab-ci.yml
+#  - template: License-Management.gitlab-ci.yml
+
+image: python:3.8
+
+stages:
+  - test
+  - python_pkg
+  - build
+#  - release
+
+python36:
+  image: python:3.6
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e py36
+
+python37:
+  image: python:3.7
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e py37
+
+python38:
+  image: python:3.8
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e py38
+
+mypy:
+  image: python:3.8
+  stage: test
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
+  script:
+    - mypy src
+
+pages:
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[docs,all]"
+  script:
+    - portray as_html -o public
+  artifacts:
+    paths:
+      - public
+
+flake8:
+  image: python:3.8
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e flake8
+
+commitlint:
+  stage: test
+  image: node:8
+  only:
+    - master
+    - merge_requests
+    - develop
+  script:
+    - npm install -g @commitlint/cli @commitlint/config-conventional
+    - export LAST_TAG=$(git describe --abbrev=0 --tags) # get last tag
+    - commitlint --from=$LAST_TAG   # check commit convention from last tag
+
+pkg_python_dev:
+  stage: python_pkg
+
+#  only:
+#    - develop
+  script:
+    - pip install devpi-client
+    - rm -rf dist build
+    - devpi use https://pkgs.frkl.io/
+    - devpi login frkl --password="${DEVPI_PASSWORD}"
+    - devpi use /frkl/dev
+    - devpi upload
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 month
+
+pkg_python_stable:
+  stage: python_pkg
+  only:
+    - /^\d+\.\d+\.\d+$/
+  except:
+    - branches
+  script:
+    - pip install devpi-client
+    - rm -rf dist build
+    - devpi use https://pkgs.frkl.io/
+    - devpi login frkl --password="${DEVPI_PASSWORD}"
+    - devpi use /frkl/stable
+    - devpi upload
+    - UPLOAD_FILE=(dist/freckles-*.tar.gz)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+    - UPLOAD_FILE=(dist/freckles-*.whl)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 month
+
+pkg_python_beta:
+  stage: python_pkg
+  only:
+    - /^\d+\.\d+\.\d+b\d+$/
+  except:
+    - branches
+  script:
+    - pip install devpi-client
+    - rm -rf dist build
+    - devpi use https://pkgs.frkl.io/
+    - devpi login frkl --password="${DEVPI_PASSWORD}"
+    - devpi use /frkl/beta
+    - devpi upload
+    - UPLOAD_FILE=(dist/freckles-*.tar.gz)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+    - UPLOAD_FILE=(dist/freckles-*.whl)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 month
+
+binary_linux:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev
+    entrypoint: [""]
+  stage: build
+  needs:
+    - "pkg_python_dev"
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "/entrypoint.sh"
+  artifacts:
+    paths:
+      - dist_binary/linux-gnu/bring
+    expire_in: 1 week
+
+
+#release_binary_linux:
+#  stage: release
+#  image: registry.gitlab.com/gitlab-org/cloud-deploy:latest
+#  only:
+#    - develop
+#  environment:
+#    name: dev
+#  script:
+#  - /root/.local/bin/aws s3 cp --content-type binary/octet-stream binary/dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+##  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/bring
+
+binary_windows:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev-win
+    entrypoint: [""]
+  stage: build
+  needs:
+    - "pkg_python_dev"
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "/entrypoint.sh"
+  artifacts:
+    paths:
+      - dist_binary/windows/bring.exe
+    expire_in: 1 week
