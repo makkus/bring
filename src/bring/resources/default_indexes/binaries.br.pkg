@@ -1,0 +1,18 @@
+info:
+  slug: Single-file binaries
+
+source:
+  type: template-url
+  url: "https://gitlab.com/tingistries/binaries/-/raw/{{ version }}/binaries.br.idx"
+
+  template_vars:
+    version:
+      - "master"
+      - "develop"
+
+  args:
+    version:
+      default: "master"
+
+  artefact:
+    type: file

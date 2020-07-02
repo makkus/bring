@@ -1,23 +1,30 @@
 # -*- coding: utf-8 -*-
-import asyncclick as click
+import os
+from typing import Optional
+
+from rich.console import Console
+from rich.style import Style
+from rich.theme import Theme
 
 
-try:
-    import uvloop
+bring_style = Style(color="black", blink=False, bold=False, bgcolor=None)
 
-    uvloop.install()
-except Exception:
-    pass
+bring_code_theme = "friendly"
+bring_code_theme = "solarized-light"
 
-click.anyio_backend = "asyncio"
+LIGHT_THEME = Theme(
+    {
+        "title": Style.parse("bold bright_black"),
+        "key": Style.parse("bold grey35"),
+        "key2": Style.parse("italic"),
+        "value": Style.parse(""),
+    }
+)
 
+width = os.environ.get("BRING_CONSOLE_WIDTH", None)
+if width is not None:
+    _width: Optional[int] = int(width)
+else:
+    _width = None
 
-@click.command()
-@click.pass_context
-def cli(ctx):
-
-    print("Hello World!")
-
-
-if __name__ == "__main__":
-    cli()
+console = Console(theme=LIGHT_THEME, width=_width)
