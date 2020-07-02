@@ -53,9 +53,9 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-target-linux-bring-python-build
+          key: ${{ runner.os }}-target-ubuntu-bring-python-build
       - uses: actions/checkout@v2
-      - name: build_binary
+      - name: 'build_binary (curses workaround)'
         run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec"
       - name: Archive Linux binary
         uses: actions/upload-artifact@v1
