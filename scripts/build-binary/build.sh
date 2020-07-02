@@ -112,7 +112,7 @@ function install_requirements () {
     echo "installing dependencies from: ${requirements_file}"
 
     pip install -U pip
-    pip install -U setuptools==44.0.0
+    pip install setuptools==44.0.0
     pip install -U pp-ez
     pip install "pyinstaller==${pyinstaller_version}"
 
