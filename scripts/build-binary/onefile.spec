@@ -12,6 +12,8 @@ block_cipher = None
 sys.modules["FixTk"] = None
 
 project_dir = os.path.abspath(os.path.join(DISTPATH, "..", ".."))
+
+print(f"project dir: {project_dir}")
 pkg_md = PythonEnvMetadata(project_dir=project_dir, main_pkg="bring")
 
 analysis_args = pkg_md.analysis_data
