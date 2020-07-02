@@ -55,6 +55,8 @@ jobs:
           path: ~/.pyenv/
           key: ${{ runner.os }}-target-ubuntu-bring-python-build
       - uses: actions/checkout@v2
+      - name: install curses
+        run: sudo apt-get install libncurses5-dev libncursesw5-dev
       - name: 'build_binary (curses workaround)'
         run: ./ci/build-binary/linux/github-build-linux-binary.sh
       - name: Archive Linux binary
