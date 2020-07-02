@@ -53,7 +53,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-target-linux-10.11-bring-python-build
+          key: ${{ runner.os }}-target-linux-bring-python-build
       - uses: actions/checkout@v2
       - name: build_binary
         run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec

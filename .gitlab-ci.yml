@@ -198,7 +198,7 @@ container_image_dev:
    services:
      - docker:19-dind
    script:
-     - cp dist/linux-gnu/bring docker/bring
+     - cp dist_binary/linux-gnu/bring docker/bring
      - cd docker
      - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
      - docker pull $CI_REGISTRY_IMAGE:dev || true
