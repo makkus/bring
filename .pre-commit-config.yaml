@@ -50,6 +50,5 @@ repos:
     args: ['--fix=no']
   - id: flake8
     args: ['--config=setup.cfg']
-
   #- id: no-commit-to-branch
   #  args: [--branch, master]
