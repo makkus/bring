@@ -57,8 +57,10 @@ jobs:
       - uses: actions/checkout@v2
       - name: install curses
         run: sudo apt-get install libncurses5-dev libncursesw5-dev
-      - name: 'build_binary (curses workaround)'
-        run: ./ci/build-binary/linux/github-build-linux-binary.sh
+#      - name: 'build_binary (curses workaround)'
+#        run: ./ci/build-binary/linux/github-build-linux-binary.sh
+      - name: "build_binary (curses workaround)"
+        run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec"
       - name: Archive Linux binary
         uses: actions/upload-artifact@v1
         with:
