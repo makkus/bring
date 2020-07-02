@@ -54,8 +54,8 @@ jobs:
         with:
           path: ~/.pyenv/
           key: ${{ runner.os }}-target-linux-bring-python-build
-      - name: install curses
-        run: sudo apt-get install libreadline-dev libncurses5 libncurses5-dev libncursesw5
+      - run: brew install pyenv
+      - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
       - name: build_binary
         run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec

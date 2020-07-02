@@ -67,7 +67,6 @@ function ensure_dependencies () {
     local python_version="${1}"
     local venv_name="${2}"
 
-    export PATH="$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)"
     export PATH="${HOME}/.pyenv/bin:$PATH"
 
     # pyenv
