@@ -52,6 +52,7 @@ pip-wheel-metadata/
 src/bring/version.txt
 .direnv
 public
+site
 .dephell_report
 .direnv
 .mypy_cache
