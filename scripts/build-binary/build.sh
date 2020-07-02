@@ -53,6 +53,7 @@ function prepare () {
 
     pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev "${project_root}[all]"
     pip list
+    bring self info
 
     deactivate
 
