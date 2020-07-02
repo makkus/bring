@@ -56,7 +56,7 @@ jobs:
           key: ${{ runner.os }}-target-ubuntu-bring-python-build
       - uses: actions/checkout@v2
       - name: 'build_binary (curses workaround)'
-        run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec"
+        run: ./ci/build-binary/linux/github-build-linux-binary.sh
       - name: Archive Linux binary
         uses: actions/upload-artifact@v1
         with:
