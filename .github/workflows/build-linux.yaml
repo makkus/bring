@@ -55,7 +55,7 @@ jobs:
           path: ~/.pyenv/
           key: ${{ runner.os }}-target-linux-bring-python-build
       - name: install curses
-        run: sudo apt-get install libncurses5-dev
+        run: sudo apt-get install libncurses5 libncurses5-dev libncursesw5
       - uses: actions/checkout@v2
       - name: build_binary
         run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec
