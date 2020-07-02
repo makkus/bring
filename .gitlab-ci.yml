@@ -170,18 +170,6 @@ binary_linux:
       - dist_binary/linux-gnu/bring
     expire_in: 1 week
 
-
-#release_binary_linux:
-#  stage: release
-#  image: registry.gitlab.com/gitlab-org/cloud-deploy:latest
-#  only:
-#    - develop
-#  environment:
-#    name: dev
-#  script:
-#  - /root/.local/bin/aws s3 cp --content-type binary/octet-stream binary/dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
-##  - aws s3 cp --content-type binary/octet-stream binary/dist/darwin15/freckles s3://dev.dl.frkl.io/darwin/bring
-
 binary_windows:
   image:
     name: registry.gitlab.com/frkl/frkl-python-build:dev-win
@@ -226,3 +214,17 @@ container_image_dev:
        --tag $CI_REGISTRY_IMAGE:dev
        .
      - docker push $CI_REGISTRY_IMAGE:dev
+
+release_binary_linux:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  only:
+    - develop
+  environment:
+    name: dev
+  needs:
+    - binary_linux
+    - binary_windows
+  script:
+  - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+  - aws s3 cp --content-type binary/octet-stream dist/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
