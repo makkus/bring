@@ -17,7 +17,7 @@ stages:
   - test
   - python_pkg
   - build
-#  - release
+  - release
 
 python36:
   image: python:3.6
