@@ -226,5 +226,5 @@ release_binary_linux:
     - binary_linux
     - binary_windows
   script:
-  - aws s3 cp --content-type binary/octet-stream dist/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
-  - aws s3 cp --content-type binary/octet-stream dist/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
+  - aws s3 cp --content-type binary/octet-stream dist_binary/linux-gnu/bring s3://dev.dl.frkl.io/linux-gnu/bring
+  - aws s3 cp --content-type binary/octet-stream dist_binary/windows/bring.exe s3://dev.dl.frkl.io/windows/bring.exe
