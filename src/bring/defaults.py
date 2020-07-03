@@ -56,7 +56,7 @@ BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 #     {
 #         "id": "binaries",
 #         "type": "index_file",
-#         "uri": "https://gitlab.com/tingistries/binaries/-/raw/master/binaries.br.idx",
+#         "uri": "https://gitlab.com/bring-indexes/binaries/-/raw/master/binaries.br.idx",
 #         # "defaults": {"target": "~/.local/bring", "vars": {}},
 #         # "add_sysinfo_to_default_vars": True,
 #         "info": {"slug": "Single file, compiled applications."},
@@ -64,7 +64,7 @@ BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 #     {
 #         "id": "scripts",
 #         "type": "index_file",
-#         "uri": "https://gitlab.com/tingistries/scripts/-/raw/master/scripts.br.idx",
+#         "uri": "https://gitlab.com/bring-indexes/scripts/-/raw/master/scripts.br.idx",
 #         # "defaults": {"target": "~/.local/bring", "vars": {}},
 #         # "add_sysinfo_to_default_vars": True,
 #         "info": {"slug": "Shell scripts."},
@@ -72,13 +72,13 @@ BRING_CONFIG_PROFILES_NAME = "bring.config_profiles"
 #     {
 #         "id": "collections",
 #         "type": "index_file",
-#         "uri": "https://gitlab.com/tingistries/collections/-/raw/master/collections.br.idx",
+#         "uri": "https://gitlab.com/bring-indexes/collections/-/raw/master/collections.br.idx",
 #         "info": {"slug": "Miscellaneous collections of files."},
 #     },
 #     {
 #         "id": "kubernetes",
 #         "type": "index_file",
-#         "uri": "https://gitlab.com/tingistries/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx",
+#         "uri": "https://gitlab.com/bring-indexes/kube-install-manifests/-/raw/master/kube-install-manifests.br.idx",
 #         "info": {"slug": "Install manifests for Kubernetes apps."},
 #     },
 # ]
@@ -100,10 +100,10 @@ By default, those binaries will be installed into '$HOME/.local/bring', using th
 }
 
 BRING_DEFAULT_INDEX_ALIASES = {
-    "binaries": "gitlab.tingistries.binaries",
-    "scripts": "gitlab.tingistries.scripts",
-    "collections": "gitlab.tingistries.collections",
-    "kubernetes": "gitlab.tingistries.kube-install-manifests",
+    "binaries": "gitlab.bring-indexes.binaries",
+    "scripts": "gitlab.bring-indexes.scripts",
+    "collections": "gitlab.bring-indexes.collections",
+    "kubernetes": "gitlab.bring-indexes.kube-install-manifests",
 }
 
 BRING_CORE_CONFIG = {

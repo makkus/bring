@@ -3,7 +3,7 @@ info:
 
 source:
   type: template-url
-  url: "https://gitlab.com/tingistries/binaries/-/raw/{{ version }}/binaries.br.idx"
+  url: "https://gitlab.com/bring-indexes/binaries/-/raw/{{ version }}/binaries.br.idx"
 
   template_vars:
     version:
