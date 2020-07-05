@@ -39,6 +39,7 @@ class PkgContentLocalFolder(LocalFolder):
         item_details = self.pkg_spec.get_item_details(item_id)
 
         if not item_details:
+
             log.debug(f"Ignoring file item: {item_id}")
             return None
 

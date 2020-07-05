@@ -52,7 +52,7 @@ class PkgSpec(object):
             for path_key, details in _files_dict.items():
 
                 if isinstance(details, str):
-                    details = {PATH_KEY: details}
+                    details = {FROM_KEY: details}
 
                 if PATH_KEY in details.keys():
                     if path_key != details[PATH_KEY]:
@@ -126,9 +126,11 @@ class PkgSpec(object):
 
     def get_item_details(self, item: str) -> Optional[Mapping[str, Any]]:
 
-        details: Optional[Mapping[str, Any]] = self._items.get(item, None)
+        for v in self._items.values():
+            if v["from"] == item:
+                return v
 
-        if details is None:
-            if not self._items:
-                details = {PATH_KEY: item, FROM_KEY: item}
-        return details
+        if not self._items:
+            return {PATH_KEY: item, FROM_KEY: item}
+        else:
+            return None
