@@ -309,6 +309,12 @@ class BringInstallAssemblyFrecklet(Frecklet):
                 "doc": "a list of packages to install",
             },
             "target": {"type": "string", "doc": "the target folder", "required": False},
+            "target_config": {
+                "type": "dict",
+                "doc": "(optional) target configuration",
+                # TODO: reference
+                "required": False,
+            },
         }
 
     async def get_required_args(
@@ -350,6 +356,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
 
         value_dict = {
             "target": input_vars.get("target", None),
+            "target_config": input_vars.get("target_config", None),
             "pkgs": input_vars.get("pkgs", None),
         }
 
@@ -409,7 +416,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
 
         _target_path = target_details["target_path"]
         _target_msg = target_details["target_msg"]
-        _merge_config = target_details["merge_config"]
+        _merge_config = target_details["target_config"]
 
         async def merge_folders(*tasks: Task):
 
