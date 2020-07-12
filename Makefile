@@ -116,23 +116,6 @@ mypy: ## run mypy
 
 check: black flake mypy test ## run dev-related checks
 
-#requirements: ## create requirements.txt
-#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all --to requirements.txt
-#
-#dev-requirements: ## create requirements-dev.txt
-#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all-dev --to-path requirements-dev.txt --to-format pip
-#
-#build-requirements: ## create requirements-dev.txt
-#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs build cli --to-path requirements-build.txt --to-format pip
-#
-#docs-requirements: ## create requirements-dev.txt
-#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all docs --to-path requirements-docs.txt --to-format pip
-#
-#test-requirements: ## create requirements-testing.txt
-#	dephell deps convert --warehouse 'https://pkgs.frkl.io/frkl/dev/+simple/' https://pypi.org/pypi/ --envs all testing --to-path requirements-testing.txt --to-format pip
-#
-#requirement-files: requirements dev-requirements build-requirements test-requirements docs-requirements
-
 black: ## run black
 	black --config pyproject.toml setup.py src/bring tests
 
@@ -143,7 +126,7 @@ test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source src/bring -m pytest
+	coverage run -m pytest tests
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html

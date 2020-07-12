@@ -228,6 +228,7 @@ class BringInstallGroup(FrklBaseCommand):
 
                 result = await frecklet.get_frecklet_result()
                 console.print("[title]Result:[/title]")
+                console.line()
                 console.print(result)
 
         command.params = args_renderer.rendered_arg
