@@ -25,36 +25,55 @@ from tings.ting import TingMeta
 
 BRING_IN_DEFAULT_DELIMITER = create_var_regex()
 
+TEMP_DIR_MARKER = "__temp__"
+
 
 def parse_target_data(
-    target: Optional[Union[Mapping, str]] = None,
+    target: Optional[Union[str]] = None,
+    target_config: Optional[Mapping] = None,
     temp_folder_prefix: Optional[str] = None,
 ):
 
-    if isinstance(target, collections.abc.Mapping):
-        _target_data: Dict = dict(target)
-        _target_path: Optional[str] = _target_data.pop("target", None)
-    elif target is None:
-        _target_data = {}
-        _target_path = None
-    elif isinstance(target, str):
-        _target_data = {}
-        _target_path = target
-    else:
-        raise TypeError(f"Invalid type for target value '{target}': {type(target)}")
-
-    if _target_path is None:
-        _target_path = create_temp_dir(
+    if not target or target.lower() == TEMP_DIR_MARKER:
+        _target_path: str = create_temp_dir(
             prefix=temp_folder_prefix, parent_dir=BRING_RESULTS_FOLDER
         )
-        _target_msg = f"new temporary folder: '{_target_path}'"
+        _target_msg: str = f"new temporary folder: '{_target_path}'"
+        _is_temp: bool = True
     else:
+        _target_path = target
         _target_msg = f"folder: {_target_path}"
+        _is_temp = False
+
+    if not isinstance(_target_path, str):
+        raise TypeError(f"Invalid type for 'target' value: {type(target)}")
+
+    if target_config is None:
+        _target_data: MutableMapping[str, Any] = {}
+    else:
+        if not isinstance(target_config, collections.abc.Mapping):
+            raise TypeError(
+                f"Invalid type for target_config value '{type(target_config)}'"
+            )
+        _target_data = dict(target_config)
+
+    if "write_metadata" not in _target_data.keys():
+        if _is_temp:
+            _target_data["write_metadata"] = False
+        else:
+            _target_data["write_metadata"] = True
+
+    if _target_data["write_metadata"] is None:
+        if _is_temp:
+            _target_data["write_metadata"] = False
+        else:
+            _target_data["write_metadata"] = True
 
     return {
-        "merge_config": _target_data,
+        "target_config": _target_data,
         "target_path": _target_path,
         "target_msg": _target_msg,
+        "is_temp": _is_temp,
     }
 
 
@@ -87,6 +106,12 @@ class BringInstallFrecklet(Frecklet):
                 "required": True,
             },
             "target": {"type": "string", "doc": "the target folder", "required": False},
+            "target_config": {
+                "type": "dict",
+                "doc": "(optional) target configuration",
+                # TODO: reference
+                "required": False,
+            }
             # "merge_strategy": {
             #     "type": "merge_strategy",
             #     "doc": "the merge strategy to use",
@@ -160,12 +185,16 @@ class BringInstallFrecklet(Frecklet):
     ) -> Optional[PostprocessTask]:
 
         target: Any = input_vars.pop("target", None)
+        target_config: Any = input_vars.pop("target_config", None)
 
-        target_details = parse_target_data(target, temp_folder_prefix="install_pkg")
+        target_details = parse_target_data(
+            target, target_config, temp_folder_prefix="install_pkg"
+        )
 
         _target_path = target_details["target_path"]
         _target_msg = target_details["target_msg"]
-        _merge_config = target_details["merge_config"]
+        _merge_config = target_details["target_config"]
+        # _is_temp = target_details["is_temp"]
 
         item_metadata = {"pkg": SortedDict(input_vars)}
 
@@ -317,6 +346,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
     def calculate_replaced_vars(
         self, input_vars: Mapping[str, Any]
     ) -> Mapping[str, Any]:
+        """Replace input variables names with their values."""
 
         value_dict = {
             "target": input_vars.get("target", None),
@@ -371,9 +401,10 @@ class BringInstallAssemblyFrecklet(Frecklet):
         value_dict_replaced = self.calculate_replaced_vars(input_vars)
 
         target = value_dict_replaced["target"]
+        target_config = value_dict_replaced["target_config"]
 
         target_details = parse_target_data(
-            target, temp_folder_prefix="install_assembly"
+            target, target_config, temp_folder_prefix="install_assembly"
         )
 
         _target_path = target_details["target_path"]

@@ -84,6 +84,13 @@ class BringInstallGroup(FrklBaseCommand):
                 "doc": "The target directory to install the files into.",
                 "type": "string",
                 "required": False,
+                "multiple": False,
+            },
+            "target_config": {
+                "doc": "The target configuration.",
+                "type": "dict",
+                "required": False,
+                "multiple": False,
             },
             "force": {
                 "doc": "Overwrite potentially existing files.",
@@ -115,6 +122,7 @@ class BringInstallGroup(FrklBaseCommand):
         explain = self._group_params.get("explain")
         load_details = not ctx.obj.get("list_install_commands", False)
         target = self._group_params_parsed.get("target", None)
+        target_config = self._group_params_parsed.get("target_config", None)
 
         # force = self._group_params_parsed.get("force", False)
         # update = self._group_params_parsed.get("update", False)
@@ -125,12 +133,16 @@ class BringInstallGroup(FrklBaseCommand):
         # merge_strategy["config"]["update"] = update
 
         install_args = {}
+        if target:
+            install_args["target"] = target
+        if install_args:
+            install_args["target_config"] = target_config
 
         # install_args["merge_strategy"] = merge_strategy
-        if target:
-            install_args["target"] = {"target": target, "write_metadata": True}
-        else:
-            install_args["target"] = {"target": None, "write_metadata": True}
+        # if target:
+        #     install_args["target"] = {"target": target, "write_metadata": True}
+        # else:
+        #     install_args["target"] = {"target": None, "write_metadata": True}
 
         if not load_details:
             return None
@@ -144,7 +156,7 @@ class BringInstallGroup(FrklBaseCommand):
             frecklet_config = {"type": "install_pkg"}
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
-            frecklet.input_sets.add_constants(_id="install_param", **install_args)
+            frecklet.input_sets.add_constants(_id="install_params", **install_args)
 
         else:
             full_path = os.path.abspath(os.path.expanduser(name))

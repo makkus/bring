@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import collections
+import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -32,6 +33,8 @@ from frtls.tasks.task_watcher import TaskWatchManager
 
 if TYPE_CHECKING:
     from bring.bring import Bring
+
+log = logging.getLogger("bring")
 
 
 def register_args(arg_hive: ArgHive):
