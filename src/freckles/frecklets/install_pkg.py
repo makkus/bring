@@ -38,7 +38,7 @@ def parse_target_data(
         _target_path: str = create_temp_dir(
             prefix=temp_folder_prefix, parent_dir=BRING_RESULTS_FOLDER
         )
-        _target_msg: str = f"new temporary folder: '{_target_path}'"
+        _target_msg: str = "new temporary folder"
         _is_temp: bool = True
     else:
         _target_path = target
@@ -218,14 +218,9 @@ class BringInstallFrecklet(Frecklet):
                 "item_metadata": item_metadata,
             }
 
-        # if hasattr(_merge_strategy_cls, "_plugin_name"):
-        #     merge_strategy_type = _merge_strategy_cls._plugin_name
-        # else:
-        #     merge_strategy_type = _merge_strategy_cls.__name__
-        merge_strategy_type = "TODO"
         pp_desc = BringTaskDesc(
             name=f"merge_{self.name}_pkg_files",
-            msg=f"merging prepared files into {_target_msg} (merge strategy: {merge_strategy_type})",
+            msg=f"merging prepared files into {_target_msg}",
         )
         task = PostprocessTask(func=merge_folders, task_desc=pp_desc)
 

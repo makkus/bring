@@ -203,7 +203,7 @@ class BringInstallGroup(FrklBaseCommand):
                 )
 
                 explanation = frecklet.explain()
-                console.print(explanation)
+                console.print(explanation, overflow="ellipsis")
 
         else:
 
@@ -221,15 +221,16 @@ class BringInstallGroup(FrklBaseCommand):
                 msg = await frecklet.get_msg()
                 console.print(f"[title]Task[/title]: {msg}")
                 console.line()
-                console.print("[title]Variables[/title]:")
+                console.print("[title]Variables[/title]")
 
                 pi = frecklet.input_sets.explain()
                 console.print(pi)
 
                 result = await frecklet.get_frecklet_result()
-                console.print("[title]Result:[/title]")
+                console.print("[title]Result[/title]")
                 console.line()
-                console.print(result)
+                target = result.data["target"]
+                console.print(f"  - installed pkg into: [value]{target}[/value]")
 
         command.params = args_renderer.rendered_arg
 

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING, Any, List, Mapping
 
 from freckles.core.vars import FreckletInputSet
+from frtls.defaults import FRKL_COLOR_PROGRESSION
 from frtls.doc.explanation import Explanation, to_value_string
 from frtls.tasks import TaskExplanation
 from rich import box
@@ -162,14 +163,42 @@ class FreckletExplanation(Explanation):
 
         return table
 
+    def _create_task_tree_item(
+        self, task_data: Mapping[str, Any], level: int = 0, current: List[str] = None
+    ):
+
+        if current is None:
+            current = []
+
+        padding = ("  " * level) + "- "
+
+        _meta = task_data["meta"]
+        _postprocess = task_data.get("postprocess", None)
+        _subtasks = task_data.get("subtasks", [])
+
+        msg = _meta["msg"]
+
+        if level == 0:
+            current.append(f"{padding}{msg}")
+        else:
+            color_number = (level - 1) % 5
+            color = FRKL_COLOR_PROGRESSION[color_number]
+            current.append(f"[{color}]{padding}{msg}[/{color}]")
+
+        for task in _subtasks:
+            self._create_task_tree_item(task, level=level + 1, current=current)
+
+        if _postprocess:
+            self._create_task_tree_item(_postprocess, level=level + 1, current=current)
+
+        return current
+
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
 
         _vars: Mapping[str, Any] = self.explain("vars")
-        _tasks = self.explain("task.subtasks")
-
-        _postprocess_task = self.explain("task.postprocess")
+        # _tasks = self.explain("task.subtasks")
 
         msg = self.explain("task.meta.msg")
         yield f"[title]Task:[/title] {msg}"
@@ -182,25 +211,6 @@ class FreckletExplanation(Explanation):
         yield "[title]Steps:[/title]"
         yield ""
 
-        if len(_tasks) == 1:
-            task = _tasks[0]
-            for st in task["subtasks"]:
-                yield f"  - [value]{st['meta']['msg']}[/value]"
-
-            yield f"  - [value]{_postprocess_task['meta']['msg']}[/value]"
-        else:
-
-            yield f"  [bold]Run tasks:[/bold]"
-            yield ""
-            for task in _tasks:
-                yield f"    - [key2]{task['meta']['msg']}[/key2]"
-                yield ""
-                for st in task["subtasks"]:
-                    yield f"      - [value]{st['meta']['msg']}[/value]"
-                    yield ""
-
-            if _postprocess_task is not None:
-                yield ""
-                yield "  [bold]Postprocess:[/bold]"
-                yield ""
-                yield f"    - [value]{_postprocess_task['meta']['msg']}[/value]"
+        items = self._create_task_tree_item(self.explanation_data["task"])
+        for item in items:
+            yield item
