@@ -135,7 +135,7 @@ class BringInstallGroup(FrklBaseCommand):
         install_args = {}
         if target:
             install_args["target"] = target
-        if install_args:
+        if target_config:
             install_args["target_config"] = target_config
 
         # install_args["merge_strategy"] = merge_strategy
