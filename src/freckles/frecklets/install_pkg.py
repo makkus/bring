@@ -442,7 +442,7 @@ class BringInstallAssemblyFrecklet(Frecklet):
 
         pp_desc = BringTaskDesc(
             name=f"merge_{self.name}_pkg_files",
-            msg=f"merging prepared files into {_target_msg}",
+            msg=f"merging files from all packages into {_target_msg}",
         )
         task = PostprocessTask(func=merge_folders, task_desc=pp_desc)
 

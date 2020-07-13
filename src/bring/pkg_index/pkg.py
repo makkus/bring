@@ -265,7 +265,7 @@ class PkgTing(SimpleTing):
 
         task_desc = BringTaskDesc(
             name=f"prepare package '{self.name}'",
-            msg=f"preparing file(s) for package '{self.name}'",
+            msg=f"gathering file(s) for package '{self.name}'",
             subtopic=pipeline_id,
         )
 

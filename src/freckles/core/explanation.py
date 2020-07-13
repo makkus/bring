@@ -190,11 +190,17 @@ class FreckletExplanation(Explanation):
             yield f"  - [value]{_postprocess_task['meta']['msg']}[/value]"
         else:
 
+            yield f"  [bold]Run tasks:[/bold]"
+            yield ""
             for task in _tasks:
-                yield f"  - [key2]{task['meta']['msg']}[/key2]"
+                yield f"    - [key2]{task['meta']['msg']}[/key2]"
                 yield ""
                 for st in task["subtasks"]:
                     yield f"      - [value]{st['meta']['msg']}[/value]"
+                    yield ""
 
             if _postprocess_task is not None:
-                yield f"      - [value]{_postprocess_task['meta']['msg']}[/value]"
+                yield ""
+                yield "  [bold]Postprocess:[/bold]"
+                yield ""
+                yield f"    - [value]{_postprocess_task['meta']['msg']}[/value]"
