@@ -227,10 +227,13 @@ class BringInstallGroup(FrklBaseCommand):
                 console.print(pi)
 
                 result = await frecklet.get_frecklet_result()
-                console.print("[title]Result[/title]")
-                console.line()
-                target = result.data["target"]
-                console.print(f"  - installed pkg into: [value]{target}[/value]")
+                if isinstance(result.data, Exception):
+                    console.print(f"[title]Error[/title]: {result.data}")
+                else:
+                    console.print("[title]Result[/title]")
+                    console.line()
+                    target = result.data["target"]
+                    console.print(f"  - installed pkg into: [value]{target}[/value]")
 
         command.params = args_renderer.rendered_arg
 
