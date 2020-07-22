@@ -3,9 +3,10 @@
 
 """Tests for `bring` package."""
 
+import bring
 import pytest  # noqa
 
 
 def test_assert():
 
-    assert True
+    assert bring.__version__ is not None
