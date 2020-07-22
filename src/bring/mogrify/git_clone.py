@@ -4,7 +4,7 @@ from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from bring.utils.git import ensure_repo_cloned
-from frtls.subprocesses.git import GitProcess
+from frkl.common.subprocesses import GitProcess
 
 
 class GitCloneMogrifier(SimpleMogrifier):

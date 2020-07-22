@@ -9,9 +9,10 @@ from anyio import aopen
 from bring.defaults import BRING_INDEX_FILES_CACHE
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from frtls.async_helpers import wrap_async_task
-from frtls.downloads import download_cached_binary_file_async
-from frtls.exceptions import FrklException
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.downloads import REMOTE_FILE_TYPE
+from frkl.common.downloads.cache import download_cached_file_async
+from frkl.common.exceptions import FrklException
 from rich.console import Console, ConsoleOptions, RenderResult
 
 
@@ -264,8 +265,11 @@ async def ensure_index_file_is_local(index_url: str) -> str:
     if os.path.exists(index_url):
         return index_url
 
-    cache_path = await download_cached_binary_file_async(
-        url=index_url, cache_base=BRING_INDEX_FILES_CACHE, return_content=False
+    cache_path = await download_cached_file_async(
+        url=index_url,
+        cache_base=BRING_INDEX_FILES_CACHE,
+        return_content=False,
+        file_type=REMOTE_FILE_TYPE.bytes,
     )
 
     return cache_path  # type: ignore
@@ -280,11 +284,12 @@ async def retrieve_index_file_content(
             content = await f.read()
     else:
 
-        content = await download_cached_binary_file_async(
+        content = await download_cached_file_async(
             url=index_url,
             update=update,
             cache_base=BRING_INDEX_FILES_CACHE,
             return_content=True,
+            file_type=REMOTE_FILE_TYPE.bytes,
         )
 
     json_string = zlib.decompress(content, 16 + zlib.MAX_WBITS)  # type: ignore

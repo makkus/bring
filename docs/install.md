@@ -10,17 +10,24 @@ To install `bring`, download the appropriate binary from one of the links below,
   - [Windows](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/windows/bring.exe)
   - [Mac OS X](https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/darwin/bring)
 
-## Install script  
+
+## Install script
 
 Alternatively, use the 'curly' install script for `bring`:
 
-    curl https://bringfrkl.sh | bash
+``` console
+curl https://gitlab.com/frkl/bring/-/raw/develop/scripts/install/bring.sh | bash
+```
 
-This will add a section to your shell init file to add the install location (``$HOME/.local/share/frkl/bin``) to your ``$PATH``.  
+
+This will add a section to your shell init file to add the install location (``$HOME/.local/share/frkl/bin``) to your ``$PATH``.
 
 You might need to source that file (or log out and re-log in to your session) in order to be able to use *bring*:
 
-    source ~/.profile
+``` console
+source ~/.profile
+```
+
 
 ## Python package
 
@@ -41,12 +48,4 @@ Successfully installed aiokafka-0.6.0 aiopg-1.0.0 ... ... ...
 Usage: bring [OPTIONS] COMMAND [ARGS]...
    ...
    ...
-```
-
-## Updates
-
-`bring` comes with it's own, in-build update mechanism, all you have to do is issue:
-
-``` console
-bring self update
 ```

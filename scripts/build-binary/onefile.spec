@@ -4,7 +4,8 @@ from PyInstaller.building.build_main import Analysis
 import platform
 import pp
 import sys
-from frtls.introspection.pkg_env import PythonEnvMetadata
+from bring import BRING as APP
+from frkl.project_meta.build_binary import get_analysis_args_from_app_env
 
 block_cipher = None
 
@@ -13,18 +14,15 @@ sys.modules["FixTk"] = None
 
 project_dir = os.path.abspath(os.path.join(DISTPATH, "..", ".."))
 
-print(f"project dir: {project_dir}")
-pkg_md = PythonEnvMetadata(project_dir=project_dir, main_pkg="bring")
-
-analysis_args = pkg_md.analysis_data
+analysis_args = get_analysis_args_from_app_env(APP)
 
 print("---------------------------------------------------")
 print()
-print(f"app name: {pkg_md.app_name}")
-print(f"main_pkg: {pkg_md.main_pkg}")
+print(f"app name: {APP.exe_name}")
+print(f"main_module: {APP.main_module}")
 print()
-print("pkg_meta:")
-pp(pkg_md.pkg_meta)
+print("app_meta:")
+pp(APP.app_meta)
 print()
 print("analysis data:")
 pp(analysis_args)
@@ -42,7 +40,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name=pkg_md.app_name,
+    name=APP.exe_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

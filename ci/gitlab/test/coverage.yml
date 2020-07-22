@@ -1,0 +1,9 @@
+bring_test_coverage:
+  image: python:3.8
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+  stage: test
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
+  script:
+    - coverage run -m pytest tests
+    - coverage report -m

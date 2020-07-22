@@ -2,9 +2,10 @@
 from typing import TYPE_CHECKING, Any, List, Mapping
 
 from freckles.core.vars import FreckletInputSet
-from frtls.defaults import FRKL_COLOR_PROGRESSION
-from frtls.doc.explanation import Explanation, to_value_string
-from frtls.tasks import TaskExplanation
+from frkl.common.defaults import FRKL_COLOR_PROGRESSION
+from frkl.common.formats.serialize import to_value_string
+from frkl.explain.explanation import Explanation
+from frkl.tasks.task_result import TaskExplanation
 from rich import box
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.table import Table

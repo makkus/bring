@@ -9,10 +9,10 @@ from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.defaults import calculate_defaults
-from frtls.async_helpers import wrap_async_task
-from frtls.exceptions import FrklException
-from frtls.tasks import Task
-from frtls.types.utils import is_instance_or_subclass
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.exceptions import FrklException
+from frkl.common.types import isinstance_or_subclass
+from frkl.tasks.task import Task
 from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
@@ -67,7 +67,7 @@ class BringIndexTing(InheriTing, SimpleTing):
         result: Dict[str, Any] = {}
 
         config: IndexConfig = requirements["config"]
-        if not is_instance_or_subclass(config, IndexConfig):
+        if not isinstance_or_subclass(config, IndexConfig):
             raise FrklException(
                 f"Can't process index {self.name}",
                 reason=f"Invalid index config type: {type(config)}",
@@ -190,9 +190,9 @@ class BringIndexTing(InheriTing, SimpleTing):
                 reason="No package with that name available.",
                 solution=f"Make sure the package name is correct, available packages: {', '.join(pkg_names)}.",
             )
-        elif is_instance_or_subclass(pkg, Exception) and raise_exception:
+        elif isinstance_or_subclass(pkg, Exception) and raise_exception:
             raise pkg  # type: ignore
-        elif is_instance_or_subclass(pkg, Exception):
+        elif isinstance_or_subclass(pkg, Exception):
             return None
 
         return pkg

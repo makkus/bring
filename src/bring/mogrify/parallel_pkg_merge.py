@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from anyio import create_task_group
 from bring.mogrify import Mogrifier, Transmogrificator
-from frtls.tasks import Tasks
+from frkl.tasks.tasks import Tasks
 from tings.ting import TingMeta
 
 

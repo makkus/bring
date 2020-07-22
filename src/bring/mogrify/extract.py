@@ -5,8 +5,8 @@ import shutil
 from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
+from frkl.common.exceptions import FrklException
+from frkl.common.filesystem import ensure_folder
 
 
 class ExtractMogrifier(SimpleMogrifier):

@@ -1,0 +1,10 @@
+bring_test_flake8:
+  image: python:3.8
+  stage: test
+  before_script:
+    - curl -O https://bootstrap.pypa.io/get-pip.py
+    - python get-pip.py
+    - pip install -U setuptools
+  script:
+    - pip install tox
+    - tox -e flake8

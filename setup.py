@@ -10,11 +10,12 @@
 """
 import sys
 
-from pkg_resources import VersionConflict, require
 from setuptools import setup
 
 
 try:
+    from pkg_resources import VersionConflict, require
+
     require("setuptools>=38.3")
 except VersionConflict:
     print("Error: version of setuptools is too old (<38.3)!")
@@ -46,7 +47,7 @@ def get_extra_requires(add_all=True, add_all_dev=True):
     if add_all:
         all = set()
         for e_n, deps in extras.items():
-            if e_n not in ["docs", "develop", "testing"]:
+            if e_n not in ["docs", "develop", "testing", "build"]:
                 all.update(deps)
         extras["all"] = all
 

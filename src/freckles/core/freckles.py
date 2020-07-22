@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Mapping, Optional, Union
 
 from freckles.core.frecklet import Frecklet
-from frtls.types.utils import generate_valid_identifier
+from frkl.common.strings import generate_valid_identifier
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistries, Tingistry
 

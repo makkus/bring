@@ -14,6 +14,7 @@ from typing import (
 
 import anyio
 from anyio import Lock
+from bring import BRING
 from bring.config import ConfigTing
 from bring.config.folder_config import FolderConfigProfilesTing
 from bring.defaults import (
@@ -23,12 +24,11 @@ from bring.defaults import (
     BRING_TASKS_BASE_TOPIC,
 )
 from freckles.core.freckles import Freckles
-from frtls.args.hive import ArgHive
-from frtls.async_helpers import wrap_async_task
-from frtls.dicts import get_seeded_dict
-from frtls.exceptions import FrklException
-from frtls.introspection.pkg_env import AppEnvironment
-from frtls.tasks.task_watcher import TaskWatchManager
+from frkl.args.hive import ArgHive
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.dicts import get_seeded_dict
+from frkl.common.exceptions import FrklException
+from frkl.tasks.task_watchers import TaskWatchManager
 
 
 if TYPE_CHECKING:
@@ -95,10 +95,10 @@ class BringConfig(object):
         self._bring: Optional["Bring"] = None
         self._config_dict_lock: Optional[Lock] = None
 
-        twm = AppEnvironment().get_global("task_watcher")
+        twm = BRING.get_global("task_watcher")
         if twm is None:
             twm = TaskWatchManager(typistry=self._tingistry_obj.typistry)
-            AppEnvironment().set_global("task_watcher", twm)
+            BRING.set_global("task_watcher", twm)
         self._task_watch_manager: TaskWatchManager = twm
         self._task_watcher_ids: List[str] = []
 

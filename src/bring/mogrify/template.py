@@ -6,8 +6,8 @@ from typing import Any, Mapping
 from anyio import aopen
 from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
-from frtls.files import ensure_folder
-from frtls.templating.jinja import get_global_jinja_env, process_string_template
+from frkl.common.filesystem import ensure_folder
+from frkl.common.jinja_templating import get_global_jinja_env, process_string_template
 from jinja2 import Environment
 
 

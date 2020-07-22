@@ -1,0 +1,11 @@
+.bring_build_docs:
+  image: python:3.8
+  stage: build
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[docs,all]"
+  script:
+    - pydoc-markdown
+    - mkdocs build --site-dir public
+  artifacts:
+    paths:
+      - public

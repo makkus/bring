@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import copy
 import logging
+import os
+import shutil
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -14,17 +16,19 @@ from typing import (
     Union,
 )
 
+from bring.defaults import BRING_PKG_VERSION_CACHE
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_types import PkgType
 from bring.utils import BringTaskDesc, find_version, replace_var_aliases
 from deepdiff import DeepHash
-from frtls.args.arg import RecordArg
-from frtls.dicts import get_seeded_dict
-from frtls.doc.explanation import to_value_string
-from frtls.exceptions import FrklException
-from frtls.tasks import TaskDesc
-from frtls.types.plugins import TypistryPluginManager
-from frtls.types.utils import generate_valid_identifier
+from frkl.args.arg import RecordArg
+from frkl.common.dicts import get_seeded_dict
+from frkl.common.exceptions import FrklException
+from frkl.common.filesystem import ensure_folder
+from frkl.common.formats.serialize import to_value_string
+from frkl.common.strings import generate_valid_identifier
+from frkl.tasks.task_desc import TaskDesc
+from frkl.types.plugins import PluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -227,6 +231,58 @@ class PkgTing(SimpleTing):
         version = find_version(vars=vars, metadata=metadata, var_aliases_replaced=True)
         return version
 
+    async def get_version_folder(
+        self,
+        input_vars: Mapping[str, Any] = None,
+        target_folder: Optional[str] = None,
+        no_cache: bool = False,
+    ) -> Mapping[str, Any]:
+        """Retrieve the path to a (possibly cached) folder that represents the package with the specified variables.
+
+        If you supply the 'target_folder' argument, a copy of the folder will be created at that location (which is not allowed to exist yet). If you do not, make sure you only do read operations on it; don't change any files in that folder, as that may corrupt results for subequent users of this cached folder.
+
+        Returns:
+            Mapping: a dict with 'path' and 'version_hash' keys
+        """
+
+        if input_vars is None:
+            input_vars = {}
+
+        version_hash = await self.create_version_hash()
+        version_dir = os.path.join(BRING_PKG_VERSION_CACHE, self.pkg_id, version_hash)
+
+        # use cached dir
+        if no_cache or not os.path.isdir(version_dir):
+
+            transmogrificator: Transmogrificator = await self.create_transmogrificator(
+                vars=input_vars
+            )
+
+            result = await transmogrificator.run_async()
+            folder = result.explanation_data["result"]["folder_path"]
+
+            if os.path.exists(version_dir):
+                shutil.rmtree(version_dir)
+            else:
+                ensure_folder(os.path.dirname(version_dir))
+
+            shutil.move(folder, version_dir)
+
+        if not target_folder:
+            return {"path": version_dir, "version_hash": version_hash}
+
+        target_folder = os.path.expanduser(target_folder)
+        if os.path.exists(target_folder):
+            raise FrklException(
+                msg=f"Can't create version folder for pkg '{self.pkg_id}'.",
+                reason=f"Target folder already exists: {target_folder}",
+            )
+        ensure_folder(os.path.dirname(target_folder))
+
+        shutil.copytree(version_dir, target_folder)
+
+        return {"path": target_folder, "version_hash": version_hash}
+
     async def create_transmogrificator(
         self,
         vars: Optional[Mapping[str, Any]] = None,
@@ -351,98 +407,6 @@ class PkgTing(SimpleTing):
         validated = args.validate(_vars_replaced, raise_exception=True)
         return validated
 
-    # async def explain_full_vars(self, **vars: Any) -> Mapping[str, Mapping[str, Any]]:
-    #
-    #     args: RecordArg = await self.get_value("args")  # type: ignore
-    #
-    #     pkg_defaults = args.get_defaults()
-    #
-    #     index_vars: Dict[
-    #         str, Any
-    #     ] = await self.bring_index.get_default_vars()  # type: ignore
-    #
-    #     result = {}
-    #
-    #     for k, v in vars.items():
-    #         if k not in args.arg_names:
-    #             continue
-    #
-    #         result[k] = {"value": v, "source": "user"}
-    #
-    #     for k, v in index_vars.items():
-    #
-    #         if k in result.keys() or k not in args.arg_names:
-    #             continue
-    #         result[k] = {"value": v, "source": "index"}
-    #
-    #     for k, v in pkg_defaults.items():
-    #         if k in result.keys():
-    #             continue
-    #         result[k] = {"value": v, "source": "pkg"}
-    #
-    #     return result
-
-    # def create_processor(self, processor_type: str, target: Union[BringTarget, str]) -> PkgProcessor:
-    #
-    #     pm = self._tingistry_obj.typistry.get_plugin_manager(PkgProcessor)
-    #
-    #     pkg_proc_cls: Type = pm.get_plugin(processor_type, raise_exception=True)
-    #
-    #     pkg_proc: PkgProcessor = pkg_proc_cls(pkg=self, bring_target=target)
-    #     return pkg_proc
-    #
-    # async def process(self, processor_type: str, **vars) -> Mapping[str, Any]:
-    #
-    #     pkg_proc = self.create_processor(processor_type=processor_type, **vars)
-    #     result = await pkg_proc.process(**vars)
-    #     return result
-
-    # async def create_version_folder_transmogrificator(
-    #     self,
-    #     vars: Optional[Mapping[str, Any]] = None,
-    #     # target: Union[str, Path, Mapping[str, Any]] = None,
-    #     extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
-    #     parent_task_desc: TaskDesc = None,
-    # ) -> Transmogrificator:
-    #
-    #     tm = await self.create_transmogrificator(
-    #         vars=vars,
-    #         extra_mogrifiers=extra_mogrifiers,
-    #         # target=target,
-    #         parent_task_desc=parent_task_desc,
-    #     )
-    #
-    #     return tm
-
-    # async def create_version_folder(
-    #     self,
-    #     vars: Optional[Mapping[str, Any]] = None,
-    #     target: Union[str, Path, Mapping[str, Any]] = None,
-    #     extra_mogrifiers: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
-    #     parent_task_desc: TaskDesc = None,
-    # ) -> Mapping[str, Any]:
-    #     """Create a folder that contains the version specified via the provided 'vars'.
-    #
-    #     If no target is provided, the path to a randomly named temp folder will be returned.
-    #     """
-    #
-    #     if target is None:
-    #         path = None
-    #         merge_strategy = None
-    #     elif isinstance(target, str):
-    #         path = target
-    #         merge_strategy = {"type": "default"}
-    #     elif isinstance(target, collections.Mapping):
-    #         merge_strategy = dict(target)
-    #         path = merge_strategy.pop("path")
-    #
-    #     ip = self.create_processor("install", target="local_folder")
-    #     ip.set_input(path=path, merge_strategy=merge_strategy)
-    #
-    #     result = await ip.process()
-    #
-    #     return "RESULT"
-
 
 class StaticPkgTing(PkgTing):
     def __init__(self, name, meta: TingMeta):
@@ -543,7 +507,7 @@ class DynamicPkgTing(PkgTing):
         if pkg_type is None:
             raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
 
-        pm: TypistryPluginManager = self._tingistry_obj.get_plugin_manager("pkg_type")
+        pm: PluginManager = self._tingistry_obj.get_plugin_manager("pkg_type")
 
         resolver: PkgType = pm.get_plugin_for(pkg_type)
         if resolver is None:

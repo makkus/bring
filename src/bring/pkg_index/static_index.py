@@ -8,8 +8,8 @@ from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.utils import retrieve_index_file_content
 from bring.utils import BringTaskDesc
-from frtls.exceptions import FrklException
-from frtls.tasks import SingleTaskAsync, Task
+from frkl.common.exceptions import FrklException
+from frkl.tasks.task import SingleTaskAsync, Task
 from tings.ting import TingMeta
 
 

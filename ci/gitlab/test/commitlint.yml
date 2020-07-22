@@ -1,0 +1,11 @@
+bring_test_commitlint:
+  stage: test
+  image: node:8
+  only:
+    - master
+    - merge_requests
+    - develop
+  script:
+    - npm install -g @commitlint/cli @commitlint/config-conventional
+    - export LAST_TAG=$(git describe --abbrev=0 --tags) # get last tag
+    - commitlint --from=$LAST_TAG   # check commit convention from last tag

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
-from frtls.dicts import dict_merge
+from frkl.common.dicts import dict_merge
 from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 

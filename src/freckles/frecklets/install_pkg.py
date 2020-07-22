@@ -10,15 +10,15 @@ from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from freckles.core.frecklet import Frecklet
 from freckles.core.vars import VarSet
-from frtls.args.arg import Arg, RecordArg
-from frtls.files import create_temp_dir
-from frtls.targets.local_folder import TrackingLocalFolder
-from frtls.tasks import PostprocessTask, Task
-from frtls.templating.regex import (
+from frkl.args.arg import Arg, RecordArg
+from frkl.common.filesystem import create_temp_dir
+from frkl.common.regex import (
     create_var_regex,
     find_var_names_in_obj,
     replace_var_names_in_obj,
 )
+from frkl.targets.local_folder import TrackingLocalFolder
+from frkl.tasks.task import PostprocessTask, Task
 from sortedcontainers import SortedDict
 from tings.ting import TingMeta
 
@@ -77,7 +77,7 @@ def parse_target_data(
     }
 
 
-class BringInstallFrecklet(Frecklet):
+class BringFrecklet(Frecklet):
     def __init__(self, name: str, meta: TingMeta, init_values: Mapping[str, Any]):
 
         self._bring: Bring
@@ -96,6 +96,8 @@ class BringInstallFrecklet(Frecklet):
 
         return self._bring  # type: ignore
 
+
+class BringInstallFrecklet(BringFrecklet):
     async def get_base_args(self) -> Mapping[str, Union[str, Arg, Mapping[str, Any]]]:
 
         return {
@@ -227,20 +229,7 @@ class BringInstallFrecklet(Frecklet):
         return task
 
 
-class BringInstallAssemblyFrecklet(Frecklet):
-    def __init__(self, name: str, meta: TingMeta, init_values: Mapping[str, Any]):
-
-        self._bring: Bring
-        super().__init__(name=name, meta=meta, init_values=init_values)
-
-    async def init_frecklet(self, init_values: Mapping[str, Any]):
-
-        self._bring = init_values["bring"]
-        bring_defaults = await self._bring.get_defaults()
-        self.input_sets.add_defaults(
-            _id="bring_defaults", _priority=10, **bring_defaults
-        )
-
+class BringInstallAssemblyFrecklet(BringFrecklet):
     async def create_pkg_map(
         self, pkg_list: Iterable[Union[str, Mapping[str, Any]]]
     ) -> Mapping[str, Mapping[str, Any]]:

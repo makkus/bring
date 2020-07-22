@@ -1,0 +1,7 @@
+bring_test_mypy:
+  image: python:3.8
+  stage: test
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
+  script:
+    - mypy src/bring

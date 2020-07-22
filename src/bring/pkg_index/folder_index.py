@@ -8,9 +8,10 @@ from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.pkgs import Pkgs
 from bring.utils import BringTaskDesc
 from bring.utils.git import ensure_repo_cloned
-from frtls.exceptions import FrklException
-from frtls.strings import is_git_repo_url
-from frtls.tasks import ParallelTasksAsync, SingleTaskAsync, Task
+from frkl.common.exceptions import FrklException
+from frkl.common.strings import is_git_repo_url
+from frkl.tasks.task import SingleTaskAsync, Task
+from frkl.tasks.tasks import ParallelTasksAsync
 from tings.makers import TingMaker
 from tings.ting import TingMeta
 

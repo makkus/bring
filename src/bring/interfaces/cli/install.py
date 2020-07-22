@@ -6,11 +6,11 @@ import asyncclick as click
 from bring.bring import Bring
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
-from frtls.args.arg import Arg
-from frtls.async_helpers import wrap_async_task
-from frtls.cli.exceptions import handle_exc_async
-from frtls.cli.group import FrklBaseCommand
-from frtls.types.utils import generate_valid_identifier
+from frkl.args.arg import Arg
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.cli.exceptions import handle_exc_async
+from frkl.common.strings import generate_valid_identifier
 
 
 INSTALL_HELP = """Install one or several packages."""

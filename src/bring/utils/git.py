@@ -2,9 +2,9 @@
 import os
 
 from bring.defaults import BRING_GIT_CHECKOUT_CACHE
-from frtls.downloads import calculate_cache_path
-from frtls.files import ensure_folder
-from frtls.subprocesses.git import GitProcess
+from frkl.common.downloads.cache import calculate_cache_path
+from frkl.common.filesystem import ensure_folder
+from frkl.common.subprocesses import GitProcess
 
 
 async def ensure_repo_cloned(url, update=False) -> str:

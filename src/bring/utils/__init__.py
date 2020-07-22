@@ -10,7 +10,7 @@ from bring.defaults import (
     BRING_METADATA_FOLDER_NAME,
     BRING_TASKS_BASE_TOPIC,
 )
-from frtls.tasks import TaskDesc
+from frkl.tasks.task_desc import TaskDesc
 
 
 def is_valid_bring_target(target: Union[str, Path]):

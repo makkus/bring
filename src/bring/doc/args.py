@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import Any, List, Mapping, MutableMapping, Optional
 
-from frtls.doc.doc import Doc
-from frtls.doc.explanation import to_value_string
+from frkl.common.doc import Doc
+from frkl.common.formats.serialize import to_value_string
 from rich import box
 from rich.table import Table
 

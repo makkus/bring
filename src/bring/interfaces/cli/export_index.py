@@ -12,7 +12,7 @@ from bring.bring import Bring
 from bring.defaults import BRING_METADATA_FOLDER_NAME, DEFAULT_FOLDER_INDEX_NAME
 from bring.interfaces.cli import console
 from bring.pkg_index.utils import IndexDiff
-from frtls.files import ensure_folder
+from frkl.common.filesystem import ensure_folder
 
 
 log = logging.getLogger("bring")

@@ -7,9 +7,9 @@ from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import SimplePkgType
 from bring.utils import find_version, replace_var_aliases
-from frtls.async_helpers import wrap_async_task
-from frtls.exceptions import FrklException
-from frtls.types.utils import is_instance_or_subclass
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.exceptions import FrklException
+from frkl.common.types import isinstance_or_subclass
 
 
 class BringPkgsResolver(SimplePkgType):
@@ -131,7 +131,7 @@ class BringPkgsResolver(SimplePkgType):
                 reason=f"Requested child pkg '{ting_name}' not among available pkgs:\n\n{pkg_list_string}",
             )
 
-        if not is_instance_or_subclass(ting, PkgTing):
+        if not isinstance_or_subclass(ting, PkgTing):
             raise FrklException(
                 msg="Can't resolve bring pkg.",
                 reason=f"Parent pkg '{ting_name}' does not sub-class the PkgTing class.",

@@ -5,10 +5,10 @@ from typing import Any, Dict, Mapping, MutableMapping, Optional, Union
 import arrow
 from bring.interfaces.cli import bring_code_theme
 from bring.pkg_index.index import BringIndexTing
-from frtls.async_helpers import wrap_async_task
-from frtls.doc.doc import Doc
-from frtls.doc.explanation.info import InfoExplanation
-from frtls.doc.utils import create_dict_element
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.cli.output_utils import create_dict_element
+from frkl.common.doc import Doc
+from frkl.explain.explanations.doc import InfoExplanation
 from rich import box
 from rich.syntax import Syntax
 from rich.table import Table

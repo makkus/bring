@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from typing import Any, Iterable, Mapping, Optional, Union
 
-from frtls.files import ensure_folder
+from frkl.common.filesystem import ensure_folder
 from pathspec import PathSpec, patterns
 
 

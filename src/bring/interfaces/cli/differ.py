@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncclick as click
 from dictdiffer import diff
-from frtls.formats.input_formats import SmartInput
+from frkl.common.formats.auto import AutoInput
 from ruamel.yaml import YAML
 
 
@@ -22,7 +22,7 @@ def dev(ctx):
 async def differ(ctx, path):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
-    si = SmartInput(path)
+    si = AutoInput(path)
     content = await si.content_async()
 
     yaml = YAML()

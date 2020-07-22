@@ -4,9 +4,9 @@ from typing import Any, Dict, Mapping, Optional
 import arrow
 from bring.doc.args import create_table_from_pkg_args
 from bring.pkg_index.pkg import PkgTing
-from frtls.async_helpers import wrap_async_task
-from frtls.doc.doc import Doc
-from frtls.doc.explanation.info import InfoExplanation
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.doc import Doc
+from frkl.explain.explanations.doc import InfoExplanation
 
 
 class PkgInfoDisplay(InfoExplanation):

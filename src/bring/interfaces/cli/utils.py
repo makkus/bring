@@ -8,7 +8,7 @@ from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.pkg_index.index import BringIndexTing
-from frtls.async_helpers import wrap_async_task
+from frkl.common.async_utils import wrap_async_task
 
 
 log = logging.getLogger("bring")

@@ -1,0 +1,13 @@
+bring_build_binary_linux:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev
+    entrypoint: [""]
+  stage: build
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "scripts/build-binary/build.sh"
+  artifacts:
+    paths:
+      - dist/linux-gnu/bring

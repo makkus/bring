@@ -4,8 +4,8 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, List, Optional
 
 from asyncclick import Command
-from frtls.cli.group import FrklBaseCommand
-from frtls.types.typistry import Typistry
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.types.typistry import Typistry
 
 
 if TYPE_CHECKING:

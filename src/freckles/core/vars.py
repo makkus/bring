@@ -4,7 +4,7 @@ import uuid
 from enum import Enum
 from typing import Any, Mapping, Optional
 
-from frtls.args.arg import Arg
+from frkl.args.arg import Arg
 
 
 @functools.total_ordering

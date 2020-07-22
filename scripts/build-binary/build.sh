@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEFAULT_PYTHON_VERSION="3.7.7"
+DEFAULT_PYTHON_VERSION="3.7.8"
 DEFAULT_PYINSTALLER_VERSION="3.6"
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -20,10 +20,21 @@ if ! command_exists realpath; then
           _LNK="$(readlink "$_LNK")"
           cd "$(dirname "$_LNK")"
       fi
-      echo "$PWD/$(basename "$_LNK")"
+      local _basename=$(basename "$_LNK")
+
+      if [[ "${_basename}" = "/" ]]; then
+          _basename=""
+      fi
+      if [[ "${PWD}" = "/" ]]; then
+          echo "/${_basename}"
+      else
+          echo "$PWD/${_basename}"
+      fi
+
       cd "$_X"
 
   }
+
 fi
 
 function prepare () {
@@ -44,18 +55,8 @@ function prepare () {
     echo
 
     local venv_path="${HOME}/.pyenv/versions/${venv_name}"
-    if [ -n "${venv_name}" ] && [ -n "${requirements_file}" ]; then
-      echo "preparing build"
-      install_requirements "${venv_path}" "${requirements_file}" "${pyinstaller_version}"
-    fi
-
-    source "${venv_path}/bin/activate"
-
-    pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev "${project_root}[all]"
-    pip list
-    bring self info
-
-    deactivate
+    echo "preparing build"
+    install_requirements "${venv_path}" "${pyinstaller_version}" "${requirements_file}"
 
     mkdir -p "${output_dir}"
 
@@ -108,19 +109,25 @@ function ensure_dependencies () {
 function install_requirements () {
 
     local venv_path="${1}"
-    local requirements_file="${2}"
-    local pyinstaller_version="${3}"
+    local pyinstaller_version="${2}"
+    local requirements_file="${3}"
 
     source "${venv_path}/bin/activate"
 
     echo "installing dependencies from: ${requirements_file}"
 
     pip install -U pip
-    pip install setuptools==44.0.0
+    pip install -U setuptools
     pip install -U pp-ez
     pip install "pyinstaller==${pyinstaller_version}"
 
-    pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -r "${requirements_file}"
+    if [ -n "${requirements_file}" ]; then
+        pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -r "${requirements_file}"
+    fi
+
+    pip install git+https://gitlab.com/frkl/frkl.project_meta.git
+
+    pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev "${project_root}[all, build]"
 
     deactivate
 
@@ -183,25 +190,14 @@ function main () {
 
     local venv_path="${HOME}/.pyenv/versions/${venv_name}"
 
-    if [ -f /.dockerenv ]; then
+    if [ -f /.dockerenv ] || [ "$DOCKER_BUILD" != true ]; then
 
            prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${project_root}" "${output_dir}"
-           source "${venv_path}/bin/activate"
-           build_artifact "${project_root}" "${build_dir}" "${venv_path}" "${output_dir}" "${OS_TYPE}" "${spec_file}"
+           build_artifact "${project_root}" "${build_dir}" "${venv_path}" "${output_dir}" "${OSTYPE}" "${spec_file}"
 
     else
-
-        if [ "$DOCKER_BUILD" = true ]; then
-
+            # TODO: fix this
             docker run -v "${THIS_DIR}/..:/src/" registry.gitlab.com/freckles-io/freckles-build "${entrypoint}"
-#            docker run -v "${THIS_DIR}/../:/src/" freckles-build-debian
-
-        else
-
-            prepare "${build_dir}" "${venv_name}" "${python_version}" "${pyinstaller_version}" "${requirements_file}" "${project_root}" "${output_dir}"
-            build_artifact "${project_root}" "${build_dir}" "${venv_path}" "${output_dir}" "${OSTYPE}" "${spec_file}"
-
-        fi
 
     fi
 }
@@ -294,14 +290,14 @@ fi
 
 if [ -z "${REQUIREMENTS_FILE}" ]
 then
-  REQUIREMENTS_FILE="${PROJECT_ROOT}/ci/build-binary/requirements-build.txt"
+  REQUIREMENTS_FILE="${PROJECT_ROOT}/requirements-build.txt"
 fi
-if [ ! -f "${REQUIREMENTS_FILE}" ]
+if [ -f "${REQUIREMENTS_FILE}" ]
 then
-  echo "requirements file '${REQUIREMENTS_FILE} does not exist"
-  exit 1
+  REQUIREMENTS_FILE=$(realpath "${REQUIREMENTS_FILE}")
+else
+  unset REQUIREMENTS_FILE
 fi
-REQUIREMENTS_FILE=$(realpath "${REQUIREMENTS_FILE}")
 
 if [ -z "${OUTPUT_DIR}" ]
 then
@@ -317,7 +313,7 @@ OUTPUT_DIR=$(realpath "${OUTPUT_DIR}")
 
 if [ -z ${SPEC_FILE} ]
 then
-  SPEC_FILE="${PROJECT_ROOT}/scripts/build-binary/onefile.spec"
+  SPEC_FILE="${THIS_DIR}/onefile.spec"
 fi
 if [ ! -f "${SPEC_FILE}" ]
 then

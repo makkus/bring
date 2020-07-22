@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 from anyio import create_task_group
 from bring.pkg_index.pkg import PkgTing
 from colorama import Fore, Style
-from frtls.formats.output_formats import create_two_column_table
+from frkl.common.cli.output_utils import create_two_column_table
 from sortedcontainers import SortedDict
 from tings.exceptions import TingTaskException
 

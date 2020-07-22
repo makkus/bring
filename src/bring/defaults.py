@@ -4,10 +4,10 @@ import sys
 from typing import Any, Dict, Mapping
 
 from appdirs import AppDirs
-from frtls.templating.jinja import get_global_jinja_env
+from frkl.common.jinja_templating import get_global_jinja_env
 
 
-BRING_APP_DIRS = AppDirs("bring", "frkl")
+bring_app_dirs = AppDirs("bring", "frkl")
 
 if not hasattr(sys, "frozen"):
     BRING_MODULE_BASE_FOLDER = os.path.dirname(__file__)
@@ -21,18 +21,19 @@ else:
 BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
 # BRING_DEFAULT_CONTEXTS_FOLDER = os.path.join(BRING_RESOURCES_FOLDER, "default_indexes")
 
-BRING_DOWNLOAD_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "downloads")
+BRING_DOWNLOAD_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "downloads")
 BRING_INDEX_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "indexes")
 
-BRING_GIT_CHECKOUT_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "git_checkouts")
+BRING_GIT_CHECKOUT_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "git_checkouts")
 
-BRING_WORKSPACE_FOLDER = os.path.join(BRING_APP_DIRS.user_cache_dir, "workspace")
+BRING_WORKSPACE_FOLDER = os.path.join(bring_app_dirs.user_cache_dir, "workspace")
 BRING_RESULTS_FOLDER = os.path.join(BRING_WORKSPACE_FOLDER, "results")
 
-BRING_PKG_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "pkgs")
-BRING_PLUGIN_CACHE = os.path.join(BRING_APP_DIRS.user_cache_dir, "plugins")
+BRING_PKG_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "pkgs")
+BRING_PKG_VERSION_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "pkg_versions")
+BRING_PLUGIN_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "plugins")
 
-BRING_BACKUP_FOLDER = os.path.join(BRING_APP_DIRS.user_data_dir, "backup")
+BRING_BACKUP_FOLDER = os.path.join(bring_app_dirs.user_data_dir, "backup")
 
 DEFAULT_CONTEXT_NAME = "binaries"
 
@@ -44,7 +45,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.plugins.templating.*",
     "bring.pkg_index.*",
     "bring.config",
-    "frtls.tasks.watchers.*",
+    "frkl.tasks.task_watchers.*",
     "freckles.core.*",
     "freckles.frecklets.*",
 ]
@@ -138,7 +139,7 @@ BRING_DEFAULT_CONFIG_PROFILE = {
     "ting_class": "folder_config_profiles_ting",
     "prototing_factory": "singleting",
     # "default_config": BRING_DEFAULT_CONFIG,
-    "config_path": BRING_APP_DIRS.user_config_dir,
+    "config_path": bring_app_dirs.user_config_dir,
     "config_file_ext": "config",
 }
 
@@ -178,7 +179,7 @@ BRINGISTRY_INIT = {
     "classes": [
         "bring.pkg_types.PkgType",
         "bring.mogrify.Mogrifier",
-        "frtls.tasks.task_watcher.TaskWatcher",
+        "frkl.tasks.task_watchers.TaskWatcher",
     ],
 }
 

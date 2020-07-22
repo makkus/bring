@@ -7,12 +7,12 @@ import asyncclick as click
 from bring.config import ConfigTing
 from bring.config.bring_config import BringConfig
 from bring.interfaces.cli import bring_code_theme, console
-from frtls.cli.exceptions import handle_exc_async
-from frtls.cli.group import FrklBaseCommand
-from frtls.doc.doc import Doc
-from frtls.doc.explanation.args import ArgsExplanation
-from frtls.doc.explanation.info import InfoExplanation, InfoListExplanation
-from frtls.doc.utils import create_dict_element
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.args.explain import ArgsExplanation
+from frkl.common.cli.exceptions import handle_exc_async
+from frkl.common.cli.output_utils import create_dict_element
+from frkl.common.doc import Doc
+from frkl.explain.explanations.doc import InfoExplanation, InfoListExplanation
 
 
 CONFIG_HELP = """Configuration-related utility commands.

@@ -9,8 +9,8 @@ from bring.utils.pkgs import (
     create_pkg_info_table_string,
     get_values_for_pkgs,
 )
-from frtls.cli.group import FrklBaseCommand
-from frtls.strings import reindent
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.common.strings import reindent
 
 
 class BringListPkgsGroup(FrklBaseCommand):

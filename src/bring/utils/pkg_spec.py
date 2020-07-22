@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
-from frtls.types.utils import is_instance_or_subclass
+from frkl.common.types import isinstance_or_subclass
 
 
 log = logging.getLogger("bring")
@@ -20,7 +20,7 @@ class PkgSpec(object):
     @classmethod
     def create(cls, pkg_spec: Any) -> "PkgSpec":
 
-        if is_instance_or_subclass(pkg_spec, PkgSpec):
+        if isinstance_or_subclass(pkg_spec, PkgSpec):
             return pkg_spec
 
         if not pkg_spec:

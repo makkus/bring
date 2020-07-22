@@ -10,9 +10,9 @@ from bring.mogrify import Mogrifier
 from bring.pkg_types import PkgType
 from bring.utils.doc import create_pkg_type_markdown_string
 from freckles.core.freckles import Freckles
-from frtls.args.renderers.rich import to_rich_table
-from frtls.cli.group import FrklBaseCommand
-from frtls.types.typistry import Typistry
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.args.renderers.rich import to_rich_table
+from frkl.types.typistry import Typistry
 from rich import box
 from rich.console import RenderGroup
 from rich.markdown import Markdown

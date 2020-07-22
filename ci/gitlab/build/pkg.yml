@@ -1,0 +1,53 @@
+.bring_build_pkg:
+  stage: build
+  before_script:
+    - pip install devpi-client
+    - rm -rf dist build
+    - devpi use https://pkgs.frkl.io/
+    - devpi login frkl --password="${DEVPI_PASSWORD}"
+  script:
+    - devpi use /frkl/dev
+    - devpi upload
+  artifacts:
+    paths:
+      - dist/
+
+bring_build_pkg_dev:
+  extends: .bring_build_pkg
+  only:
+    - develop
+  artifacts:
+    expire_in: 1 month
+
+bring_build_pkg_beta:
+  only:
+    - /^\d+\.\d+\.\d+b\d+$/
+  except:
+    - branches
+  script:
+    - devpi use /frkl/beta
+    - devpi upload
+    - UPLOAD_FILE=(dist/*.tar.gz)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+    - UPLOAD_FILE=(dist/*.whl)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+  artifacts:
+    paths:
+      - dist/
+
+bring_build_pkg_tag:
+  extends: .bring_build_pkg
+  only:
+    - /^\d+\.\d+\.\d+$/
+  except:
+    - branches
+  script:
+    - devpi use /frkl/stable
+    - devpi upload
+    - UPLOAD_FILE=(dist/*.tar.gz)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+    - UPLOAD_FILE=(dist/*.whl)
+    - "curl -F package=@${UPLOAD_FILE} https://${GEMFURY_TOKEN}@push.fury.io/frkl/"
+  artifacts:
+    paths:
+      - dist/

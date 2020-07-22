@@ -20,11 +20,12 @@ from typing import (
 import arrow
 from anyio import aopen
 from bring.defaults import BRING_PKG_CACHE, DEFAULT_ARGS_DICT, PKG_RESOLVER_DEFAULTS
-from frtls.dicts import dict_merge, get_seeded_dict
-from frtls.files import ensure_folder, generate_valid_filename
-from frtls.strings import from_camel_case
-from frtls.templating.jinja import get_template_schema, template_schema_to_args
-from frtls.templating.regex import find_var_names_in_obj, replace_var_names_in_obj
+from frkl.common.dicts import dict_merge, get_seeded_dict
+from frkl.common.files import generate_valid_filename
+from frkl.common.filesystem import ensure_folder
+from frkl.common.jinja_templating import get_template_schema, template_schema_to_args
+from frkl.common.regex import find_var_names_in_obj, replace_var_names_in_obj
+from frkl.common.strings import from_camel_case
 
 
 if TYPE_CHECKING:

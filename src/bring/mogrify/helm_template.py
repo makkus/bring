@@ -3,8 +3,8 @@ import os
 from typing import Any, Dict, Mapping
 
 from bring.mogrify import SimpleMogrifier
-from frtls.formats.output_formats import serialize
-from frtls.subprocesses import AsyncSubprocess
+from frkl.common.formats.serialize import serialize
+from frkl.common.subprocesses import AsyncSubprocess
 
 
 class HelmTemplateMogrifier(SimpleMogrifier):

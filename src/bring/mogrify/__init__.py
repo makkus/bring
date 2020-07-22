@@ -10,13 +10,15 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Type, Union
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.utils import BringTaskDesc
-from frtls.doc.explanation.steps import StepsExplanation
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.tasks import Task, Tasks, TasksResult
-from frtls.templating.jinja import replace_strings_in_obj
-from frtls.types.plugins import TypistryPluginManager
-from frtls.types.utils import generate_valid_identifier
+from frkl.common.exceptions import FrklException
+from frkl.common.filesystem import ensure_folder
+from frkl.common.jinja_templating import replace_strings_in_obj
+from frkl.common.strings import generate_valid_identifier
+from frkl.tasks.explain import StepsExplanation
+from frkl.tasks.task import Task
+from frkl.tasks.task_result import TasksResult
+from frkl.tasks.tasks import Tasks
+from frkl.types.plugins import PluginManager
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -329,7 +331,7 @@ class Transmogritory(SimpleTing):
     def __init__(self, name: str, meta: TingMeta, _load_plugins_at_init: bool = True):
 
         self._tingistry_obj: Tingistry = meta.tingistry
-        self._plugin_manager: Optional[TypistryPluginManager] = None
+        self._plugin_manager: Optional[PluginManager] = None
 
         super().__init__(name=name, meta=meta)
         if _load_plugins_at_init:
@@ -349,7 +351,7 @@ class Transmogritory(SimpleTing):
         return {}
 
     @property
-    def plugin_manager(self) -> TypistryPluginManager:
+    def plugin_manager(self) -> PluginManager:
 
         if self._plugin_manager is not None:
             return self._plugin_manager

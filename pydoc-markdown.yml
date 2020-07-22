@@ -1,0 +1,14 @@
+loaders:
+  - type: python
+processors:
+  - type: filter
+  - type: smart
+  - type: crossref
+renderer:
+  type: markdown
+  filename: docs/api-documentation.md
+  docstrings_as_blockquote: false
+  render_toc: false
+  toc_maxdepth: 4
+  html_headers: false
+  insert_header_anchors: true

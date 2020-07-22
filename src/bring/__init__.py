@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import io
+import logging
 import os
 
 from pkg_resources import DistributionNotFound, get_distribution
 
+
+log = logging.getLogger("bring")
 
 """Top-level package for bring."""
 
@@ -34,3 +37,13 @@ except DistributionNotFound:
 
 finally:
     del get_distribution, DistributionNotFound
+
+try:
+    from frkl.project_meta.app_environment import AppEnvironment
+
+    BRING: AppEnvironment = AppEnvironment(main_module="bring")
+except Exception as e:
+    log.debug(
+        f"Can't create AppEnvironment (probably pkg 'frkl.project_meta' not in virtualenv): {e}"
+    )
+    BRING = None  # type: ignore

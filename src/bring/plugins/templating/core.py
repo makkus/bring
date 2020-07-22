@@ -3,7 +3,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from bring.pkg_index.pkg import PkgTing
-from frtls.exceptions import FrklException
+from frkl.common.exceptions import FrklException
 from tings.common.templating import TemplaTing, TemplaTingRepo
 
 

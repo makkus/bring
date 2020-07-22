@@ -5,8 +5,8 @@ from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from dictdiffer import patch
-from frtls.exceptions import FrklException
-from frtls.formats.input_formats import SmartInput
+from frkl.common.exceptions import FrklException
+from frkl.common.formats.auto import AutoInput
 from ruamel.yaml import YAML
 
 
@@ -46,8 +46,8 @@ class YamlPatchMogrifier(SimpleMogrifier):
 
     async def patch(self, full_path: str, patch_set: Mapping) -> None:
 
-        si = SmartInput(full_path)
-        content = await si.content_async()
+        si = AutoInput(full_path)
+        content = await si.get_content_async()
         yaml = YAML()
         dict_content = yaml.load_all(content)
         new_content = patch(patch_set, list(dict_content))

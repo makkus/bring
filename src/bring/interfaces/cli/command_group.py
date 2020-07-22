@@ -4,15 +4,17 @@ from collections import Iterable
 from typing import Any, Mapping, Optional
 
 from asyncclick import Choice, Option
+from bring import BRING
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT
 from bring.interfaces.cli.export_index import BringExportIndexCommand
 from freckles.core.freckles import Freckles
-from frtls.cli.group import FrklBaseCommand
-from frtls.cli.logging import logzero_option_obj_async
-from frtls.cli.terminal import create_terminal
-from frtls.types.utils import load_modules
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.common.cli import get_console
+from frkl.common.cli.logging import logzero_option_obj_async
+from frkl.common.types import load_modules
+from rich.console import Console
 
 
 COMMAND_GROUP_HELP = """'bring' is a package manager for files and file-sets.
@@ -32,7 +34,7 @@ class BringCommandGroup(FrklBaseCommand):
         kwargs = {}
         kwargs["help"] = COMMAND_GROUP_HELP
 
-        terminal = create_terminal()
+        self._console: Console = get_console()
 
         self._freckles = Freckles.get_default()
         self._tingistry_obj = self._freckles.tingistry
@@ -42,7 +44,7 @@ class BringCommandGroup(FrklBaseCommand):
 
         index_setting = dict(
             # default_map={},
-            max_content_width=terminal.width,
+            max_content_width=self._console.width,
             help_option_names=["-h", "--help"],
         )
         kwargs["context_settings"] = index_setting
@@ -142,7 +144,7 @@ class BringCommandGroup(FrklBaseCommand):
             "export-index",
             "config",
             "doc",
-            # "plugin",
+            "plugin",
             "self",
             # "differ",
         ]
@@ -212,11 +214,11 @@ class BringCommandGroup(FrklBaseCommand):
         #
         #     command = BringProcessGroup(bring=self.bring, name="process")
         #     command.short_help = "process on or a list of packages"
-        elif name == "plugin":
-            from bring.interfaces.cli.plugin import BringPluginGroup
-
-            command = BringPluginGroup(bring=self.bring, name="plugin")
-            command.short_help = "install one or a list of packages"
+        # elif name == "plugin":
+        #     from bring.interfaces.cli.plugin import BringPluginGroup
+        #
+        #     command = BringPluginGroup(bring=self.bring, name="plugin")
+        #     command.short_help = "install one or a list of packages"
 
         elif name == "update":
             from bring.interfaces.cli.update import BringUpdateCommand
@@ -234,6 +236,12 @@ class BringCommandGroup(FrklBaseCommand):
 
             command = dev
 
+        elif name == "plugin":
+            ctx.obj["bring"] = self.bring
+            from bring.interfaces.cli.plugin import plugin
+
+            command = plugin
+
         elif name == "export-index":
 
             command = BringExportIndexCommand(bring=self.bring, name="export")
@@ -241,9 +249,9 @@ class BringCommandGroup(FrklBaseCommand):
 
         elif name == "self":
 
-            from frtls.cli.self_command_group import self_command
+            from frkl.args.cli.click_commands.self_command import SelfCommandGroup
 
-            command = self_command
+            command = SelfCommandGroup(app_env=BRING)
 
         elif name == "differ":
             from bring.interfaces.cli.differ import differ

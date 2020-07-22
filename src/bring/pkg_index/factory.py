@@ -25,9 +25,9 @@ from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.folder_index import BringDynamicIndexTing
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.utils import ensure_index_file_is_local
-from frtls.dicts import dict_merge
-from frtls.exceptions import FrklException
-from frtls.strings import is_git_repo_url, is_url_or_abbrev
+from frkl.common.dicts import dict_merge
+from frkl.common.exceptions import FrklException
+from frkl.common.strings import is_git_repo_url, is_url_or_abbrev
 from tings.tingistry import Tingistry
 
 

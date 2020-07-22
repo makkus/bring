@@ -7,10 +7,10 @@ from typing import Any, Iterable, Mapping, MutableMapping, Optional, Union
 # from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.mogrify import SimpleMogrifier
 from bring.utils.pkg_spec import PATH_KEY, PkgSpec
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.targets import MetadataFileItem, TargetItem
-from frtls.targets.local_folder import LocalFolder, log
+from frkl.common.exceptions import FrklException
+from frkl.common.filesystem import ensure_folder
+from frkl.targets.local_folder import LocalFolder, log
+from frkl.targets.target import MetadataFileItem, TargetItem
 
 
 class PkgContentLocalFolder(LocalFolder):

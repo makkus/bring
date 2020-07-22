@@ -3,9 +3,9 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List, Mapping, Tuple
 
 from bring.utils.system_info import get_current_system_info
-from frtls.dicts import get_seeded_dict
-from frtls.exceptions import FrklException
-from frtls.types.typistry import Typistry
+from frkl.common.dicts import get_seeded_dict
+from frkl.common.exceptions import FrklException
+from frkl.types.typistry import Typistry
 
 
 class DefaultsProducer(metaclass=ABCMeta):

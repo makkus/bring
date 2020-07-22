@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import List
 
-from blessed import Terminal
+import asyncclick as click
 from bring.bring import Bring
-from bring.plugins.cli import BringCliPlugin, get_cli_plugins
-from frtls.cli.group import FrklBaseCommand
+from bring.interfaces.cli import console
+from frkl.common.cli.exceptions import handle_exc_async
 
 
 log = logging.getLogger("bring")
@@ -13,36 +12,65 @@ log = logging.getLogger("bring")
 PLUGIN_HELP = """Execute one of the available plugins"""
 
 
-class BringPluginGroup(FrklBaseCommand):
-    def __init__(
-        self, bring: Bring, name: str = None, terminal: Terminal = None, **kwargs
-    ):
-        """Install"""
+# class BringPluginGroup(FrklBaseCommand):
+#     def __init__(
+#         self, bring: Bring, name: str = None, terminal: Terminal = None, **kwargs
+#     ):
+#         """Install"""
+#
+#         # self.print_version_callback = print_version_callback
+#         self._bring = bring
+#         kwargs["help"] = PLUGIN_HELP
+#
+#         self._plugins: List[BringCliPlugin] = get_cli_plugins(self._bring)
+#
+#         super(BringPluginGroup, self).__init__(
+#             name=name, arg_hive=bring.arg_hive, **kwargs
+#         )
+#
+#     async def _list_commands(self, ctx):
+#
+#         result = []
+#         for p in self._plugins:
+#             command = await p.get_command()
+#             result.append(command.name)
+#
+#         return result
+#
+#     async def _get_command(self, ctx, name):
+#
+#         for p in self._plugins:
+#             command = await p.get_command()
+#             if command.name == name:
+#                 return command
+#
+#         return None
 
-        # self.print_version_callback = print_version_callback
-        self._bring = bring
-        kwargs["help"] = PLUGIN_HELP
 
-        self._plugins: List[BringCliPlugin] = get_cli_plugins(self._bring)
+@click.command()
+@click.pass_context
+@handle_exc_async
+async def plugin(ctx):
+    """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
-        super(BringPluginGroup, self).__init__(
-            name=name, arg_hive=bring.arg_hive, **kwargs
-        )
+    bring: Bring = ctx.obj["bring"]
 
-    async def _list_commands(self, ctx):
+    print(bring)
 
-        result = []
-        for p in self._plugins:
-            command = await p.get_command()
-            result.append(command.name)
+    fc = {"type": "template"}
 
-        return result
+    frecklet = await bring.freckles.create_frecklet(fc)
 
-    async def _get_command(self, ctx, name):
+    frecklet.input_sets.add_input_values(template="zile-config")
+    print(frecklet)
 
-        for p in self._plugins:
-            command = await p.get_command()
-            if command.name == name:
-                return command
+    msg = await frecklet.get_msg()
+    print(msg)
+    pi = frecklet.input_sets.explain()
+    console.print(pi)
 
-        return None
+    vals = await frecklet.get_values(raise_exception=True)
+    print(vals)
+
+    # result = await frecklet.get_frecklet_result()
+    # console.print(result)

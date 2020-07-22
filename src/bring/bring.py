@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
 
 from anyio import Lock, create_lock, create_task_group
+from bring import BRING
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
 from bring.interfaces.cli import console
@@ -17,15 +18,14 @@ from bring.pkg_index.pkg import PkgTing
 from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
 from freckles.core.freckles import Freckles
-from frtls.args.hive import ArgHive
-from frtls.async_helpers import wrap_async_task
-from frtls.exceptions import FrklException
-from frtls.files import ensure_folder
-from frtls.introspection.pkg_env import AppEnvironment
-from frtls.tasks import ParallelTasksAsync, Tasks
-from frtls.tasks.task_watcher import TaskWatchManager
-from frtls.tasks.watchers.rich import RichTaskWatcher
-from frtls.types.utils import is_instance_or_subclass
+from frkl.args.hive import ArgHive
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.exceptions import FrklException
+from frkl.common.filesystem import ensure_folder
+from frkl.common.types import isinstance_or_subclass
+from frkl.tasks.task_watchers import TaskWatchManager
+from frkl.tasks.task_watchers.rich import RichTaskWatcher
+from frkl.tasks.tasks import ParallelTasksAsync, Tasks
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -262,7 +262,7 @@ class Bring(SimpleTing):
         allow_existing: bool = False,
     ) -> BringIndexTing:
 
-        if is_instance_or_subclass(index_data, BringIndexTing):
+        if isinstance_or_subclass(index_data, BringIndexTing):
             index: BringIndexTing = index_data  # type: ignore
         else:
             index = await self.create_index(
@@ -364,7 +364,7 @@ class Bring(SimpleTing):
 
     async def run_async_tasks(self, tasks: Tasks, subtopic: Optional[str] = None):
 
-        twm: TaskWatchManager = AppEnvironment().get_global("task_watcher")
+        twm: TaskWatchManager = BRING.get_global("task_watcher")
         # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)
         tlc = {
             "type": "rich",
@@ -590,6 +590,7 @@ def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
         prototing_name_install_assembly = (
             f"{bring.full_name}.frecklets.install_assembly"
         )
+
         if prototing_name_install_assembly not in freckles.tingistry.ting_names:
             freckles.tingistry.register_prototing(
                 prototing_name_install_assembly,
@@ -598,5 +599,17 @@ def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
             )
         to_add["install_assembly"] = prototing_name_install_assembly
 
+    if "template" not in current.keys():
+
+        from freckles.frecklets.template import BringTemplateFrecklet
+
+        prototing_name_template = f"{bring.full_name}.frecklets.template"
+        if prototing_name_template not in freckles.tingistry.ting_names:
+            freckles.tingistry.register_prototing(
+                prototing_name_template,
+                BringTemplateFrecklet,
+                init_values={"bring": bring},
+            )
+        to_add["template"] = prototing_name_template
     if to_add:
         wrap_async_task(freckles.add_frecklet_types, _raise_exception=True, **to_add)

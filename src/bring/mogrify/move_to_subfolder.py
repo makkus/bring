@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
 from bring.utils.paths import find_matches
-from frtls.files import ensure_folder
+from frkl.common.filesystem import ensure_folder
 
 
 log = logging.getLogger("bring")

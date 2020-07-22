@@ -2,10 +2,12 @@
 import os
 
 from bring.defaults import BRINGISTRY_PRELOAD_MODULES
-from frtls.types.utils import load_modules
+from frkl.common.types import load_modules
 
 
-app_name = "bring"
+project_name = "bring"
+exe_name = "bring"
+project_main_module = "bring"
 
 _hi = load_modules(BRINGISTRY_PRELOAD_MODULES)  # type: ignore
 

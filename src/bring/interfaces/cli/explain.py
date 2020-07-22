@@ -13,10 +13,10 @@ from bring.interfaces.cli import console
 from bring.interfaces.cli.config import BringContextGroup
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
-from frtls.args.hive import ArgHive
-from frtls.cli.group import FrklBaseCommand
-from frtls.doc.explanation.info import InfoListExplanation
-from frtls.targets.local_folder import TrackingLocalFolder
+from frkl.args.cli.click_commands import FrklBaseCommand
+from frkl.args.hive import ArgHive
+from frkl.explain.explanations.doc import InfoListExplanation
+from frkl.targets.local_folder import TrackingLocalFolder
 
 
 log = logging.getLogger("bring")

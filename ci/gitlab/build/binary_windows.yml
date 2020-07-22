@@ -1,0 +1,15 @@
+bring_build_binary_windows:
+  image:
+    name: registry.gitlab.com/frkl/frkl-python-build:dev-win
+    entrypoint: [""]
+  stage: build_windows
+  needs:
+    - bring_build_pkg_dev
+  variables:
+    SRCDIR: $CI_PROJECT_DIR
+    TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+  script:
+    - "/opt/entrypoint.sh"
+  artifacts:
+    paths:
+      - dist/windows/bring.exe

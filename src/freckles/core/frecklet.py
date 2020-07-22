@@ -17,27 +17,41 @@ from typing import (
 )
 
 from anyio import create_task_group
+from bring import BRING
 from bring.defaults import BRING_TASKS_BASE_TOPIC
 from bring.interfaces.cli import console
 from bring.utils import BringTaskDesc
 from freckles.core.explanation import FreckletExplanation, FreckletInputExplanation
 from freckles.core.vars import FreckletInputSet, FreckletInputType, Var, VarSet
-from frtls.args.arg import Arg, RecordArg
-from frtls.async_helpers import wrap_async_task
-from frtls.dicts import get_seeded_dict
-from frtls.doc.explanation import to_value_string
-from frtls.doc.utils.rich import to_key_value_table
-from frtls.exceptions import ArgValidationError, ArgsValidationError
-from frtls.introspection.pkg_env import AppEnvironment
-from frtls.tasks import PostprocessTask, Task, Tasks, TasksResult
-from frtls.tasks.task_watcher import TaskWatchManager
-from frtls.tasks.watchers.rich import RichTaskWatcher
-from frtls.types.utils import is_instance_or_subclass
+from frkl.args.arg import Arg, RecordArg
+from frkl.args.exceptions import ArgValidationError, ArgsValidationError
+from frkl.common.async_utils import wrap_async_task
+from frkl.common.cli.output_utils import to_key_value_table
+from frkl.common.dicts import get_seeded_dict
+from frkl.common.exceptions import FrklException
+from frkl.common.formats.serialize import to_value_string
+from frkl.common.types import isinstance_or_subclass
+from frkl.tasks.task import PostprocessTask, Task
+from frkl.tasks.task_result import TasksResult
+from frkl.tasks.task_watchers import TaskWatchManager
+from frkl.tasks.task_watchers.rich import RichTaskWatcher
+from frkl.tasks.tasks import Tasks
 from rich.console import Console, ConsoleOptions, RenderResult
 from tings.ting import SimpleTing, TingMeta
 
 
 class FreckletInput(object):
+    """Class to manage input to a frecklet.
+
+    Input key/value pairs can be of 3 different types: constants, user input, and defaults. They are processed in this order. That means, if a key is present in both constants and user input, the constants value will be picked.
+
+    The main interesting method in this class is 'get_vars()', which will return a 'VarSet' (on which you can use
+    the 'create_value_dict()' method to get the actual, validated, merged input dict. It also contains metadata about the origin
+    of a value, which is helpful for debugging, and displaying information to users.
+
+
+    """
+
     def __init__(self):
 
         self._input_sets: Dict[str, FreckletInputSet] = {}
@@ -213,6 +227,8 @@ class FreckletInput(object):
 
 
 class FreckletResult(TasksResult):
+    """Class to wrap the result of a frecklet run."""
+
     def __init__(self, **kwargs):
 
         self._input: Optional[Mapping[str, Any]] = None
@@ -229,7 +245,7 @@ class FreckletResult(TasksResult):
         if isinstance(result, collections.abc.Mapping):
 
             table = to_key_value_table(
-                result_data["result"], show_headers=False, console=console, sort=True
+                result_data["result"], show_headers=False, sort=True
             )
             yield table
         else:
@@ -237,6 +253,13 @@ class FreckletResult(TasksResult):
 
 
 class FreckletTask(Tasks):
+    """Class to wrap the actual execution of a frecklet.
+
+    Currently, this runs a potential 'preprocess' task, then all 'main' tasks in parallel, and a potential 'postprocess' task at the end.
+
+    It's abstracted to enable more fine-grained control of task handling later on (serial execution, farming out tasks to threads, etc.).
+    """
+
     def __init__(self, **kwargs):
 
         self._preprocess_task: Optional[Task] = None
@@ -261,6 +284,10 @@ class FreckletTask(Tasks):
 
 
 class Frecklet(SimpleTing):
+    """Class to hold all information to a generic user-input dependend task.
+
+    The core class in the 'freckles' application."""
+
     def __init__(self, name: str, meta: TingMeta, init_values: Mapping[str, Any]):
 
         self._input_sets = FreckletInput()
@@ -309,30 +336,31 @@ class Frecklet(SimpleTing):
         return self._input_sets
 
     def requires(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
-        return {"id": "string", "input": "dict"}
+        # return {"id": "string", "input": "dict"}
+        return {}
 
     def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
         return {
-            "id": "string",
-            "input": "dict",
+            # "id": "string",
+            # "input": "dict",
             "base_args": "dict",
             "required_args": "dict",
-            "output": "dict",
+            # "output": "dict",
         }
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        _id = requirements["id"]
-        _input = requirements["input"]
+        # _id = requirements["id"]
+        # _input = requirements["input"]
 
         result = {}
 
-        if "id" in value_names:
-            result["id"] = _id
-
-        if "input" in value_names:
-            result["input"] = _input
+        # if "id" in value_names:
+        #     result["id"] = _id
+        #
+        # if "input" in value_names:
+        #     result["input"] = _input
 
         if "base_args" in value_names:
             result["base_args"] = await self._get_base_args()
@@ -352,7 +380,7 @@ class Frecklet(SimpleTing):
         return self._base_args
 
     async def get_base_args(
-        self
+        self,
     ) -> Optional[Mapping[str, Union[str, Arg, Mapping[str, Any]]]]:
         return None
 
@@ -453,7 +481,7 @@ class Frecklet(SimpleTing):
 
     async def execute(self) -> FreckletResult:
 
-        twm: TaskWatchManager = AppEnvironment().get_global("task_watcher")
+        twm: TaskWatchManager = BRING.get_global("task_watcher")
         # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)
         tlc = {
             "type": "rich",
@@ -495,16 +523,22 @@ class Frecklet(SimpleTing):
         input_vars = copy.deepcopy(vars)
         _tasks_list = await self.create_processing_tasks(**input_vars)
 
-        if is_instance_or_subclass(_tasks_list, Frecklet):
+        if not _tasks_list:
+            raise FrklException(
+                msg=f"Can't execute frecklet '{self.full_name}'.",
+                reason="Empty task-list received. This is probably a bug.",
+            )
+
+        if isinstance_or_subclass(_tasks_list, Frecklet):
             tasks_list: Iterable[Union[Task, Frecklet]] = [_tasks_list]  # type: ignore
-        elif is_instance_or_subclass(_tasks_list, Task):
+        elif isinstance_or_subclass(_tasks_list, Task):
             tasks_list = [_tasks_list]  # type: ignore
         else:
             tasks_list = _tasks_list  # type: ignore
 
         final_list: List[Task] = []
         for item in tasks_list:
-            if is_instance_or_subclass(item, Frecklet):
+            if isinstance_or_subclass(item, Frecklet):
                 final_list.append(await item._create_task())  # type: ignore
             else:
                 final_list.append(item)  # type: ignore

@@ -7,8 +7,8 @@ import httpx
 from anyio import aopen
 from bring.defaults import BRING_DOWNLOAD_CACHE
 from bring.mogrify import SimpleMogrifier
-from frtls.downloads import calculate_cache_path
-from frtls.files import ensure_folder
+from frkl.common.downloads.cache import calculate_cache_path
+from frkl.common.filesystem import ensure_folder
 
 
 log = logging.getLogger("bring")
