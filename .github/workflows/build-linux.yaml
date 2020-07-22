@@ -2,45 +2,82 @@ name: "build linux binaries for 'bring'"
 # This workflow is triggered on pushes to the repository.
 on: [push]
 
+
 jobs:
   test-linux:
     name: pytest on linux
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: [3.6, 3.7, 3.8]
     steps:
-      - name: Set up Python 3.7.7
+      - name: "Set up Python ${{ matrix.python_version }}"
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7.7
+          python-version: "${{ matrix.python_version }}"
       - uses: actions/checkout@v2
-      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: install requirements
+        run: pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
       - name: Test with pytest
-        run: pytest tests
+        run: make test
 
   mypy-linux:
     name: mypy check on linux
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: [3.6, 3.7, 3.8]
     steps:
-      - name: Set up Python 3.7.7
+      - name: "Set up Python ${{ matrix.python_version }}"
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7.7
+          python-version: "${{ matrix.python_version }}"
       - uses: actions/checkout@v2
-      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: install requirements
+        run: pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
       - name: Test with mypy
-        run: mypy src
+        run: make mypy
 
   flake8-linux:
     name: flake8 on linux
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Python 3.7.7
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7.7
+          python-version: 3.8
       - uses: actions/checkout@v2
-      - run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
+      - name: install requirements
+        run: pip install -U --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[testing,all]'
       - name: Test with flake8
-        run: flake8 src/bring
+        run: make flake
+
+  build-docs:
+    name: build documentation
+    runs-on: ubuntu-latest
+    needs:
+      - test-linux
+      - mypy-linux
+      - flake8-linux
+    steps:
+      - name: Set up Python 3.7.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.8
+      - uses: actions/checkout@v2
+      - name: install requirements
+        run: pip install --extra-index-url https://pkgs.frkl.io/frkl/dev -e '.[docs,all]'
+      - name: create documentation
+        run: make docs
+      - name: deploy documentation to gh-pages
+        uses: JamesIves/github-pages-deploy-action@3.5.7
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: build/site
+
+
+
 
   build-linux:
     name: build linux binary
@@ -56,7 +93,7 @@ jobs:
           key: ${{ runner.os }}-target-ubuntu-bring-python-build
       - uses: actions/checkout@v2
       - name: build_binary
-        run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec"
+        run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec --python-version '3.7.8'"
       - name: Archive Linux binary
         uses: actions/upload-artifact@v1
         with:

@@ -5,5 +5,4 @@ bring_test_coverage:
   before_script:
     - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
   script:
-    - coverage run -m pytest tests
-    - coverage report -m
+    - make coverage

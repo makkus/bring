@@ -8,6 +8,7 @@ bring_build_binary_windows:
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
+    PYTHON_VERSION: "3.7.8"
   script:
     - "/opt/entrypoint.sh"
   artifacts:

@@ -4,4 +4,4 @@ bring_test_mypy:
   before_script:
     - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[testing,all]"
   script:
-    - mypy src/bring
+    - make mypy
