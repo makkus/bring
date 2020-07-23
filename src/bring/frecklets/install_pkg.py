@@ -24,7 +24,6 @@ from tings.ting import TingMeta
 
 
 BRING_IN_DEFAULT_DELIMITER = create_var_regex()
-
 TEMP_DIR_MARKER = "__temp__"
 
 

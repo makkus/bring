@@ -47,7 +47,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "bring.config",
     "frkl.tasks.task_watchers.*",
     "freckles.core.*",
-    "freckles.frecklets.*",
+    "bring.frecklets.*",
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.indexes"

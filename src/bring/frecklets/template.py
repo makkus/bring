@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Iterable, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
+from bring.frecklets.install_pkg import BringFrecklet
 from bring.pkg_index.pkg import PkgTing
-from freckles.core.frecklet import Frecklet
-from freckles.frecklets.install_pkg import BringFrecklet
 from frkl.args.arg import Arg
 from frkl.common.exceptions import FrklException
 from frkl.tasks.task import Task
 from tings.common.templating import TemplaTing, TemplaTingRepo
+
+
+if TYPE_CHECKING:
+    from freckles.core.frecklet import Frecklet
 
 
 class BringTemplateFrecklet(BringFrecklet):
