@@ -69,7 +69,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-target-darwin-10.11-bring-python-build
+          key: ${{ runner.os }}-target-darwin-10.11-bring-python-build-v2
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2

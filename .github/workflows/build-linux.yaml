@@ -90,7 +90,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.pyenv/
-          key: ${{ runner.os }}-target-ubuntu-bring-python-build
+          key: ${{ runner.os }}-target-ubuntu-bring-python-build-v2
       - uses: actions/checkout@v2
       - name: build_binary
         run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec --python-version '3.7.8'"
