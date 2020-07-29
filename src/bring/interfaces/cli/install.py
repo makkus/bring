@@ -199,21 +199,22 @@ class BringInstallGroup(FrklBaseCommand):
 
                 console.line()
                 msg = frecklet.get_msg()
-                console.print(f"[title]Task[/title]: {msg}")
-                console.line()
-                console.print("[title]Variables[/title]")
+                self._bring.add_app_event(f"[title]Task[/title]: {msg}\n")
+
+                # console.print("[title]Variables[/title]")
 
                 expl = FreckletInputExplanation(
                     data=frecklet.current_frecklet_input_details
                 )
-                console.print(expl)
+                self._bring.add_app_event(expl)
 
                 task: Task = await frecklet.get_value("task")
                 await task.initialize_tasklets()
-                console.print("[title]Steps[/title]")
-                console.line()
+                # console.print("[title]Steps[/title]")
+                # console.line()
                 exp = TaskExplanation(task, indent=2)
-                console.print(exp)
+                self._bring.add_app_event(exp)
+                # console.print(exp)
                 # console.line()
 
         else:

@@ -283,6 +283,8 @@ class BringInstallFrecklet(BringFrecklet):
             )
         self.set_processed_input("pkg", pkg)
 
+        self._msg = f"installing package '{pkg.pkg_id}'"
+
         defaults = {}
         index_defaults = await pkg.bring_index.get_index_defaults()
         for k, v in index_defaults.items():
