@@ -343,7 +343,7 @@ class BringInstallAssemblyFrecklet(BringFrecklet):
             },
         }
 
-        return args
+        return args  # type: ignore
 
     async def _create_frecklet_task(self, **input_values: Any) -> Union[Task, Any]:
 
