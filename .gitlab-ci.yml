@@ -32,6 +32,5 @@ include:
   - local: '/ci/gitlab/release/binaries.yml'
   - local: '/ci/gitlab/release/container.yml'
 
-
 pages:
   extends: .bring_build_docs

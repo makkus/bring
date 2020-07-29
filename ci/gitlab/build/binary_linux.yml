@@ -6,7 +6,8 @@ bring_build_binary_linux:
   variables:
     SRCDIR: $CI_PROJECT_DIR
     TEMPDIR: "$CI_PROJECT_DIR/build_temp"
-    PYTHON_VERSION: "3.7.8"
+    PYTHON_VERSION: "3.7.7"
+    PYINSTALLER_VERSION: "3.6"
   script:
     - "scripts/build-binary/build.sh"
   artifacts:
