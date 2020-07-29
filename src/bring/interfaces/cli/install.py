@@ -5,7 +5,6 @@ from typing import Dict, Union
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
 from freckles.core.explanation import FreckletInputExplanation
 from frkl.args.arg import Arg
@@ -195,13 +194,13 @@ class BringInstallGroup(FrklBaseCommand):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
 
-                await frecklet.add_input_set(**arg_value.processed_input)
+                md = {"origin": "user input"}
+                await frecklet.add_input_set(
+                    _default_metadata=md, **arg_value.processed_input
+                )
 
-                console.line()
                 msg = frecklet.get_msg()
                 self._bring.add_app_event(f"[title]Task[/title]: {msg}\n")
-
-                # console.print("[title]Variables[/title]")
 
                 expl = FreckletInputExplanation(
                     data=frecklet.current_frecklet_input_details
@@ -210,12 +209,9 @@ class BringInstallGroup(FrklBaseCommand):
 
                 task: Task = await frecklet.get_value("task")
                 await task.initialize_tasklets()
-                # console.print("[title]Steps[/title]")
-                # console.line()
+
                 exp = TaskExplanation(task, indent=2)
                 self._bring.add_app_event(exp)
-                # console.print(exp)
-                # console.line()
 
         else:
 
