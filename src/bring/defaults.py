@@ -48,6 +48,7 @@ BRINGISTRY_PRELOAD_MODULES = [
     "frkl.tasks.task_watchers.*",
     "freckles.core.*",
     "bring.frecklets.*",
+    "frkl.events.app_events.*",
 ]
 
 BRING_CONTEXT_NAMESPACE = "bring.indexes"

@@ -27,7 +27,6 @@ from frkl.common.exceptions import FrklException
 from frkl.common.filesystem import ensure_folder
 from frkl.common.formats.serialize import to_value_string
 from frkl.common.strings import generate_valid_identifier
-from frkl.tasks.task_desc import TaskDesc
 from frkl.types.plugins import PluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
@@ -259,7 +258,8 @@ class PkgTing(SimpleTing):
             )
 
             result = await transmogrificator.run_async()
-            folder = result.explanation_data["result"]["folder_path"]
+            folder = result.result_value["folder_path"]
+            # folder = result.explanation_data["result"]["folder_path"]
 
             if os.path.exists(version_dir):
                 shutil.rmtree(version_dir)
@@ -287,8 +287,11 @@ class PkgTing(SimpleTing):
         self,
         vars: Optional[Mapping[str, Any]] = None,
         extra_mogrifiers: Iterable[Union[str, Mapping[str, Any]]] = None,
-        parent_task_desc: TaskDesc = None,
+        basetopic: Optional[str] = None,
     ) -> Transmogrificator:
+
+        if basetopic is None:
+            basetopic = self.full_name
 
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "metadata", resolve=True
@@ -322,6 +325,7 @@ class PkgTing(SimpleTing):
         task_desc = BringTaskDesc(
             name=f"prepare package '{self.name}'",
             msg=f"gathering file(s) for package '{self.name}'",
+            basetopic=basetopic,
             subtopic=pipeline_id,
         )
 
@@ -334,9 +338,8 @@ class PkgTing(SimpleTing):
             name=self.name,
             task_desc=task_desc,
             pipeline_id=pipeline_id,
+            basetopic=basetopic,
         )
-        if parent_task_desc is not None:
-            tm.task_desc.parent = parent_task_desc
 
         return tm
 
@@ -368,10 +371,17 @@ class PkgTing(SimpleTing):
         hashes = DeepHash(id_dict)
         return hashes[id_dict]
 
-    async def get_defaults(self) -> Mapping[str, Any]:
+    async def get_pkg_defaults(self) -> Mapping[str, Any]:
 
         args: RecordArg = await self.get_value("args")
         return args.default
+
+    async def calculate_defaults(self):
+
+        index_defaults = await self.bring_index.get_index_defaults()
+        pkg_defaults = await self.get_pkg_defaults()
+
+        return get_seeded_dict(pkg_defaults, index_defaults, merge_strategy="update")
 
     async def merge_with_defaults(self, **vars: Any) -> MutableMapping[str, Any]:
 

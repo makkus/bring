@@ -27,7 +27,6 @@ class BringListPkgsGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             callback=self.all_info,
-            arg_hive=bring.arg_hive,
             subcommand_metavar="CONTEXT",
             **kwargs,
         )

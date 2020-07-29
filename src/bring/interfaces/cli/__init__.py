@@ -2,6 +2,7 @@
 import os
 from typing import Optional
 
+from frkl.common import cli as DEFAULT_CLI
 from rich.console import Console
 from rich.style import Style
 from rich.theme import Theme
@@ -28,3 +29,5 @@ else:
     _width = None
 
 console = Console(theme=LIGHT_THEME, width=_width)
+
+DEFAULT_CLI._console = console

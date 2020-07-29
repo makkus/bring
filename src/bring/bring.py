@@ -3,18 +3,19 @@
 """Main module."""
 import logging
 import os
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Type, Union
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Union
 
 from anyio import Lock, create_lock, create_task_group
 from bring import BRING
 from bring.config.bring_config import BringConfig
-from bring.defaults import BRINGISTRY_INIT, BRING_WORKSPACE_FOLDER
+from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.interfaces.cli import console
 from bring.mogrify import Transmogritory
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_types import PkgType
 from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
 from freckles.core.freckles import Freckles
@@ -23,9 +24,12 @@ from frkl.common.async_utils import wrap_async_task
 from frkl.common.exceptions import FrklException
 from frkl.common.filesystem import ensure_folder
 from frkl.common.types import isinstance_or_subclass
+from frkl.events.event import Event
+from frkl.tasks.task import Task
+from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.task_watchers import TaskWatchManager
 from frkl.tasks.task_watchers.rich import RichTaskWatcher
-from frkl.tasks.tasks import ParallelTasksAsync, Tasks
+from frkl.tasks.tasks import ParallelTasksAsync
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -43,44 +47,13 @@ DEFAULT_TRANSFORM_PROFILES = {
 
 
 class Bring(SimpleTing):
-    def __init__(
-        self, meta: TingMeta, name: str = None, bring_config: BringConfig = None
-    ):
-
-        prototings: Iterable[Mapping] = BRINGISTRY_INIT["prototings"]  # type: ignore
-        tings: Iterable[Mapping] = BRINGISTRY_INIT["tings"]  # type: ignore
-        modules: Iterable[str] = BRINGISTRY_INIT["modules"]  # type: ignore
-        classes: Iterable[Union[Type, str]] = BRINGISTRY_INIT[  # type: ignore
-            "classes"
-        ]
-
-        if name is None:
-            name = "bring"
+    def __init__(self, name: str, meta: TingMeta, bring_config: BringConfig = None):
 
         ensure_folder(BRING_WORKSPACE_FOLDER)
-
-        if meta is None:
-            raise Exception(
-                "Can't create 'bring' object: 'meta' argument not provided, this is a bug"
-            )
 
         self._tingistry_obj: Tingistry = meta.tingistry
 
         self._defaults: Optional[Mapping[str, Any]] = None
-
-        self._tingistry_obj.add_module_paths(*modules)
-        self._tingistry_obj.add_classes(*classes)
-
-        if prototings:
-            for pt in prototings:
-                pt_name = pt["prototing_name"]
-                existing = self._tingistry_obj.get_ting(pt_name)
-                if existing is None:
-                    self._tingistry_obj.register_prototing(**pt)
-
-        if tings:
-            for t in tings:
-                self._tingistry_obj.create_ting(**t)
 
         super().__init__(name=name, meta=meta)
 
@@ -92,7 +65,7 @@ class Bring(SimpleTing):
             env_conf[k[6:]] = v
 
         env_conf["bringistry"] = self
-        self.typistry.get_plugin_manager("pkg_type", plugin_config=env_conf)
+        self.typistry.get_plugin_manager(PkgType, plugin_config=env_conf)
 
         # self._transmogritory = Transmogritory(self._tingistry_obj)
         self._transmogritory = self._tingistry_obj.get_ting(
@@ -105,19 +78,24 @@ class Bring(SimpleTing):
 
         self._index_lock: Optional[Lock] = None
 
-        self._bring_config: Optional[BringConfig] = bring_config
-        self._freckles: Optional[Freckles] = None
+        if bring_config is None:
+            raise NotImplementedError()
+
+        self._bring_config: BringConfig = bring_config
 
         self._index_factory = IndexFactory(
             tingistry=self._tingistry_obj, bring_config=self._bring_config
         )
 
-        if self._bring_config is not None:
-            self._bring_config.set_bring(self)
-            self._freckles = self._bring_config.freckles
-            register_bring_frecklet_types(bring=self, freckles=self._freckles)
+        self._bring_config.set_bring(self)
+        self._freckles: Freckles = self._bring_config.freckles
+        register_bring_frecklet_types(bring=self, freckles=self._freckles)
 
         self._indexes: Dict[str, Optional[BringIndexTing]] = {}
+
+    def add_app_event(self, event: Union[Event, Any]):
+
+        self._freckles.add_app_event(event)
 
     async def _get_index_lock(self) -> Lock:
 
@@ -129,12 +107,14 @@ class Bring(SimpleTing):
     def config(self) -> BringConfig:
 
         if self._bring_config is None:
-            freckles = Freckles.get_default()
-            self._bring_config = BringConfig(freckles=freckles)
-            self._bring_config.set_bring(self)
-            self._index_factory.bring_config = self._bring_config
-            self._freckles = self._bring_config.freckles
-            register_bring_frecklet_types(bring=self, freckles=self._freckles)
+            raise NotImplementedError()
+            # tingistry = BRING.get_singleton(Tingistry)
+            # freckles = Freckles.get_freckles_ting(tingistry=tingistry, name="bring")
+            # self._bring_config = BringConfig(freckles=freckles)
+            # self._bring_config.set_bring(self)
+            # self._index_factory.bring_config = self._bring_config
+            # self._freckles = self._bring_config.freckles
+            # register_bring_frecklet_types(bring=self, freckles=self._freckles)
 
         return self._bring_config
 
@@ -356,40 +336,42 @@ class Bring(SimpleTing):
             tsk = await index._create_update_tasks()
 
             if tsk:
-                tasks.add_task(tsk)
+                tasks.add_tasklet(tsk)
 
-        await self.run_async_tasks(tasks, subtopic="update_indexes")
+        await self.run_async_task(tasks, subtopic="update_indexes")
 
         # await tasks.run_async()
 
-    async def run_async_tasks(self, tasks: Tasks, subtopic: Optional[str] = None):
+    async def run_async_task(self, task: Task, subtopic: Optional[str] = None):
 
-        twm: TaskWatchManager = BRING.get_global("task_watcher")
+        twm: TaskWatchManager = BRING.get_singleton(TaskWatchManager)
         # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)
         tlc = {
             "type": "rich",
-            "base_topics": [tasks.task_desc.topic],
+            "base_topics": [task.task_desc.topic],
             "console": console,
-            "tasks": tasks,
+            "tasks": task,
         }
 
         if subtopic:
 
-            if isinstance(tasks.task_desc, BringTaskDesc):
-                tasks.task_desc.subtopic = subtopic
+            task.task_desc.subtopic = subtopic
 
-            for index, child in enumerate(tasks.children.values()):
-                child.task_desc.subtopic = f"{subtopic}.{index}"
+            if task.has_subtasks:
+
+                for index, tasklet in enumerate(task.tasklets):  # type: ignore
+                    tasklet.task_desc.subtopic = f"{subtopic}.{index}"
 
         wid = twm.add_watcher(tlc)
         tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
 
         progress = tw.progress
+        try:
+            with progress:
+                await task.run_async()
 
-        with progress:
-            await tasks.run_async()
-
-        twm.remove_watcher(wid)
+        finally:
+            twm.remove_watcher(wid)
 
     async def get_pkg_map(self, *indexes) -> Mapping[str, Mapping[str, PkgTing]]:
         """Get all pkgs, per available (or requested) indexes."""
@@ -414,6 +396,7 @@ class Bring(SimpleTing):
         async def get_pkgs(_index: BringIndexTing):
 
             pkgs = await _index.get_pkgs()
+
             for pkg in pkgs.values():
                 pkg_map[_index.id][pkg.name] = pkg
 
@@ -536,30 +519,9 @@ class Bring(SimpleTing):
 
         return pkg is not None
 
-    # def create_processor(self, processor_type: str) -> BringProcessor:
-    #
-    #     pm = self._tingistry_obj.get_plugin_manager(BringProcessor)
-    #
-    #     plugin_class = pm.get_plugin(processor_type, raise_exception=True)
-    #     proc = plugin_class(self)
-    #     return proc
+    def create_task_desc(self, **kwargs) -> TaskDesc:
 
-    # async def process(self, processor_type: str, **input_vars) -> Mapping[str, Any]:
-    #
-    #     proc = self.create_processor(processor_type)
-    #     proc.set_user_input(**input_vars)
-    #
-    #     result = await proc.process()
-    #     return result
-
-    # async def create_target(self, target_type: str, **input_vars: Any) -> BringTarget:
-    #
-    #     pm = self._tingistry_obj.get_plugin_manager(BringTarget)
-    #
-    #     plugin_class = pm.get_plugin(target_type, raise_exception=True)
-    #     target = plugin_class(self, **input_vars)
-    #
-    #     return target
+        return self._freckles.create_task_desc(**kwargs)
 
 
 def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:

@@ -3,8 +3,11 @@
 import io
 import logging
 import os
+from typing import Iterable, Mapping, Type, Union
 
 from pkg_resources import DistributionNotFound, get_distribution
+
+from frkl.project_meta.app_environment import AppEnvironment
 
 
 log = logging.getLogger("bring")
@@ -38,12 +41,46 @@ except DistributionNotFound:
 finally:
     del get_distribution, DistributionNotFound
 
-try:
-    from frkl.project_meta.app_environment import AppEnvironment
+BRING: AppEnvironment = AppEnvironment(main_module="bring")
 
-    BRING: AppEnvironment = AppEnvironment(main_module="bring")
-except Exception as e:
-    log.debug(
-        f"Can't create AppEnvironment (probably pkg 'frkl.project_meta' not in virtualenv): {e}"
-    )
-    BRING = None  # type: ignore
+
+def set_globals():
+
+    global BRING
+
+    from frkl.types.typistry import Typistry
+    from bring.defaults import BRINGISTRY_INIT
+    from freckles.core.freckles import Freckles
+    from tings.tingistry import Tingistries
+
+    if not BRING.get_singleton("typistry"):
+
+        typistry: Typistry = Typistry()
+        BRING.register_singleton(typistry)
+
+        prototings: Iterable[Mapping] = BRINGISTRY_INIT["prototings"]  # type: ignore
+        tings: Iterable[Mapping] = BRINGISTRY_INIT["tings"]  # type: ignore
+        modules: Iterable[str] = BRINGISTRY_INIT["modules"]  # type: ignore
+        classes: Iterable[Union[Type, str]] = BRINGISTRY_INIT["classes"]  # type: ignore
+
+        tingistry = Tingistries.create("bring", typistry=typistry)
+        tingistry.add_module_paths(*modules)
+        tingistry.add_classes(*classes)
+        for pt in prototings:
+            pt_name = pt["prototing_name"]
+            existing = tingistry.get_ting(pt_name)
+            if existing is None:
+                tingistry.register_prototing(**pt)
+
+        for t in tings:
+            tingistry.create_ting(**t)
+        BRING.register_singleton(tingistry)
+
+        freckles = Freckles.get_freckles_ting(
+            tingistry=tingistry, name="bring.freckles"
+        )
+        freckles.get_app_env_mgmt(start_monitoring=True)
+        BRING.register_singleton(freckles)
+
+
+set_globals()

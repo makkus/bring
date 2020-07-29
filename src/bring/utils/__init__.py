@@ -5,11 +5,7 @@ from collections import Sequence
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
-from bring.defaults import (
-    BRING_ALLOWED_MARKER_NAME,
-    BRING_METADATA_FOLDER_NAME,
-    BRING_TASKS_BASE_TOPIC,
-)
+from bring.defaults import BRING_ALLOWED_MARKER_NAME, BRING_METADATA_FOLDER_NAME
 from frkl.tasks.task_desc import TaskDesc
 
 
@@ -191,5 +187,4 @@ def find_version(
 class BringTaskDesc(TaskDesc):
     def __init__(self, **kwargs: Any) -> None:
 
-        kwargs.setdefault("basetopic", BRING_TASKS_BASE_TOPIC)
         super().__init__(**kwargs)

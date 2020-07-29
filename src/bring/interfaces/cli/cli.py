@@ -4,6 +4,7 @@ import sys
 
 import asyncclick as click
 from bring.interfaces.cli.command_group import BringCommandGroup
+from frkl.project_meta import AppEnvironment
 
 
 try:
@@ -14,6 +15,8 @@ except Exception:
     pass
 
 click.anyio_backend = "asyncio"
+
+AppEnvironment.set_main_app("bring")
 
 
 cli = BringCommandGroup()

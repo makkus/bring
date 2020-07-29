@@ -15,6 +15,7 @@ from frkl.common.cli import get_console
 from frkl.common.cli.logging import logzero_option_obj_async
 from frkl.common.types import load_modules
 from rich.console import Console
+from tings.tingistry import Tingistry
 
 
 COMMAND_GROUP_HELP = """'bring' is a package manager for files and file-sets.
@@ -36,8 +37,8 @@ class BringCommandGroup(FrklBaseCommand):
 
         self._console: Console = get_console()
 
-        self._freckles = Freckles.get_default()
-        self._tingistry_obj = self._freckles.tingistry
+        self._freckles: Freckles = BRING.get_singleton(Freckles)
+        self._tingistry_obj: Tingistry = self._freckles.tingistry
 
         self._bring_config: Optional[BringConfig] = None
         self._bring: Optional[Bring] = None
@@ -95,6 +96,7 @@ class BringCommandGroup(FrklBaseCommand):
             no_args_is_help=True,
             chain=False,
             result_callback=None,
+            arg_hive=self._tingistry_obj.arg_hive,
             **kwargs,
         )
 
@@ -201,13 +203,17 @@ class BringCommandGroup(FrklBaseCommand):
 
             from bring.interfaces.cli.list_pkgs import BringListPkgsGroup
 
-            command = BringListPkgsGroup(bring=self.bring, name="info")
+            command = BringListPkgsGroup(
+                bring=self.bring, name="info", arg_hive=self.arg_hive
+            )
             command.short_help = "list packages for all registered indexes"
 
         elif name == "install":
             from bring.interfaces.cli.install import BringInstallGroup
 
-            command = BringInstallGroup(bring=self.bring, name="install")
+            command = BringInstallGroup(
+                bring=self.bring, name="install", arg_hive=self.arg_hive
+            )
             command.short_help = "install one or a list of packages"
         # elif name == "process":
         #     from bring.interfaces.cli.process import BringProcessGroup
@@ -229,11 +235,12 @@ class BringCommandGroup(FrklBaseCommand):
         elif name == "doc":
             from bring.interfaces.cli.doc import BringDocGroup
 
-            command = BringDocGroup(freckles=self._freckles)
+            command = BringDocGroup(freckles=self._freckles, arg_hive=self.arg_hive)
 
         elif name == "dev":
             from bring.interfaces.cli.dev import dev
 
+            ctx.obj["bring"] = self.bring
             command = dev
 
         elif name == "plugin":
@@ -251,7 +258,7 @@ class BringCommandGroup(FrklBaseCommand):
 
             from frkl.args.cli.click_commands.self_command import SelfCommandGroup
 
-            command = SelfCommandGroup(app_env=BRING)
+            command = SelfCommandGroup(app_env=BRING, arg_hive=self.arg_hive)
 
         elif name == "differ":
             from bring.interfaces.cli.differ import differ

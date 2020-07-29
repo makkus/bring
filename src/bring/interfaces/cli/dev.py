@@ -3,6 +3,7 @@ import logging
 
 import asyncclick as click
 from bring.bring import Bring
+from frkl.tasks.task import Task
 
 
 log = logging.getLogger("bring")
@@ -21,14 +22,27 @@ def dev(ctx):
 @dev.command()
 @click.argument("pkg_name", nargs=1)
 @click.pass_context
-async def details(ctx, pkg_name, index):
+async def details(ctx, pkg_name):
     """Clear the bring cache dir in the relevant locaiont (e.g. '~/.cache/bring' on Linux)."""
 
     bring: Bring = ctx.obj["bring"]
 
-    pkg = await bring.get_pkg(pkg_name)
-    vals = await pkg.get_values("metadata")
+    frecklet_config = {"type": "install_pkg"}
 
-    import pp  # type: ignore
+    frecklet = await bring.freckles.create_frecklet(frecklet_config)
 
-    pp(vals)
+    # args = await frecklet.add_input_set(
+    #     pkg_name="fd", pkg_index="binaries", target="/tmp/theresa"
+    # )
+
+    # args = await frecklet.add_input_set()
+
+    task: Task = await frecklet.get_value("task")
+
+    import pp
+
+    pp(task.__dict__)
+    result = await task.run_async()
+    import pp
+
+    pp(result.explanation_data)

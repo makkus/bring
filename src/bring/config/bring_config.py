@@ -62,13 +62,14 @@ class BringConfig(object):
         # config_input: Optional[Iterable[Union[str, Mapping[str, Any]]]] = None,
     ):
 
-        if freckles is None:
-            freckles = Freckles.get_default()
-
         if name is None:
-            name = "default"
+            name = "bring"
 
-        self._name = name
+        if freckles is None:
+            # tingistry = BRING.get_singleton(Tingistry)
+            freckles = BRING.get_singleton(Freckles)
+
+        self._name = f"{freckles.full_name}.{name}"
         self._freckles = freckles
         self._tingistry_obj = self._freckles.tingistry
 
@@ -95,11 +96,9 @@ class BringConfig(object):
         self._bring: Optional["Bring"] = None
         self._config_dict_lock: Optional[Lock] = None
 
-        twm = BRING.get_global("task_watcher")
-        if twm is None:
-            twm = TaskWatchManager(typistry=self._tingistry_obj.typistry)
-            BRING.set_global("task_watcher", twm)
-        self._task_watch_manager: TaskWatchManager = twm
+        self._task_watch_manager: TaskWatchManager = BRING.get_singleton(
+            TaskWatchManager
+        )
         self._task_watcher_ids: List[str] = []
 
     @property
@@ -260,7 +259,7 @@ class BringConfig(object):
         if self._bring is None:
 
             self._bring = self._tingistry_obj.create_singleting(  # type: ignore
-                f"bring.{self.name}", "bring", bring_config=self
+                self.name, "bring", bring_config=self
             )
 
         return self._bring  # type: ignore

@@ -102,7 +102,7 @@ class TemplateMogrifier(SimpleMogrifier):
                     jinja_env=jinja_env,
                 )
                 async with await aopen(target, "w") as f:
-                    await f.write(result)
+                    await f.write_events(result)
             except Exception as e:
                 log.debug(f"Error processing template '{source}': {e}", exc_info=True)
                 raise e

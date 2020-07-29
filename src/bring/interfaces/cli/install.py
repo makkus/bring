@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 from typing import Dict, Union
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.interfaces.cli import console
 from bring.interfaces.cli.utils import print_pkg_list_help
+from freckles.core.explanation import FreckletInputExplanation
 from frkl.args.arg import Arg
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.cli.exceptions import handle_exc_async
 from frkl.common.strings import generate_valid_identifier
+from frkl.events.app_events import ExceptionEvent, ResultEvent
+from frkl.tasks.explain import TaskExplanation
+from frkl.tasks.task import Task
 
 
 INSTALL_HELP = """Install one or several packages."""
@@ -39,7 +44,6 @@ class BringInstallGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             add_help_option=False,
-            arg_hive=bring.arg_hive,
             subcommand_metavar="PROCESSOR",
             **kwargs,
         )
@@ -147,6 +151,7 @@ class BringInstallGroup(FrklBaseCommand):
         if not load_details:
             return None
 
+        md = {"origin": "user input"}
         if not name.endswith(".br"):
 
             pkg = await self._bring.get_pkg(name, raise_exception=True)
@@ -156,7 +161,7 @@ class BringInstallGroup(FrklBaseCommand):
             frecklet_config = {"type": "install_pkg"}
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
-            frecklet.input_sets.add_constants(_id="install_params", **install_args)
+            await frecklet.add_input_set(_default_metadata=md, **install_args)
 
         else:
             full_path = os.path.abspath(os.path.expanduser(name))
@@ -174,18 +179,10 @@ class BringInstallGroup(FrklBaseCommand):
             }
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
-            frecklet.input_sets.add_constants(_id="install_param", **install_args)
+            frecklet.add_input_set(_default_metadata=md, **install_args)
 
-        args = await frecklet.input_args
-
-        args_user = {}
-        for name, arg in args.childs.items():
-            if name == "target":
-                continue
-            args_user[name] = arg
-
-        record_args_user = self._arg_hive.create_record_arg(args_user)
-        args_renderer = record_args_user.create_arg_renderer(
+        args = frecklet.get_current_required_args()
+        args_renderer = args.create_arg_renderer(
             "cli", add_defaults=False, remove_required=True
         )
 
@@ -196,14 +193,28 @@ class BringInstallGroup(FrklBaseCommand):
             @handle_exc_async
             async def command(ctx, **kwargs):
 
-                console.line()
                 arg_value = args_renderer.create_arg_value(kwargs)
-                frecklet.input_sets.add_input_values(
-                    _id="cli_input", **arg_value.processed_input
-                )
 
-                explanation = frecklet.explain()
-                console.print(explanation, overflow="ellipsis")
+                await frecklet.add_input_set(**arg_value.processed_input)
+
+                console.line()
+                msg = frecklet.get_msg()
+                console.print(f"[title]Task[/title]: {msg}")
+                console.line()
+                console.print("[title]Variables[/title]")
+
+                expl = FreckletInputExplanation(
+                    data=frecklet.current_frecklet_input_details
+                )
+                console.print(expl)
+
+                task: Task = await frecklet.get_value("task")
+                await task.initialize_tasklets()
+                console.print("[title]Steps[/title]")
+                console.line()
+                exp = TaskExplanation(task, indent=2)
+                console.print(exp)
+                # console.line()
 
         else:
 
@@ -213,27 +224,29 @@ class BringInstallGroup(FrklBaseCommand):
             async def command(ctx, **kwargs):
 
                 arg_value = args_renderer.create_arg_value(kwargs)
-                frecklet.input_sets.add_input_values(
-                    _id="cli_input", **arg_value.processed_input
+
+                md = {"origin": "user input"}
+                await frecklet.add_input_set(
+                    _default_metadata=md, **arg_value.processed_input
                 )
 
-                console.line()
-                msg = await frecklet.get_msg()
-                console.print(f"[title]Task[/title]: {msg}")
-                console.line()
-                console.print("[title]Variables[/title]")
+                msg = frecklet.get_msg()
+                self._bring.add_app_event(f"[title]Task[/title]: {msg}\n")
 
-                pi = frecklet.input_sets.explain()
-                console.print(pi)
+                expl = FreckletInputExplanation(
+                    data=frecklet.current_frecklet_input_details
+                )
+                self._bring.add_app_event(expl)
+                # console.print(expl)
 
-                result = await frecklet.get_frecklet_result()
-                if isinstance(result.data, Exception):
-                    console.print(f"[title]Error[/title]: {result.data}")
-                else:
-                    console.print("[title]Result[/title]")
-                    console.line()
-                    target = result.data["target"]
-                    console.print(f"  - installed pkg into: [value]{target}[/value]")
+                try:
+                    result = await frecklet.frecklecute()
+                    re = ResultEvent(result)
+                    self._bring.add_app_event(re)
+                except Exception as e:
+                    ee = ExceptionEvent(e)
+                    self._bring.add_app_event(ee)
+                    sys.exit(1)
 
         command.params = args_renderer.rendered_arg
 

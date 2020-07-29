@@ -39,9 +39,7 @@ class BringDocGroup(FrklBaseCommand):
 
         # self._plugin_managers: Dict[str, TypistryPluginManager] = None
 
-        super(BringDocGroup, self).__init__(
-            name=name, arg_hive=self._tingistry.arg_hive, **kwargs
-        )
+        super(BringDocGroup, self).__init__(name=name, **kwargs)
 
     # def plugin_managers(self) -> Mapping[str, TypistryPluginManager]:
     #
