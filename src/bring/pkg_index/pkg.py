@@ -19,7 +19,7 @@ from typing import (
 from bring.defaults import BRING_PKG_VERSION_CACHE
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_types import PkgType
-from bring.utils import BringTaskDesc, find_version, replace_var_aliases
+from bring.utils import find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frkl.args.arg import RecordArg
 from frkl.common.dicts import get_seeded_dict
@@ -27,6 +27,7 @@ from frkl.common.exceptions import FrklException
 from frkl.common.filesystem import ensure_folder
 from frkl.common.formats.serialize import to_value_string
 from frkl.common.strings import generate_valid_identifier
+from frkl.tasks.task_desc import TaskDesc
 from frkl.types.plugins import PluginManager
 from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
@@ -287,11 +288,7 @@ class PkgTing(SimpleTing):
         self,
         vars: Optional[Mapping[str, Any]] = None,
         extra_mogrifiers: Iterable[Union[str, Mapping[str, Any]]] = None,
-        basetopic: Optional[str] = None,
     ) -> Transmogrificator:
-
-        if basetopic is None:
-            basetopic = self.full_name
 
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "metadata", resolve=True
@@ -322,11 +319,9 @@ class PkgTing(SimpleTing):
 
         pipeline_id = generate_valid_identifier(prefix="pipe_", length_without_prefix=6)
 
-        task_desc = BringTaskDesc(
+        task_desc = TaskDesc(
             name=f"prepare package '{self.name}'",
             msg=f"gathering file(s) for package '{self.name}'",
-            basetopic=basetopic,
-            subtopic=pipeline_id,
         )
 
         mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
@@ -338,7 +333,6 @@ class PkgTing(SimpleTing):
             name=self.name,
             task_desc=task_desc,
             pipeline_id=pipeline_id,
-            basetopic=basetopic,
         )
 
         return tm
@@ -496,7 +490,7 @@ class DynamicPkgTing(PkgTing):
             source_dict, self.bring_index, override_config=config
         )
         if not cached and register_task:
-            task_desc = BringTaskDesc(
+            task_desc = TaskDesc(
                 name=f"metadata retrieval {self.name}",
                 msg=f"retrieving valid metadata for package '{self.name}'",
             )

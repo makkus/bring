@@ -21,14 +21,12 @@ from bring.defaults import (
     BRING_CONFIG_PROFILES_NAME,
     BRING_CORE_CONFIG,
     BRING_DEFAULT_CONFIG_PROFILE,
-    BRING_TASKS_BASE_TOPIC,
 )
 from freckles.core.freckles import Freckles
 from frkl.args.hive import ArgHive
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.dicts import get_seeded_dict
 from frkl.common.exceptions import FrklException
-from frkl.tasks.task_watchers import TaskWatchManager
 
 
 if TYPE_CHECKING:
@@ -96,10 +94,10 @@ class BringConfig(object):
         self._bring: Optional["Bring"] = None
         self._config_dict_lock: Optional[Lock] = None
 
-        self._task_watch_manager: TaskWatchManager = BRING.get_singleton(
-            TaskWatchManager
-        )
-        self._task_watcher_ids: List[str] = []
+        # self._task_watch_manager: TaskWatchManager = BRING.get_singleton(
+        #     TaskWatchManager
+        # )
+        # self._task_watcher_ids: List[str] = []
 
     @property
     def freckles(self) -> Freckles:
@@ -218,22 +216,22 @@ class BringConfig(object):
 
             self._config_dict = profile_dict
 
-            for watcher_id in self._task_watcher_ids:
-                self._task_watch_manager.remove_watcher(watcher_id)
-
-            self._task_watcher_ids.clear()
-            task_log_config: Union[str, Mapping, Iterable] = self._config_dict.get(
-                "task_log", []
-            )
-
-            if isinstance(task_log_config, (str, collections.Mapping)):
-                task_log_config = [task_log_config]
-            for tlc in task_log_config:
-                if isinstance(tlc, str):
-                    tlc = {"type": tlc, "base_topics": [BRING_TASKS_BASE_TOPIC]}
-
-                id = self._task_watch_manager.add_watcher(tlc)
-                self._task_watcher_ids.append(id)
+            # for watcher_id in self._task_watcher_ids:
+            #     self._task_watch_manager.remove_watcher(watcher_id)
+            #
+            # self._task_watcher_ids.clear()
+            # task_log_config: Union[str, Mapping, Iterable] = self._config_dict.get(
+            #     "task_log", []
+            # )
+            #
+            # if isinstance(task_log_config, (str, collections.Mapping)):
+            #     task_log_config = [task_log_config]
+            # for tlc in task_log_config:
+            #     if isinstance(tlc, str):
+            #         tlc = {"type": tlc, "base_topics": [BRING_TASKS_BASE_TOPIC]}
+            #
+            #     id = self._task_watch_manager.add_watcher(tlc)
+            #     self._task_watcher_ids.append(id)
 
             return self._config_dict
 

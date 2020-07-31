@@ -6,17 +6,14 @@ import os
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Union
 
 from anyio import Lock, create_lock, create_task_group
-from bring import BRING
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRING_WORKSPACE_FOLDER
-from bring.interfaces.cli import console
 from bring.mogrify import Transmogritory
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import PkgType
-from bring.utils import BringTaskDesc
 from bring.utils.defaults import calculate_defaults
 from freckles.core.freckles import Freckles
 from frkl.args.hive import ArgHive
@@ -27,8 +24,6 @@ from frkl.common.types import isinstance_or_subclass
 from frkl.events.event import Event
 from frkl.tasks.task import Task
 from frkl.tasks.task_desc import TaskDesc
-from frkl.tasks.task_watchers import TaskWatchManager
-from frkl.tasks.task_watchers.rich import RichTaskWatcher
 from frkl.tasks.tasks import ParallelTasksAsync
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
@@ -321,9 +316,7 @@ class Bring(SimpleTing):
         if index_names is None:
             index_names = self.index_ids
 
-        td = BringTaskDesc(
-            name="update metadata", msg="updating metadata for all indexes"
-        )
+        td = TaskDesc(name="update metadata", msg="updating metadata for all indexes")
         tasks = ParallelTasksAsync(task_desc=td)
         # tasks = SerialTasksAsync(task_desc=td)
         for index_name in index_names:
@@ -338,40 +331,22 @@ class Bring(SimpleTing):
             if tsk:
                 tasks.add_tasklet(tsk)
 
-        await self.run_async_task(tasks, subtopic="update_indexes")
+        await self.run_async_task(tasks)
 
         # await tasks.run_async()
 
-    async def run_async_task(self, task: Task, subtopic: Optional[str] = None):
+    async def run_async_task(self, task: Task):
 
-        twm: TaskWatchManager = BRING.get_singleton(TaskWatchManager)
-        # twm = TaskWatchManager(typistry=self._bring._tingistry_obj.typistry)
-        tlc = {
-            "type": "rich",
-            "base_topics": [task.task_desc.topic],
-            "console": console,
-            "tasks": task,
-        }
+        task.task_desc.topic = f"{self.freckles.full_name}.update_indexes"
 
-        if subtopic:
+        if task.has_subtasks:
 
-            task.task_desc.subtopic = subtopic
+            for index, tasklet in enumerate(task.tasklets):  # type: ignore
+                tasklet.task_desc.topic = (
+                    f"{self.freckles.full_name}.update_indexes.index_{index}"
+                )
 
-            if task.has_subtasks:
-
-                for index, tasklet in enumerate(task.tasklets):  # type: ignore
-                    tasklet.task_desc.subtopic = f"{subtopic}.{index}"
-
-        wid = twm.add_watcher(tlc)
-        tw: RichTaskWatcher = twm.get_watcher(wid)  # type: ignore
-
-        progress = tw.progress
-        try:
-            with progress:
-                await task.run_async()
-
-        finally:
-            twm.remove_watcher(wid)
+        await task.run_async()
 
     async def get_pkg_map(self, *indexes) -> Mapping[str, Mapping[str, PkgTing]]:
         """Get all pkgs, per available (or requested) indexes."""
@@ -547,7 +522,7 @@ def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
         to_add["install_pkg"] = prototing_name_install_pkg
 
     if "install_assembly" not in current.keys():
-        from bring.frecklets.install_pkg import BringInstallAssemblyFrecklet
+        from bring.frecklets.install_assembly import BringInstallAssemblyFrecklet
 
         prototing_name_install_assembly = (
             f"{bring.full_name}.frecklets.install_assembly"

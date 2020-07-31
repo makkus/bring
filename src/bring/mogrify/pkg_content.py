@@ -4,13 +4,15 @@ import shutil
 from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Optional, Union
 
-# from bring.merge_strategy import FolderMerge, MergeStrategy
 from bring.mogrify import SimpleMogrifier
 from bring.utils.pkg_spec import PATH_KEY, PkgSpec
 from frkl.common.exceptions import FrklException
 from frkl.common.filesystem import ensure_folder
 from frkl.targets.local_folder import LocalFolder, log
 from frkl.targets.target import MetadataFileItem, TargetItem
+
+
+# from bring.merge_strategy import FolderMerge, MergeStrategy
 
 
 class PkgContentLocalFolder(LocalFolder):
@@ -36,49 +38,50 @@ class PkgContentLocalFolder(LocalFolder):
         merge_config: Mapping[str, Any],
     ) -> Optional[MutableMapping[str, Any]]:
 
-        item_details = self.pkg_spec.get_item_details(item_id)
+        item_matches = self.pkg_spec.get_item_details(item_id)
 
-        if not item_details:
+        for item_details in item_matches:
+            if not item_details:
 
-            log.debug(f"Ignoring file item: {item_id}")
-            return None
+                log.debug(f"Ignoring file item: {item_id}")
+                return None
 
-        target_id = item_details[PATH_KEY]
+            target_id = item_details[PATH_KEY]
 
-        if self.pkg_spec.flatten:
-            target_path = os.path.join(self.path, os.path.basename(target_id))
-        else:
-            target_path = os.path.join(self.path, target_id)
+            if self.pkg_spec.flatten:
+                target_path = os.path.join(self.path, os.path.basename(target_id))
+            else:
+                target_path = os.path.join(self.path, target_id)
 
-        if self.pkg_spec.single_file:
-            childs = os.listdir(self.path)
-            if childs:
-                raise FrklException(
-                    msg=f"Can't merge item '{item_id}'.",
-                    reason=f"Package is marked as single file, and target path '{self.path}' already contains a child.",
-                )
+            if self.pkg_spec.single_file:
+                childs = os.listdir(self.path)
+                if childs:
+                    raise FrklException(
+                        msg=f"Can't merge item '{item_id}'.",
+                        reason=f"Package is marked as single file, and target path '{self.path}' already contains a child.",
+                    )
 
-        ensure_folder(os.path.dirname(target_path))
+            ensure_folder(os.path.dirname(target_path))
 
-        move_method = merge_config.get("move_method", "copy")
-        if move_method == "move":
-            shutil.move(item, target_path)
-        elif move_method == "copy":
-            shutil.copy2(item, target_path)
-        else:
-            raise ValueError(f"Invalid 'move_method' value: {move_method}")
+            move_method = merge_config.get("move_method", "copy")
+            if move_method == "move":
+                shutil.move(item, target_path)
+            elif move_method == "copy":
+                shutil.copy2(item, target_path)
+            else:
+                raise ValueError(f"Invalid 'move_method' value: {move_method}")
 
-        if "mode" in item_details.keys():
-            mode_value = item_details["mode"]
-            if not isinstance(mode_value, str):
-                mode_value = str(mode_value)
+            if "mode" in item_details.keys():
+                mode_value = item_details["mode"]
+                if not isinstance(mode_value, str):
+                    mode_value = str(mode_value)
 
-            mode = int(mode_value, base=8)
-            os.chmod(target_path, mode)
+                mode = int(mode_value, base=8)
+                os.chmod(target_path, mode)
 
-        self._merged_items[target_path] = MetadataFileItem(
-            id=target_path, parent=self, metadata=item_metadata
-        )
+            self._merged_items[target_path] = MetadataFileItem(
+                id=target_path, parent=self, metadata=item_metadata
+            )
 
         return {"msg": "installed"}
 
@@ -124,4 +127,4 @@ class PkgContentMogrifier(SimpleMogrifier):
 
         await folder.merge_folders(folder_path, item_metadata=pkg_vars)
 
-        return {"folder_path": target_path, "folder": folder}
+        return {"folder_path": target_path, "target": folder}

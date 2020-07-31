@@ -124,13 +124,23 @@ class PkgSpec(object):
     def single_file(self) -> bool:
         return self._single_file_pkg
 
-    def get_item_details(self, item: str) -> Optional[Mapping[str, Any]]:
-
-        for v in self._items.values():
-            if v["from"] == item:
-                return v
+    def get_item_details(self, item: str) -> List[Mapping[str, Any]]:
 
         if not self._items:
-            return {PATH_KEY: item, FROM_KEY: item}
-        else:
-            return None
+            return [{PATH_KEY: item, FROM_KEY: item}]
+
+        result = []
+        for v in self._items.values():
+            if v["from"] == item:
+                result.append(v)
+
+        return result
+
+    def to_dict(self) -> Dict[str, Any]:
+
+        result: Dict[str, Any] = {}
+        result["items"] = copy.deepcopy(self.pkg_items)
+        result["flatten"] = self.flatten
+        result["single_file"] = self.single_file
+
+        return result

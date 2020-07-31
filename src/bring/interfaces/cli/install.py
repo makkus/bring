@@ -165,10 +165,10 @@ class BringInstallGroup(FrklBaseCommand):
         else:
             full_path = os.path.abspath(os.path.expanduser(name))
 
-            install_args["path"] = full_path
+            # install_args["path"] = full_path
             install_args["pkgs"] = [
                 "binaries.fd",
-                "binaries.${helm_name}",
+                # "binaries.${helm_name}",
                 "binaries.k3d",
                 "binaries.ytop",
             ]
@@ -178,12 +178,15 @@ class BringInstallGroup(FrklBaseCommand):
             }
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
-            frecklet.add_input_set(_default_metadata=md, **install_args)
+            await frecklet.add_input_set(_default_metadata=md, **install_args)
 
         args = frecklet.get_current_required_args()
-        args_renderer = args.create_arg_renderer(
-            "cli", add_defaults=False, remove_required=True
-        )
+        if args:
+            args_renderer = args.create_arg_renderer(
+                "cli", add_defaults=False, remove_required=True
+            )
+        else:
+            args_renderer = None
 
         if explain:
 
@@ -220,12 +223,13 @@ class BringInstallGroup(FrklBaseCommand):
             @handle_exc_async
             async def command(ctx, **kwargs):
 
-                arg_value = args_renderer.create_arg_value(kwargs)
-
-                md = {"origin": "user input"}
-                await frecklet.add_input_set(
-                    _default_metadata=md, **arg_value.processed_input
-                )
+                # TODO: check whether there is any input?
+                if args_renderer:
+                    arg_value = args_renderer.create_arg_value(kwargs)
+                    md = {"origin": "user input"}
+                    await frecklet.add_input_set(
+                        _default_metadata=md, **arg_value.processed_input
+                    )
 
                 msg = frecklet.get_msg()
                 self._bring.add_app_event(f"[title]Task[/title]: {msg}\n")
@@ -234,7 +238,6 @@ class BringInstallGroup(FrklBaseCommand):
                     data=frecklet.current_frecklet_input_details
                 )
                 self._bring.add_app_event(expl)
-                # console.print(expl)
 
                 try:
                     result = await frecklet.frecklecute()
@@ -245,6 +248,9 @@ class BringInstallGroup(FrklBaseCommand):
                     self._bring.add_app_event(ee)
                     sys.exit(1)
 
-        command.params = args_renderer.rendered_arg
+        if args_renderer:
+            command.params = args_renderer.rendered_arg
+        else:
+            command.params = []
 
         return command

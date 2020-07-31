@@ -9,7 +9,6 @@ from abc import abstractmethod
 from typing import Any, Iterable, Mapping, Optional, Union
 
 from bring.defaults import BRING_WORKSPACE_FOLDER
-from bring.utils import BringTaskDesc
 from frkl.common.exceptions import FrklException
 from frkl.common.filesystem import ensure_folder
 from frkl.common.jinja_templating import replace_strings_in_obj
@@ -359,7 +358,6 @@ class Transmogritory(SimpleTing):
         mogrify_plugin: str,
         pipeline_id: str,
         index: str,
-        basetopic: str,
         input_vals: Mapping[str, Any],
     ) -> Mogrifier:
 
@@ -376,16 +374,11 @@ class Transmogritory(SimpleTing):
 
         ting: Mogrifier = self._tingistry_obj.create_ting(  # type: ignore
             prototing=f"bring.mogrify.plugins.{mogrify_plugin}",
-            ting_name=f"{basetopic}.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
+            ting_name=f"bring.runtime.pipelines.{pipeline_id}.{mogrify_plugin}_{index}",
         )
         ting.set_input(**input_vals)
         msg = ting.get_msg()
-        td = BringTaskDesc(
-            name=mogrify_plugin,
-            msg=msg,
-            basetopic=basetopic,
-            subtopic=f"{pipeline_id}.{ting.name}",
-        )
+        td = TaskDesc(name=mogrify_plugin, msg=msg,)
         ting.task_desc = td
 
         return ting
@@ -395,10 +388,8 @@ class Transmogritory(SimpleTing):
         data: Iterable[Union[Mapping[str, Any], str]],
         vars: Mapping[str, Any],
         args: Mapping[str, Any],
-        basetopic: str,
         task_desc: Optional[TaskDesc] = None,
         pipeline_id: Optional[str] = None,
-        # target: Union[str, Path, Mapping[str, Any]] = None,
         **kwargs,
     ) -> Transmogrificator:
 
@@ -409,21 +400,13 @@ class Transmogritory(SimpleTing):
 
         if task_desc is None:
             task_desc = TaskDesc(
-                name=pipeline_id,
-                msg=f"executing pipeline '{pipeline_id}'",
-                subtopic=pipeline_id,
-                basetopic=basetopic,
+                name=pipeline_id, msg=f"executing pipeline '{pipeline_id}'",
             )
 
         mogrifier_list = assemble_mogrifiers(mogrifier_list=data, vars=vars, args=args)
 
         transmogrificator = Transmogrificator(
-            pipeline_id,
-            self._tingistry_obj,
-            task_desc=task_desc,
-            basetopic=basetopic,
-            # target=target,
-            **kwargs,
+            pipeline_id, self._tingistry_obj, task_desc=task_desc, **kwargs,
         )
 
         for index, _mog in enumerate(mogrifier_list):
@@ -444,7 +427,6 @@ class Transmogritory(SimpleTing):
                     pipeline_id=pipeline_id,
                     index=str(index),
                     input_vals=vals,
-                    basetopic=basetopic,
                 )
 
                 transmogrificator.add_mogrifier(ting)

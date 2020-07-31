@@ -7,9 +7,9 @@ from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.utils import retrieve_index_file_content
-from bring.utils import BringTaskDesc
 from frkl.common.exceptions import FrklException
 from frkl.tasks.task import SingleTaskAsync, Task
+from frkl.tasks.task_desc import TaskDesc
 from tings.ting import TingMeta
 
 
@@ -152,7 +152,7 @@ class BringStaticIndexTing(BringIndexTing):
 
     async def _create_update_tasks(self) -> Optional[Task]:
 
-        task_desc = BringTaskDesc(
+        task_desc = TaskDesc(
             name=f"metadata update {self.name}",
             msg=f"updating metadata for index '{self.name}'",
         )

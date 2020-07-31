@@ -46,6 +46,8 @@ BRING: AppEnvironment = AppEnvironment(main_module="bring")
 
 def set_globals():
 
+    import bring.interfaces.cli  # noqa
+
     global BRING
 
     from frkl.types.typistry import Typistry

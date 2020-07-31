@@ -6,11 +6,11 @@ from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.pkgs import Pkgs
-from bring.utils import BringTaskDesc
 from bring.utils.git import ensure_repo_cloned
 from frkl.common.exceptions import FrklException
 from frkl.common.strings import is_git_repo_url
 from frkl.tasks.task import SingleTaskAsync, Task
+from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.tasks import ParallelTasksAsync
 from tings.makers import TingMaker
 from tings.ting import TingMeta
@@ -86,14 +86,14 @@ class BringDynamicIndexTing(BringIndexTing):
 
     async def _create_update_tasks(self) -> Optional[Task]:
 
-        task_desc = BringTaskDesc(
+        task_desc = TaskDesc(
             name=f"metadata update {self.name}",
             msg=f"updating metadata for index '{self.name}'",
         )
         tasks = ParallelTasksAsync(task_desc=task_desc)
         pkgs = await self.get_pkgs()
         for pkg_name, pkg in pkgs.items():
-            td = BringTaskDesc(
+            td = TaskDesc(
                 name=f"{pkg_name}",
                 msg=f"updating metadata for pkg '{pkg_name}' (index: {self.name})",
             )

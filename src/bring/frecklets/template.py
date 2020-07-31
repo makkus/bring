@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
-from bring.frecklets.install_pkg import BringFrecklet
+from bring.frecklets import BringFrecklet
 from bring.pkg_index.pkg import PkgTing
 from frkl.args.arg import Arg
 from frkl.common.exceptions import FrklException

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
 from bring.defaults import BRING_ALLOWED_MARKER_NAME, BRING_METADATA_FOLDER_NAME
-from frkl.tasks.task_desc import TaskDesc
 
 
 def is_valid_bring_target(target: Union[str, Path]):
@@ -184,7 +183,12 @@ def find_version(
     return max_match[0]
 
 
-class BringTaskDesc(TaskDesc):
-    def __init__(self, **kwargs: Any) -> None:
+def parse_pkg_string(pkg_string: str) -> Tuple[str, Optional[str]]:
 
-        super().__init__(**kwargs)
+    if not pkg_string:
+        raise ValueError("Can't parse pkg, pkg string empty.")
+    if "." not in pkg_string:
+        return (pkg_string, None)
+
+    pkg_index, pkg_name = pkg_string.rsplit(".", 1)
+    return (pkg_name, pkg_index)
