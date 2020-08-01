@@ -172,6 +172,6 @@ class GitRepo(SimplePkgType):
         checkout_point: str,
     ) -> None:
 
-        for c in git_repo.get_list_commits(branch=checkout_point):
+        for c in git_repo.get_list_commits(rev=checkout_point):
             if c.hash not in current_commits.keys():
                 current_commits[c.hash] = c
