@@ -5,6 +5,7 @@ from typing import Dict, Union
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.defaults import DEFAULT_PACKAGE_ASSEMBLY_EXTENSION
 from bring.interfaces.cli.utils import print_pkg_list_help
 from freckles.core.explanation import FreckletInputExplanation
 from frkl.args.arg import Arg
@@ -151,7 +152,13 @@ class BringInstallGroup(FrklBaseCommand):
             return None
 
         md = {"origin": "user input"}
-        if not name.endswith(".br"):
+        if (
+            not name.endswith(DEFAULT_PACKAGE_ASSEMBLY_EXTENSION)
+            and not name.endswith(".json")
+            and not name.endswith(".yaml")
+            and not name.endswith(".yml")
+            and not name.endswith(".toml")
+        ):
 
             pkg = await self._bring.get_pkg(name, raise_exception=True)
             install_args["pkg_name"] = pkg.name
@@ -164,14 +171,7 @@ class BringInstallGroup(FrklBaseCommand):
 
         else:
             full_path = os.path.abspath(os.path.expanduser(name))
-
-            # install_args["path"] = full_path
-            install_args["pkgs"] = [
-                "binaries.fd",
-                # "binaries.${helm_name}",
-                "binaries.k3d",
-                "binaries.ytop",
-            ]
+            install_args["data"] = full_path
             frecklet_config = {
                 "id": generate_valid_identifier(full_path, sep="_"),
                 "type": "install_assembly",
