@@ -241,8 +241,10 @@ class BringInstallGroup(FrklBaseCommand):
 
                 try:
                     result = await frecklet.frecklecute()
-                    re = ResultEvent(result)
-                    self._bring.add_app_event(re)
+                    merge_result = result.get_result_value("merge_result")
+
+                    res = ResultEvent(merge_result)
+                    self._bring.add_app_event(res)
                 except Exception as e:
                     ee = ExceptionEvent(e)
                     self._bring.add_app_event(ee)

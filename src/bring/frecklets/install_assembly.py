@@ -10,7 +10,7 @@ from frkl.args.arg import Arg, RecordArg
 from frkl.common.exceptions import FrklException
 from frkl.common.iterables import ensure_iterable
 from frkl.common.regex import create_var_regex, find_var_names_in_obj
-from frkl.targets.local_folder import TrackingLocalFolder
+from frkl.targets.local_folder import FolderMergeResult, TrackingLocalFolder
 from frkl.tasks.task import PostprocessTask, Task
 from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.tasks import ParallelTasksAsync, Tasks
@@ -143,16 +143,18 @@ class InstallAssemblyPostprocessTask(PostprocessTask):
         _merge_config: Dict[str, Any] = {}
 
         target_folder = TrackingLocalFolder(path=_target_path)
+        merge_result = FolderMergeResult(target=target_folder)
+
         for source_folder, _item_metadata in folders.items():
             result = await target_folder.merge_folders(
                 source_folder, item_metadata=_item_metadata, merge_config=_merge_config
             )
+            merge_result.add_merge_result(result)
 
         return {
             "folder_path": _target_path,
             "target": target_folder,
-            "merge_result": result,
-            "item_metadata": _item_metadata,
+            "merge_result": merge_result,
         }
 
 
@@ -215,11 +217,7 @@ class ParallelAssemblyTask(Tasks):
 
     async def create_result_value(self, *tasklets: Task) -> Any:
 
-        return "xxx"
-        result_dict = {}
-        for tasklet in tasklets:
-            result_dict[tasklet.id] = tasklet.result
-        return result_dict
+        return tasklets[-1].result
 
 
 class BringInstallAssemblyFrecklet(BringFrecklet):

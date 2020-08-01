@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import collections
 import tempfile
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping, Optional
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 
 from bring.defaults import BRING_RESULTS_FOLDER, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
@@ -9,17 +9,13 @@ from bring.mogrify import Transmogrificator
 from bring.mogrify.pkg_content import PkgContentLocalFolder
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkg_spec import PkgSpec
-from freckles.core.frecklet import FreckletException, FreckletResult, FreckletVar
+from freckles.core.frecklet import FreckletException, FreckletVar
 from frkl.args.arg import RecordArg
 from frkl.targets.local_folder import TrackingLocalFolder
 from frkl.tasks.exceptions import FrklTaskRunException
 from frkl.tasks.task import Task, TaskResult
 from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.tasks import Tasks
-
-
-if TYPE_CHECKING:
-    from rich.console import ConsoleOptions, Console, RenderResult
 
 
 class PkgContentTask(Task):
@@ -61,13 +57,12 @@ class PkgContentTask(Task):
         source_folder = self._prior_task_result.result_value["folder_path"]
         folder = PkgContentLocalFolder(path=self._target, pkg_spec=self._pkg_spec)
 
-        await folder.merge_folders(source_folder, item_metadata=self._item_metadata)
+        merge_result = await folder.merge_folders(
+            source_folder, item_metadata=self._item_metadata
+        )
+        merge_result.add_metadata("transform", self._pkg_spec.to_dict())
 
-        result = {
-            "folder_path": self._target,
-            "target": folder,
-            "transform": self._pkg_spec.to_dict(),
-        }
+        result = {"folder_path": self._target, "merge_result": merge_result}
         return result
 
 
@@ -120,15 +115,16 @@ class MoveToTargetTask(Task):
             _item_metadata = self._item_metadata
 
         target_folder = TrackingLocalFolder(path=_target_path)
-        result = await target_folder.merge_folders(
+        merge_result = await target_folder.merge_folders(
             source_folder, item_metadata=_item_metadata, merge_config=_merge_config
         )
 
+        merge_result.add_metadata("item_metadata", _item_metadata)
+
         return {
             "folder_path": _target_path,
-            "target": target_folder,
-            "merge_result": result,
             "item_metadata": _item_metadata,
+            "merge_result": merge_result,
         }
 
 
@@ -214,32 +210,32 @@ class BringInstallTask(Tasks):
         return result
 
 
-class InstallFreckletResult(FreckletResult):
-    def __init__(self, task_result: TaskResult):
-
-        super().__init__(task_result=task_result)
-
-    def _create_result_value(self, task_result: TaskResult) -> Mapping[str, Any]:
-        """Create the actual result value dictionary.
-
-        This can be overwritten by specialized result types.
-        """
-
-        if not isinstance(self._task_result.result_value, collections.abc.Mapping):
-            raise TypeError(
-                f"Invalid result type for InstallFrecklet: {type(self._task_result.result_value)}"
-            )
-
-        return self._task_result.result_value
-
-    def __rich_console__(
-        self, console: "Console", options: "ConsoleOptions"
-    ) -> "RenderResult":
-
-        yield ("[title]Result[/title]")
-        yield ""
-        target = self.result["folder_path"]
-        yield f"  Package installed into: {target}"
+# class InstallFreckletResult(FreckletResult):
+#     def __init__(self, task_result: TaskResult):
+#
+#         super().__init__(task_result=task_result)
+#
+#     def _create_result_value(self, task_result: TaskResult) -> Mapping[str, Any]:
+#         """Create the actual result value dictionary.
+#
+#         This can be overwritten by specialized result types.
+#         """
+#
+#         if not isinstance(self._task_result.result_value, collections.abc.Mapping):
+#             raise TypeError(
+#                 f"Invalid result type for InstallFrecklet: {type(self._task_result.result_value)}"
+#             )
+#
+#         return self._task_result.result_value
+#
+#     def __rich_console__(
+#         self, console: "Console", options: "ConsoleOptions"
+#     ) -> "RenderResult":
+#
+#         yield ("[title]Result[/title]")
+#         yield ""
+#         target = self.result["folder_path"]
+#         yield f"  Package installed into: {target}"
 
 
 class BringInstallFrecklet(BringFrecklet):
@@ -318,6 +314,6 @@ class BringInstallFrecklet(BringFrecklet):
 
         return frecklet_task
 
-    def process_frecklet_result(self, result: TaskResult) -> FreckletResult:
-
-        return InstallFreckletResult(task_result=result)
+    # def process_frecklet_result(self, result: TaskResult) -> FreckletResult:
+    #
+    #     return InstallFreckletResult(task_result=result)
