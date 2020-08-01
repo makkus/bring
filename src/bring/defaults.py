@@ -22,6 +22,8 @@ BRING_RESOURCES_FOLDER = os.path.join(BRING_MODULE_BASE_FOLDER, "resources")
 # BRING_DEFAULT_CONTEXTS_FOLDER = os.path.join(BRING_RESOURCES_FOLDER, "default_indexes")
 
 BRING_DOWNLOAD_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "downloads")
+
+BRING_TEMP_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "temp")
 BRING_INDEX_FILES_CACHE = os.path.join(BRING_DOWNLOAD_CACHE, "indexes")
 
 BRING_GIT_CHECKOUT_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "git_checkouts")

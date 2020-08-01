@@ -7,6 +7,8 @@ from typing import Iterable, Mapping, Type, Union
 
 from pkg_resources import DistributionNotFound, get_distribution
 
+from bring.defaults import BRING_TEMP_CACHE
+from frkl.common.filesystem import ensure_folder
 from frkl.project_meta.app_environment import AppEnvironment
 
 
@@ -42,6 +44,8 @@ finally:
     del get_distribution, DistributionNotFound
 
 BRING: AppEnvironment = AppEnvironment(main_module="bring")
+
+ensure_folder(BRING_TEMP_CACHE)
 
 
 def set_globals():

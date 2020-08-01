@@ -3,6 +3,8 @@ import copy
 import json
 import logging
 import os
+import shutil
+import tempfile
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -19,7 +21,12 @@ from typing import (
 
 import arrow
 from anyio import aopen
-from bring.defaults import BRING_PKG_CACHE, DEFAULT_ARGS_DICT, PKG_RESOLVER_DEFAULTS
+from bring.defaults import (
+    BRING_PKG_CACHE,
+    BRING_TEMP_CACHE,
+    DEFAULT_ARGS_DICT,
+    PKG_RESOLVER_DEFAULTS,
+)
 from frkl.common.dicts import dict_merge, get_seeded_dict
 from frkl.common.files import generate_valid_filename
 from frkl.common.filesystem import ensure_folder
@@ -588,5 +595,13 @@ class SimplePkgType(PkgType):
     ):
 
         data = {"metadata": metadata, "source": source, "index": bring_index.full_name}
-        async with await aopen(metadata_file, "w") as f:
-            await f.write(json.dumps(data))
+
+        temp_file = tempfile.mkstemp(dir=BRING_TEMP_CACHE)[1]
+        try:
+            async with await aopen(temp_file, "w") as f:
+                await f.write(json.dumps(data))
+
+            shutil.move(temp_file, metadata_file)
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
