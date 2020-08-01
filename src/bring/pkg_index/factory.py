@@ -19,6 +19,7 @@ from bring.defaults import (
     BRING_CONTEXT_NAMESPACE,
     BRING_DEFAULT_INDEX_ALIASES,
     BRING_DEFAULT_INDEX_CONFIG,
+    DEFAULT_FOLDER_INDEX_EXTENSION,
     DEFAULT_FOLDER_INDEX_NAME,
 )
 from bring.pkg_index.config import IndexConfig
@@ -132,7 +133,7 @@ async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
         repo = tokens[2]
         raise NotImplementedError()
 
-    elif index_string.endswith(".br.idx"):
+    elif index_string.endswith(DEFAULT_FOLDER_INDEX_EXTENSION):
         result["type"] = "index_file"
         if is_url_or_abbrev(index_string):
             result["index_file"] = index_string

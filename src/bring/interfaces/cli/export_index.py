@@ -37,7 +37,7 @@ class BringExportIndexCommand(click.Command):
                 ["--output-file", "-o"],
                 required=False,
                 metavar="PATH",
-                help="the path to the index file, defaults to <index_folder>/.bring/this.br.idx",
+                help=f"the path to the index file, defaults to <index_folder>/.bring/{DEFAULT_FOLDER_INDEX_NAME}",
             ),
             Option(
                 ["--force", "-f"],
