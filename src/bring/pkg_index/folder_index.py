@@ -98,7 +98,7 @@ class BringDynamicIndexTing(BringIndexTing):
                 msg=f"updating metadata for pkg '{pkg_name}' (index: {self.name})",
             )
             t = SingleTaskAsync(pkg.update_metadata, task_desc=td, parent_task=tasks)
-            tasks.add_tasklet(t)
+            await tasks.add_tasklet(t)
 
         return tasks
 

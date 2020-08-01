@@ -326,7 +326,7 @@ class PkgTing(SimpleTing):
 
         mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
 
-        tm = self._transmogritory.create_transmogrificator(
+        tm = await self._transmogritory.create_transmogrificator(
             mogrify_list,
             vars=vars,
             args=mogrify_vars,

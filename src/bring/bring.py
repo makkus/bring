@@ -329,7 +329,7 @@ class Bring(SimpleTing):
             tsk = await index._create_update_tasks()
 
             if tsk:
-                tasks.add_tasklet(tsk)
+                await tasks.add_tasklet(tsk)
 
         await self.run_async_task(tasks)
 

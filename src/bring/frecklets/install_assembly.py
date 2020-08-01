@@ -198,15 +198,15 @@ class ParallelAssemblyTask(Tasks):
             await frecklet.add_input_set(**input_values)
 
             task = await frecklet.get_frecklet_task()
-            install_tasks.add_tasklet(task)
+            await install_tasks.add_tasklet(task)
 
-        self.add_tasklet(install_tasks)
+        await self.add_tasklet(install_tasks)
 
         task_desc = TaskDesc(name="merge packages", msg="merging packages into target")
         postprocess_task = InstallAssemblyPostprocessTask(
             previous_task=install_tasks, task_desc=task_desc
         )
-        self.add_tasklet(postprocess_task)
+        await self.add_tasklet(postprocess_task)
 
     async def execute_tasklets(self, *tasklets: Task) -> None:
 

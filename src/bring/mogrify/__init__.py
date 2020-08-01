@@ -275,13 +275,13 @@ class Transmogrificator(SimpleTasks):
     def working_dir(self):
         return self._working_dir
 
-    def add_mogrifier(self, mogrifier: Mogrifier) -> None:
+    async def add_mogrifier(self, mogrifier: Mogrifier) -> None:
 
         mogrifier.working_dir = self._working_dir
         if self._current is not None:
             mogrifier.set_requirements(self._current)
 
-        self.add_tasklet(mogrifier)  # type: ignore
+        await self.add_tasklet(mogrifier)  # type: ignore
         self._current = mogrifier
         self._last_item = self._current
 
@@ -383,7 +383,7 @@ class Transmogritory(SimpleTing):
 
         return ting
 
-    def create_transmogrificator(
+    async def create_transmogrificator(
         self,
         data: Iterable[Union[Mapping[str, Any], str]],
         vars: Mapping[str, Any],
@@ -429,7 +429,7 @@ class Transmogritory(SimpleTing):
                     input_vals=vals,
                 )
 
-                transmogrificator.add_mogrifier(ting)
+                await transmogrificator.add_mogrifier(ting)
             elif isinstance(_mog, collections.Iterable):
 
                 raise NotImplementedError()

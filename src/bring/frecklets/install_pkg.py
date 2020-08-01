@@ -45,7 +45,7 @@ class PkgContentTask(Task):
         self._target: str = target
 
         task_desc = TaskDesc(
-            name="transforming pkg content", msg="transforming package content",
+            name="transforming pkg content", msg="transforming package content"
         )
         super().__init__(task_desc=task_desc, **kwargs)
 
@@ -164,7 +164,7 @@ class BringInstallTask(Tasks):
             vars=self._input_values, extra_mogrifiers=extra_mogrifiers,
         )
 
-        self.add_tasklet(transmogrificator)
+        await self.add_tasklet(transmogrificator)
 
         prior_task: Task = transmogrificator
 
@@ -183,7 +183,7 @@ class BringInstallTask(Tasks):
                 pkg_spec=self._pkg_content,
                 item_metadata=item_metadata,
             )
-            self.add_tasklet(pct)
+            await self.add_tasklet(pct)
             prior_task = pct
             item_metadata["transform"] = pct.pkg_spec.to_dict()
 
@@ -198,7 +198,7 @@ class BringInstallTask(Tasks):
             target_config=self._target_config,
             item_metadata={"install": item_metadata},
         )
-        self.add_tasklet(mttt)
+        await self.add_tasklet(mttt)
 
         # result = await mttt.run_async(raise_exception=True)
         # return result
