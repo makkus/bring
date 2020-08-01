@@ -8,7 +8,7 @@ from bring import BRING
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRINGISTRY_INIT
-from bring.interfaces.cli.export_index import BringExportIndexCommand
+from bring.interfaces.cli.commands.export_index import BringExportIndexCommand
 from freckles.core.freckles import Freckles
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.common.cli import get_console
@@ -169,22 +169,22 @@ class BringCommandGroup(FrklBaseCommand):
         if not is_list_command:
             config_list = self.create_bring_config_list(self._group_params)
 
-        if name == "config":
+        # if name == "config":
+        #
+        #     from bring.interfaces.cli.config import BringConfigGroup
+        #
+        #     command = BringConfigGroup(
+        #         bring_config=self.bring_config,
+        #         config_list=config_list,
+        #         name=name,
+        #         arg_hive=self._tingistry_obj.arg_hive,
+        #     )
+        #
+        #     return command
 
-            from bring.interfaces.cli.config import BringConfigGroup
+        if name in ["explain", "exp", "x"]:
 
-            command = BringConfigGroup(
-                bring_config=self.bring_config,
-                config_list=config_list,
-                name=name,
-                arg_hive=self._tingistry_obj.arg_hive,
-            )
-
-            return command
-
-        elif name in ["explain", "exp", "x"]:
-
-            from bring.interfaces.cli.explain import BringInfoPkgsGroup
+            from bring.interfaces.cli.commands.explain import BringInfoPkgsGroup
 
             command = BringInfoPkgsGroup(
                 bring_config=self.bring_config,
@@ -192,7 +192,7 @@ class BringCommandGroup(FrklBaseCommand):
                 name="info",
                 arg_hive=self._tingistry_obj.arg_hive,
             )
-            command.short_help = "display index, pkg, and target information"
+            command.short_help = "display context, index, pkg, or target information"
 
         if not is_list_command:
 
@@ -209,7 +209,7 @@ class BringCommandGroup(FrklBaseCommand):
             command.short_help = "list packages for all registered indexes"
 
         elif name == "install":
-            from bring.interfaces.cli.install import BringInstallGroup
+            from bring.interfaces.cli.commands.install import BringInstallGroup
 
             command = BringInstallGroup(
                 bring=self.bring, name="install", arg_hive=self.arg_hive
@@ -227,7 +227,7 @@ class BringCommandGroup(FrklBaseCommand):
         #     command.short_help = "install one or a list of packages"
 
         elif name == "update":
-            from bring.interfaces.cli.update import BringUpdateCommand
+            from bring.interfaces.cli.commands.update import BringUpdateCommand
 
             command = BringUpdateCommand(bring=self.bring, name="update")
             command.short_help = "update index metadata"
@@ -243,11 +243,11 @@ class BringCommandGroup(FrklBaseCommand):
             ctx.obj["bring"] = self.bring
             command = dev
 
-        elif name == "plugin":
-            ctx.obj["bring"] = self.bring
-            from bring.interfaces.cli.plugin import plugin
-
-            command = plugin
+        # elif name == "plugin":
+        #     ctx.obj["bring"] = self.bring
+        #     from bring.interfaces.cli.plugin import plugin
+        #
+        #     command = plugin
 
         elif name == "export-index":
 

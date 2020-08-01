@@ -18,7 +18,12 @@ from frkl.tasks.explain import TaskExplanation
 from frkl.tasks.task import Task
 
 
-INSTALL_HELP = """Install one or several packages."""
+INSTALL_HELP = """Install one or several packages.
+
+Either provide the name of one of the available packages, or the path to a file containing a list of packages to install.
+
+TODO: more documentation and links, also explain target and target config
+"""
 
 
 class BringInstallGroup(FrklBaseCommand):
@@ -128,25 +133,11 @@ class BringInstallGroup(FrklBaseCommand):
         target = self._group_params_parsed.get("target", None)
         target_config = self._group_params_parsed.get("target_config", None)
 
-        # force = self._group_params_parsed.get("force", False)
-        # update = self._group_params_parsed.get("update", False)
-
-        # merge_strategy = self._group_params_parsed.get("merge_strategy")
-        #
-        # merge_strategy["config"]["force"] = force
-        # merge_strategy["config"]["update"] = update
-
         install_args = {}
         if target:
             install_args["target"] = target
         if target_config:
             install_args["target_config"] = target_config
-
-        # install_args["merge_strategy"] = merge_strategy
-        # if target:
-        #     install_args["target"] = {"target": target, "write_metadata": True}
-        # else:
-        #     install_args["target"] = {"target": None, "write_metadata": True}
 
         if not load_details:
             return None

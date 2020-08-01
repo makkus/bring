@@ -76,8 +76,6 @@ class PkgSpec(object):
             else:
                 _files = list(items)
 
-            print(_files)
-
             for _f in _files:
                 if isinstance(_f, str):
                     f: Mapping[str, Any] = {PATH_KEY: _f, FROM_KEY: _f}

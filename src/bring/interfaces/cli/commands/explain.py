@@ -21,10 +21,7 @@ from frkl.targets.local_folder import TrackingLocalFolder
 
 log = logging.getLogger("bring")
 
-INFO_HELP = """Display information about a index or package.
-
-You can either provide a index or package name. If the specified value matches a index name, index information will
-be displayed. Otherwise all indexes will be looked up to find a matching package name. If you want to display information for a package from the default index, you may omit the 'index' part of the package name.
+INFO_HELP = """Display information about a config context, an index, a package or a target.
 """
 
 
@@ -91,12 +88,13 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
         if name == "target":
 
-            @click.command()
+            @click.command(short_help="show details about a target")
             @click.argument("path", nargs=1, required=False)
             @click.pass_context
             async def command(ctx, path):
+                """"""
                 if path is None:
-                    path = os.path.abspath(".").split(os.path.sep)[0] + os.path.sep
+                    path = os.path.abspath("..").split(os.path.sep)[0] + os.path.sep
                 target = TrackingLocalFolder(path=path)
 
                 console.print(target.explain())
@@ -110,7 +108,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
         elif name in ["index", "idx", "indexes"]:
 
-            @click.command()
+            @click.command(short_help="show details about an index")
             @click.argument("indexes", nargs=-1, required=False, metavar="INDEX")
             @click.option(
                 "--update",
@@ -160,7 +158,7 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
         elif name in ["package", "pkg"]:
 
-            @click.command()
+            @click.command(short_help="show details about a package and its arguments")
             @click.argument("package", nargs=1, required=True)
             @click.option(
                 "--update",

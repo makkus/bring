@@ -9,6 +9,7 @@ from bring.config.bring_config import BringConfig
 from bring.interfaces.cli import bring_code_theme, console
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.explain import ArgsExplanation
+from frkl.common.async_utils import wrap_async_task
 from frkl.common.cli.exceptions import handle_exc_async
 from frkl.common.cli.output_utils import create_dict_element
 from frkl.common.doc import Doc
@@ -139,7 +140,7 @@ class BringConfigGroup(FrklBaseCommand):
             return command
 
 
-CONTEXT_HELP = """TODO"""
+CONTEXT_HELP = """show details about configuration contexts"""
 
 
 class BringContextGroup(FrklBaseCommand):
@@ -223,7 +224,9 @@ class BringContextCommands(FrklBaseCommand):
         # self.print_version_callback = print_version_callback
         self._bring_config: BringConfig = bring_config
         self._bring_context: ConfigTing = bring_context
-        kwargs["help"] = CONTEXT_HELP
+        info = wrap_async_task(self._bring_context.get_value, "info")
+
+        kwargs["help"] = info.get("slug", "-- n/a --")
 
         super(BringContextCommands, self).__init__(
             name=name,
