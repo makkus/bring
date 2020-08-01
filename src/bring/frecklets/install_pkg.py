@@ -262,41 +262,67 @@ class BringInstallFrecklet(BringFrecklet):
         }
         return self._bring.arg_hive.create_record_arg(childs=args)
 
-    async def input_received(self, **input_vars: Any) -> Any:
+    async def input_received(self, **input_vars: FreckletVar) -> Any:
 
-        if self.current_amount_of_inputs == 1:
+        if self.current_amount_of_inputs == 0:
+
+            pkg_name = input_vars["pkg_name"].value
+            pkg_index = input_vars["pkg_index"].value
+
+            pkg = await self._bring.get_pkg(pkg_name, pkg_index, raise_exception=True)
+
+            if pkg is None:
+                raise FreckletException(
+                    frecklet=self,
+                    msg="Can't assemble frecklet.",
+                    reason=f"No package with name '{pkg_name}' found in index '{pkg_index}'.",
+                )
+            self.set_processed_input("pkg", pkg)
+
+            self._msg = f"installing package '{pkg.pkg_id}'"
+
+            defaults = {}
+            index_defaults = await pkg.bring_index.get_index_defaults()
+            for k, v in index_defaults.items():
+                defaults[k] = FreckletVar(v, origin="index defaults")
+            bring_defaults = await self._bring.get_defaults()
+            for k, v in bring_defaults.items():
+                if k not in defaults.keys():
+                    defaults[k] = v
+            pkg_defaults = await pkg.get_pkg_defaults()
+            for k, v in pkg_defaults.items():
+                if k not in defaults.keys():
+                    defaults[k] = FreckletVar(v, origin="package defaults")
+
+            pkg_args: RecordArg = await pkg.get_pkg_args()
+            return (pkg_args, defaults)
+
+        elif self.current_amount_of_inputs == 1:
+            pkg = self.get_processed_input("pkg")
+            if pkg is None:
+                raise Exception(
+                    "No 'pkg' object saved in processed input, this is a bug."
+                )
+            pkg_aliases: Mapping[str, Mapping[Any, Any]] = await pkg.get_aliases()
+
+            replacements: Dict[str, FreckletVar] = {}
+            for k, v in input_vars.items():
+                if k not in pkg_aliases.keys():
+                    continue
+
+                alias_set = pkg_aliases[k]
+                if v.value not in alias_set.keys():
+                    continue
+
+                replacment_value = alias_set[v.value]
+                new_metadata = dict(v.metadata)
+                new_metadata["from_alias"] = v.value
+                fv = FreckletVar(replacment_value, **new_metadata)
+                replacements[k] = fv
+            return (None, replacements)
+
+        else:
             return None
-
-        pkg_name = input_vars["pkg_name"]
-        pkg_index = input_vars["pkg_index"]
-
-        pkg = await self._bring.get_pkg(pkg_name, pkg_index, raise_exception=True)
-
-        if pkg is None:
-            raise FreckletException(
-                frecklet=self,
-                msg="Can't assemble frecklet.",
-                reason=f"No package with name '{pkg_name}' found in index '{pkg_index}'.",
-            )
-        self.set_processed_input("pkg", pkg)
-
-        self._msg = f"installing package '{pkg.pkg_id}'"
-
-        defaults = {}
-        index_defaults = await pkg.bring_index.get_index_defaults()
-        for k, v in index_defaults.items():
-            defaults[k] = FreckletVar(v, origin="index defaults")
-        bring_defaults = await self._bring.get_defaults()
-        for k, v in bring_defaults.items():
-            if k not in defaults.keys():
-                defaults[k] = v
-        pkg_defaults = await pkg.get_pkg_defaults()
-        for k, v in pkg_defaults.items():
-            if k not in defaults.keys():
-                defaults[k] = FreckletVar(v, origin="package defaults")
-
-        pkg_args: RecordArg = await pkg.get_pkg_args()
-        return (pkg_args, defaults)
 
     async def _create_frecklet_task(self, **input_values: Any) -> Task:
 

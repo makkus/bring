@@ -82,14 +82,11 @@ class Mogrifiception(FrklException):
 
 
 class MogrifierException(FrklException):
-    def __init__(self, mogrifier: "Mogrifier"):
+    def __init__(self, mogrifier: "Mogrifier", exception: Optional[Exception]):
 
         self._mogrifier: "Mogrifier" = mogrifier
 
-        msg = "MSG"
-        reason = "REASON"
-
-        super().__init__(msg=msg, reason=reason)
+        super().__init__(parent=exception)
 
     @property
     def mogrifier(self):
@@ -290,7 +287,7 @@ class Transmogrificator(SimpleTasks):
         for child in tasklets:
             last_result = await child.run_async()
             if not last_result.success:
-                exc = MogrifierException(child)  # type: ignore
+                exc = MogrifierException(child, last_result.error)  # type: ignore
                 raise exc
 
     async def create_result_value(self, *tasklets: Task) -> Any:

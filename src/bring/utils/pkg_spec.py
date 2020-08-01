@@ -65,6 +65,9 @@ class PkgSpec(object):
                 if PATH_KEY not in details.keys():
                     details[PATH_KEY] = path_key
 
+                if FROM_KEY not in details.keys():
+                    details[FROM_KEY] = details[PATH_KEY]
+
                 self._items[path_key] = details
         else:
 
@@ -72,6 +75,8 @@ class PkgSpec(object):
                 _files: List[Union[str, Mapping[str, Any]]] = []
             else:
                 _files = list(items)
+
+            print(_files)
 
             for _f in _files:
                 if isinstance(_f, str):
@@ -130,8 +135,9 @@ class PkgSpec(object):
             return [{PATH_KEY: item, FROM_KEY: item}]
 
         result = []
+
         for v in self._items.values():
-            if v["from"] == item:
+            if v[FROM_KEY] == item:
                 result.append(v)
 
         return result

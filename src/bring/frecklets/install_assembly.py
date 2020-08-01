@@ -5,8 +5,10 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 
 from anyio import create_task_group
 from bring.bring import Bring
+from bring.defaults import BRING_DEFAULT_MAX_PARALLEL_TASKS
 from bring.frecklets import BringFrecklet, parse_target_data
 from bring.utils import parse_pkg_string
+from freckles.core.frecklet import FreckletVar
 from frkl.args.arg import Arg, RecordArg
 from frkl.common.exceptions import FrklException
 from frkl.common.formats import VALUE_TYPE
@@ -37,6 +39,11 @@ class BringAssembly(object):
             pkgs: Iterable = content["pkgs"]
         elif value_type == VALUE_TYPE.iterable:
             pkgs = content
+        else:
+            raise FrklException(
+                msg=f"Can't create BringAssembly from config: {config}",
+                reason=f"Invalid value type: {value_type}",
+            )
 
         return BringAssembly(bring, *pkgs)
 
@@ -195,6 +202,7 @@ class ParallelAssemblyTask(Tasks):
         assembly: BringAssembly,
         target: Optional[str] = None,
         target_config: Optional[Mapping[str, Any]] = None,
+        max_parallel_tasks: Optional[int] = None,
         task_desc: Optional[TaskDesc] = None,
     ):
 
@@ -203,6 +211,7 @@ class ParallelAssemblyTask(Tasks):
 
         self._target: Optional[str] = target
         self._target_config: Optional[Mapping[str, Any]] = target_config
+        self._max_parallel_tasks: Optional[int] = max_parallel_tasks
 
         if task_desc is None:
             task_desc = TaskDesc(
@@ -219,7 +228,9 @@ class ParallelAssemblyTask(Tasks):
             name="retrieve pkgs", msg="retrieve package files in parallel"
         )
 
-        install_tasks = ParallelTasksAsync(task_desc=task_desc)
+        install_tasks = ParallelTasksAsync(
+            task_desc=task_desc, max_parallel_tasks=self._max_parallel_tasks
+        )
         for pkg_config in self._assembly.pkg_data:
             pkg = pkg_config["pkg"]
             pkg_name = pkg["name"]
@@ -285,12 +296,12 @@ class BringInstallAssemblyFrecklet(BringFrecklet):
 
         return "installing package assembly"
 
-    async def input_received(self, **input_vars: Any) -> Any:
+    async def input_received(self, **input_vars: FreckletVar) -> Any:
 
         if self.current_amount_of_inputs == 1:
             return None
 
-        data = input_vars["data"]
+        data = input_vars["data"].value
         bring_assembly = await BringAssembly.create_from_string(self._bring, data)
 
         self.set_processed_input("assembly", bring_assembly)
@@ -311,25 +322,6 @@ class BringInstallAssemblyFrecklet(BringFrecklet):
             assembly=assembly,
             target=target,
             target_config=target_config,
+            max_parallel_tasks=BRING_DEFAULT_MAX_PARALLEL_TASKS,
         )
         return ft
-
-    # def process_frecklet_result(self, result: TaskResult) -> FreckletResult:
-    #     print("XXXX")
-    #
-    #     print(result)
-    #
-    #     return None
-    # folders = []
-    # failed: List[Task] = []
-    # for task in tasklets:
-    #     if not task.result.success:
-    #         failed.append(task)
-    #     else:
-    #         folders.append(task.result.result_value["folder_path"])
-    #
-    # if failed:
-    #     # TODO: proper exception
-    #     raise Exception("Failed tasks")
-    #
-    # return folders
