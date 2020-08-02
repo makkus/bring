@@ -96,7 +96,7 @@ class BringCommandGroup(FrklBaseCommand):
             **kwargs,
         )
 
-    def init_app_env_mgmt(self, *targets) -> AppEventManagement:
+    def init_app_env_mgmt(self, *targets) -> None:
 
         if self._app_event_management is not None:
             return self._app_event_management
