@@ -177,7 +177,7 @@ class BringCommandGroup(FrklBaseCommand):
         config_list = None
 
         group_params = dict(self._group_params)
-        output_config = group_params.pop("output")
+        output_config = group_params.pop("output", [{"type": "terminal"}])
 
         if not is_list_command:
             config_list = self.create_bring_config_list(group_params)
