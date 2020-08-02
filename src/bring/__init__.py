@@ -85,7 +85,6 @@ def set_globals():
         freckles = Freckles.get_freckles_ting(
             tingistry=tingistry, name="bring.freckles"
         )
-        freckles.get_app_env_mgmt(start_monitoring=True)
         BRING.register_singleton(freckles)
 
 

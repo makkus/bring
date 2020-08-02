@@ -248,7 +248,7 @@ class BringContextCommands(FrklBaseCommand):
 
         console.line()
         ce = ContextExplanation(
-            name=self.name, data=self._bring_context, full_info=True, show_title=True
+            name=self.name, data=self._bring_context, only_slug=False, show_title=True
         )
 
         console.print(ce)
@@ -270,7 +270,7 @@ class BringContextCommands(FrklBaseCommand):
                 ce = ContextExplanation(
                     name=self.name,
                     data=self._bring_context,
-                    full_info=True,
+                    only_slug=True,
                     show_title=True,
                 )
 
@@ -284,16 +284,19 @@ class ContextExplanation(InfoExplanation):
         self,
         data: ConfigTing,
         name: Optional[str] = None,
+        only_slug: bool = False,
         full_info: bool = False,
         show_title: bool = True,
     ):
+
+        self._full_info: bool = full_info
 
         super().__init__(
             data=data,
             name=name,
             short_help_key="slug",
             help_key="desc",
-            full_info=full_info,
+            only_slug=only_slug,
             show_title=show_title,
         )
 
@@ -316,6 +319,7 @@ class ContextExplanation(InfoExplanation):
         info_data = Doc(
             info, short_help_key=self._short_help_key, help_key=self._help_key
         )
+
         return info_data
 
 
@@ -327,7 +331,7 @@ async def explain_contexts(
     for ctx_name, context in contexts.items():
 
         ce = ContextExplanation(
-            data=context, name=ctx_name, full_info=full_info, show_title=False
+            data=context, name=ctx_name, only_slug=full_info, show_title=False
         )
 
         explanations.append(ce)

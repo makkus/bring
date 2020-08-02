@@ -3,7 +3,7 @@ import os
 from collections import Iterable
 from typing import Any, Mapping, Optional
 
-from asyncclick import Choice, Option
+from asyncclick import Option
 from bring import BRING
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
@@ -14,6 +14,7 @@ from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.common.cli import get_console
 from frkl.common.cli.logging import logzero_option_obj_async
 from frkl.common.types import load_modules
+from frkl.events.app_events.mgmt import AppEventManagement
 from rich.console import Console
 from tings.tingistry import Tingistry
 
@@ -38,6 +39,9 @@ class BringCommandGroup(FrklBaseCommand):
         self._console: Console = get_console()
 
         self._freckles: Freckles = BRING.get_singleton(Freckles)
+
+        self._app_event_management: Optional[AppEventManagement] = None
+
         self._tingistry_obj: Tingistry = self._freckles.tingistry
 
         self._bring_config: Optional[BringConfig] = None
@@ -52,12 +56,12 @@ class BringCommandGroup(FrklBaseCommand):
 
         logzero_option = logzero_option_obj_async()
 
-        task_log_option = Option(
-            param_decls=["--task-log", "-l"],
+        output_option = Option(
+            param_decls=["--output", "-o"],
             multiple=True,
             required=False,
             type=str,
-            help=f"task log output plugin(s), available: {', '.join(['terminal', 'tree', 'simple'])} ",
+            help="which output plugins to use, defaults to 'terminal'",
         )
         index_option = Option(
             param_decls=["--index", "-i"],
@@ -75,19 +79,11 @@ class BringCommandGroup(FrklBaseCommand):
             type=str,
         )
 
-        output_option = Option(
-            param_decls=["--output", "-o"],
-            help="output format for sub-commands that offer an option",
-            multiple=False,
-            required=False,
-            type=Choice(["default", "json", "yaml"]),
-        )
         kwargs["params"] = [
             logzero_option,
-            task_log_option,
+            output_option,
             index_option,
             profile_option,
-            output_option,
         ]
 
         super(BringCommandGroup, self).__init__(
@@ -100,6 +96,22 @@ class BringCommandGroup(FrklBaseCommand):
             **kwargs,
         )
 
+    def init_app_env_mgmt(self, *targets) -> AppEventManagement:
+
+        if self._app_event_management is not None:
+            return self._app_event_management
+
+        if not targets:
+            _targets: Iterable = [{"type": "terminal"}]
+        else:
+            _targets = targets
+
+        self._app_event_management = AppEventManagement(
+            base_topic=f"{self._freckles.full_name}", target_configs=_targets
+        )
+        self._app_event_management.start_monitoring()
+        self._freckles.set_app_event_management(self._app_event_management)
+
     @property
     def bring_config(self):
 
@@ -111,16 +123,9 @@ class BringCommandGroup(FrklBaseCommand):
     def create_bring_config_list(self, group_params: Mapping[str, Any]):
 
         profile_options = group_params["config"]
-        task_log = group_params["task_log"]
-        output = group_params["output"]
         indexes = group_params["index"]
 
         user_config = {}
-        if task_log:
-            user_config["task_log"] = task_log
-
-        if output:
-            user_config["output"] = output
 
         if indexes:
             user_config["indexes"] = indexes
@@ -170,8 +175,12 @@ class BringCommandGroup(FrklBaseCommand):
         command = None
 
         config_list = None
+
+        group_params = dict(self._group_params)
+        output_config = group_params.pop("output")
+
         if not is_list_command:
-            config_list = self.create_bring_config_list(self._group_params)
+            config_list = self.create_bring_config_list(group_params)
 
         # if name == "config":
         #
@@ -185,6 +194,8 @@ class BringCommandGroup(FrklBaseCommand):
         #     )
         #
         #     return command
+
+        self.init_app_env_mgmt(*output_config)
 
         if name in ["explain", "exp", "x"]:
 

@@ -110,12 +110,11 @@ BRING_DEFAULT_INDEX_ALIASES = {
     "kubernetes": "gitlab.bring-indexes.kube-install-manifests",
 }
 
-BRING_CORE_CONFIG = {
+BRING_CORE_CONFIG: Mapping[str, Any] = {
     # "indexes": ["binaries", "scripts", "collections", "kube-install-manifests"],
     # "default_index": "binaries",
-    "task_log": [],
     "defaults": {},
-    "output": "default",
+    # "output": ["terminal"],
     # "add_sysinfo_to_default_vars": False,
 }
 
