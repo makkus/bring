@@ -66,12 +66,6 @@ class BringExportIndexCommand(click.Command):
             )
             sys.exit(1)
 
-        bring_pkgs_folder = os.path.join(_index, BRING_METADATA_FOLDER_NAME, "pkgs")
-
-        if os.path.isdir(bring_pkgs_folder):
-            click.echo("found '.bring/pkgs' subfolder, using this to find packages...")
-            _index = bring_pkgs_folder
-
         if output_file is None:
             _path = os.path.join(
                 _index, BRING_METADATA_FOLDER_NAME, DEFAULT_FOLDER_INDEX_NAME
@@ -82,6 +76,11 @@ class BringExportIndexCommand(click.Command):
             )
         else:
             _path = os.path.abspath(os.path.expanduser(output_file))
+
+        bring_pkgs_folder = os.path.join(_index, BRING_METADATA_FOLDER_NAME, "pkgs")
+        if os.path.isdir(bring_pkgs_folder):
+            click.echo("found '.bring/pkgs' subfolder, using this to find packages...")
+            _index = bring_pkgs_folder
 
         index_obj = await self._bring.get_index(_index)
         exported_index = await index_obj.export_index()

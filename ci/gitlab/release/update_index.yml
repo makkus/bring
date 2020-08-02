@@ -1,5 +1,7 @@
 update_index:
   stage: release
+  needs:
+    - bring_build_binary_linux
   script:
     - dist/linux-gnu/bring -o plain export-index --force .
     - git config --global user.name "Markus Binsteiner"
