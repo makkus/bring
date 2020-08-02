@@ -93,6 +93,7 @@ class BringDynamicIndexTing(BringIndexTing):
         )
         tasks = ParallelTasksAsync(task_desc=task_desc)
         pkgs = await self.get_pkgs()
+
         for pkg_name, pkg in pkgs.items():
             td = TaskDesc(
                 name=f"{pkg_name}",

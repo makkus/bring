@@ -99,7 +99,7 @@ class BringCommandGroup(FrklBaseCommand):
     def init_app_env_mgmt(self, *targets) -> None:
 
         if self._app_event_management is not None:
-            raise Exception("App event management already initialized. This is a bug.")
+            return
 
         if not targets:
             _targets: Iterable = [{"type": "terminal"}]

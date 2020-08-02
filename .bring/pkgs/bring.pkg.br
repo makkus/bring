@@ -1,0 +1,31 @@
+info:
+  homepage: https://bring.frkl.io
+  slug: A package manager for files and file sets.
+  urls:
+    - https://gitlab.com/frkl/bring
+  tags:
+    - package manager
+    - files
+
+labels:
+  language: python
+  executable_type: binary
+
+source:
+  type: template_url
+  url: "https://s3-eu-west-1.amazonaws.com/dev.dl.frkl.io/{{ os }}/bring"
+
+  template_vars:
+    os:
+      - darwin
+      - linux-gnu
+      - windows
+
+  aliases:
+    os:
+      linux: linux-gnu
+
+  content:
+    items:
+      bring:
+        mode: 755
