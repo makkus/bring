@@ -29,7 +29,7 @@ class PkgInfoDisplay(InfoExplanation):
             name=data.pkg_id,
             short_help_key="slug",
             help_key="desc",
-            only_slug=full_info,
+            only_slug=False,
         )
 
     @property

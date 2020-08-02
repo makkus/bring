@@ -32,7 +32,7 @@ class IndexExplanation(InfoExplanation):
             name=name,
             short_help_key="slug",
             help_key="desc",
-            only_slug=full_info,
+            only_slug=False,
         )
         self._update: bool = update
         self._display_packages: bool = display_packages

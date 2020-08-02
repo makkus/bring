@@ -2,6 +2,7 @@
 from typing import Mapping, Optional
 
 import arrow
+from bring.defaults import DEFAULT_PKG_EXTENSION
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
@@ -118,7 +119,9 @@ class BringDynamicIndexTing(BringIndexTing):
             prototing="bring.types.dynamic_pkg",
             ting_name_strategy="basename_no_ext",
             ting_target_namespace=self._pkg_namespace,
-            file_matchers=[{"type": "extension", "regex": ".*\\.br.pkg"}],
+            file_matchers=[
+                {"type": "extension", "regex": f".*\\{DEFAULT_PKG_EXTENSION}"}
+            ],
         )
 
         self._maker.add_base_paths(uri)  # type: ignore
