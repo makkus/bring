@@ -125,7 +125,11 @@ class BringCommandGroup(FrklBaseCommand):
         if indexes:
             user_config["indexes"] = indexes
 
-        config_list = list(profile_options) + [user_config]
+        config_list = []
+        if profile_options:
+            config_list.extend(profile_options)
+        if user_config:
+            config_list.append(user_config)
 
         return config_list
 

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import collections
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
 
 from anyio import create_task_group
 from bring.bring import Bring
-from bring.defaults import BRING_DEFAULT_MAX_PARALLEL_TASKS
+from bring.defaults import BRING_DEFAULT_MAX_PARALLEL_TASKS, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
 from bring.utils import parse_pkg_string
 from freckles.core.frecklet import FreckletVar
@@ -231,7 +233,10 @@ class ParallelAssemblyTask(Tasks):
         install_tasks = ParallelTasksAsync(
             task_desc=task_desc, max_parallel_tasks=self._max_parallel_tasks
         )
-        for pkg_config in self._assembly.pkg_data:
+
+        temp_root = tempfile.mkdtemp(prefix="pkg_assembly_", dir=BRING_WORKSPACE_FOLDER)
+
+        for index, pkg_config in enumerate(self._assembly.pkg_data):
             pkg = pkg_config["pkg"]
             pkg_name = pkg["name"]
             pkg_index = pkg["index"]
@@ -244,7 +249,9 @@ class ParallelAssemblyTask(Tasks):
 
             input_values = dict(vars)
             input_values.update({"pkg_name": pkg_name, "pkg_index": pkg_index})
-            input_values["target"] = None
+            input_values["target"] = os.path.join(
+                temp_root, f"pkg_{pkg_name}.{pkg_index}_{1}"
+            )
             await frecklet.add_input_set(**input_values)
 
             task = await frecklet.get_frecklet_task()

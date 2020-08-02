@@ -210,34 +210,6 @@ class BringInstallTask(Tasks):
         return result
 
 
-# class InstallFreckletResult(FreckletResult):
-#     def __init__(self, task_result: TaskResult):
-#
-#         super().__init__(task_result=task_result)
-#
-#     def _create_result_value(self, task_result: TaskResult) -> Mapping[str, Any]:
-#         """Create the actual result value dictionary.
-#
-#         This can be overwritten by specialized result types.
-#         """
-#
-#         if not isinstance(self._task_result.result_value, collections.abc.Mapping):
-#             raise TypeError(
-#                 f"Invalid result type for InstallFrecklet: {type(self._task_result.result_value)}"
-#             )
-#
-#         return self._task_result.result_value
-#
-#     def __rich_console__(
-#         self, console: "Console", options: "ConsoleOptions"
-#     ) -> "RenderResult":
-#
-#         yield ("[title]Result[/title]")
-#         yield ""
-#         target = self.result["folder_path"]
-#         yield f"  Package installed into: {target}"
-
-
 class BringInstallFrecklet(BringFrecklet):
     def _invalidate(self) -> None:
 
@@ -293,6 +265,11 @@ class BringInstallFrecklet(BringFrecklet):
             for k, v in pkg_defaults.items():
                 if k not in defaults.keys():
                     defaults[k] = FreckletVar(v, origin="package defaults")
+
+            # we don't want defaults overwrite inputs in this case
+            for k in input_vars.keys():
+                if k in defaults.keys():
+                    defaults.pop(k)
 
             pkg_args: RecordArg = await pkg.get_pkg_args()
             return (pkg_args, defaults)
