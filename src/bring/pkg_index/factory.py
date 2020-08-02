@@ -90,7 +90,7 @@ async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
         version = "master"
 
         if len(tokens) > 3:
-            version = tokens[4]
+            version = tokens[3]
             if len(tokens) > 4:
                 raise NotImplementedError()
                 # path = tokens[5:]
@@ -112,7 +112,7 @@ async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
         version = "master"
 
         if len(tokens) > 3:
-            version = tokens[4]
+            version = tokens[3]
             if len(tokens) > 4:
                 raise NotImplementedError()
                 # path = tokens[5:]
