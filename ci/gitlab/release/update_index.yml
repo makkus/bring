@@ -9,4 +9,4 @@ update_index:
     - git add .bring/this.idx.br
     - export NOW_TIMESTAMP=$(date --utc --iso-8601=minutes)
     - "git commit -m \"chore: bring index update ($NOW_TIMESTAMP)\""
-    - git push -o ci.skip "https://makkus:${GITLAB_PUSH_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:master"
+    - git push -o ci.skip "https://makkus:${GITLAB_PUSH_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:develop"
