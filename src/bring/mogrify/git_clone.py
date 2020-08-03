@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import shutil
 from typing import Any, Mapping
 
 from bring.mogrify import SimpleMogrifier
@@ -36,8 +37,8 @@ class GitCloneMogrifier(SimpleMogrifier):
         temp_path = self.create_temp_dir("git_repo_")
         target_folder = os.path.join(temp_path, os.path.basename(url))
 
-        clone_cmd = GitProcess("clone", cache_path, target_folder)
-        await clone_cmd.run()
+        shutil.copytree(cache_path, target_folder)
+
         checkout_cmd = GitProcess("checkout", version, working_dir=target_folder)
         await checkout_cmd.run()
 

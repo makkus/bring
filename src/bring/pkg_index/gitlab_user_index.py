@@ -5,32 +5,37 @@ from bring.pkg_index.gitservice_user_index import (
     BringGitServiceRepo,
     BringGitServiceUserIndex,
 )
-from bring.utils.github import get_data_from_github
+from bring.utils.gitlab import get_data_from_gitlab
 
 
-class BringGithubUserIndex(BringGitServiceUserIndex):
+class BringGitlabUserIndex(BringGitServiceUserIndex):
     def get_service_name(self) -> str:
-        return "github"
+        return "gitlab"
 
     async def retrieve_user_repos(self) -> Mapping[str, BringGitServiceRepo]:
 
-        request_path = f"/users/{self.service_username}/repos"
-        repo_data = await get_data_from_github(path=request_path)
+        try:
+            request_path = f"/users/{self.service_username}/projects"
+            repo_data = await get_data_from_gitlab(path=request_path)
+        except Exception:
+            request_path = f"/groups/{self.service_username}/projects"
+            repo_data = await get_data_from_gitlab(path=request_path)
+
         user_repos = {}
         for data in repo_data:
 
-            issues_url = data["issues_url"].replace("{/number}", "")
+            # issues_url = data["issues_url"].replace("{/number}", "")
             slug = data["description"]
             if not slug:
                 slug = f"github repository for {data['name']}"
             info = {
                 "slug": slug,
-                "homepage": data["homepage"],
-                "issues": issues_url,
+                "homepage": data["web_url"],
+                # "issues": issues_url,
             }
-            url = data["clone_url"]
+            url = data["http_url_to_repo"]
 
-            tags: List[str] = []
+            tags: List[str] = data["tag_list"]
             labels: Dict[str, str] = {}
             if data.get("langauge", None):
                 labels["language"] = data["language"]

@@ -114,9 +114,6 @@ class BringIndexTing(InheriTing, SimpleTing):
         if "tags" in value_names:
             result["tags"] = config.tags
 
-        if "metadata_timestamp" in value_names:
-            result["metadata_timestamp"] = await self.get_metadata_timestamp()
-
         if "pkgs" in value_names:
             # await self._ensure_pkgs(config)
             try:
@@ -129,6 +126,9 @@ class BringIndexTing(InheriTing, SimpleTing):
                 result["pkgs"] = TingValueError(
                     e, msg=f"Can't retrieve packages for index '{self.id}'."
                 )
+
+        if "metadata_timestamp" in value_names:
+            result["metadata_timestamp"] = await self.get_metadata_timestamp()
 
         return result
 
@@ -153,7 +153,6 @@ class BringIndexTing(InheriTing, SimpleTing):
         pkgs = await self.get_value("pkgs")
 
         if raise_exception and isinstance_or_subclass(pkgs, Exception):
-            print(type(pkgs))
             raise pkgs
         return pkgs
 

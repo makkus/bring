@@ -50,11 +50,14 @@ class IndexExplanation(InfoExplanation):
             resolve=True
         )  # type: ignore
 
-        metadata_timestamp = info["metadata_timestamp"]
-        t = arrow.get(metadata_timestamp)
-
         doc_dict = dict(info["info"])
-        doc_dict["metadata_timestamp"] = t.humanize()
+        metadata_timestamp = info["metadata_timestamp"]
+        try:
+            t = arrow.get(metadata_timestamp)
+            doc_dict["metadata_timestamp"] = t.humanize()
+        except Exception:
+            doc_dict["metadata_timestamp"] = metadata_timestamp
+
         if info["labels"]:
             doc_dict["labels"] = info["labels"]
         if info["tags"]:
