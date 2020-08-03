@@ -34,6 +34,7 @@ from tings.tingistry import Tingistry
 
 if TYPE_CHECKING:
     from bring.pkg_index.static_index import BringStaticIndexTing
+    from bring.pkg_index.github_user_index import BringGithubUserIndex
 
 log = logging.getLogger("bring")
 
@@ -86,6 +87,7 @@ async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
 
         tokens = index_string.split(".")
         username = tokens[1]
+
         repo = tokens[2]
         version = "master"
 
@@ -107,25 +109,42 @@ async def explode_index_string(index_string: str) -> MutableMapping[str, Any]:
 
     elif index_string.startswith("github"):
         tokens = index_string.split(".")
+
+        if len(tokens) < 2:
+            raise FrklException(
+                msg=f"Can't resolve index with id '{index_string}'.",
+                reason="No github unsername provided.",
+                solution="Make sure you did not forget the package name. Full format if the repo is to be the package: 'github.<user_name>.<repo_name>', or if the repo is a bring index: 'github.<user_name.<repo_name>.<package_name>'.",
+            )
+
         username = tokens[1]
-        repo = tokens[2]
-        version = "master"
 
-        if len(tokens) > 3:
-            version = tokens[3]
-            if len(tokens) > 4:
-                raise NotImplementedError()
-                # path = tokens[5:]
+        if len(tokens) == 2:
+            # repo is the package
+            result["type"] = "github_user"
+            result["github_user"] = username
+            result["id"] = index_string
+            result["auto_id"] = index_string
+        else:
+            # repo is an index
+            repo = tokens[2]
+            version = "master"
 
-        result["type"] = "git_repo"
-        result[
-            "index_file"
-        ] = f"https://raw.githubusercontent.com/{username}/{repo}/{version}/.bring/{DEFAULT_FOLDER_INDEX_NAME}"
-        result["git_url"] = f"https://github.com/{username}/{repo}.git"
-        result["version"] = version
+            if len(tokens) > 3:
+                version = tokens[3]
+                if len(tokens) > 4:
+                    raise NotImplementedError()
+                    # path = tokens[5:]
 
-        result["id"] = index_string
-        result["auto_id"] = index_string
+            result["type"] = "git_repo"
+            result[
+                "index_file"
+            ] = f"https://raw.githubusercontent.com/{username}/{repo}/{version}/.bring/{DEFAULT_FOLDER_INDEX_NAME}"
+            result["git_url"] = f"https://github.com/{username}/{repo}.git"
+            result["version"] = version
+
+            result["id"] = index_string
+            result["auto_id"] = index_string
 
     elif index_string.startswith("bitbucket"):
         tokens = index_string.split(".")
@@ -337,6 +356,10 @@ class IndexFactory(object):
                     )
                     index = await self.create_index_from_git(ting_name)
 
+        elif index_config.index_type == "github_user":
+
+            index = await self.create_index_from_github_user(ting_name)
+
         else:
             raise NotImplementedError()
 
@@ -375,4 +398,13 @@ class IndexFactory(object):
         ctx: "BringStaticIndexTing" = self._tingistry.create_ting(  # type: ignore
             "bring.types.indexes.default_index", ting_name
         )
+        return ctx
+
+    async def create_index_from_github_user(self, ting_name: str) -> "BringIndexTing":
+
+        ctx: "BringGithubUserIndex" = self._tingistry.create_ting(  # type: ignore
+            "bring_github_user_index", ting_name
+        )
+
+        # await ctx.get_values("config")
         return ctx

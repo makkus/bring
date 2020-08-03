@@ -13,6 +13,7 @@ from frkl.common.async_utils import wrap_async_task
 from frkl.common.exceptions import FrklException
 from frkl.common.types import isinstance_or_subclass
 from frkl.tasks.task import Task
+from tings.exceptions import TingValueError
 from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
@@ -118,7 +119,16 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         if "pkgs" in value_names:
             # await self._ensure_pkgs(config)
-            result["pkgs"] = await self._get_pkgs()
+            try:
+                result["pkgs"] = await self._get_pkgs()
+            except Exception as e:
+                log.debug(
+                    f"Error retrieving packages for index '{self.full_name}'.",
+                    exc_info=True,
+                )
+                result["pkgs"] = TingValueError(
+                    e, msg=f"Can't retrieve packages for index '{self.id}'."
+                )
 
         return result
 
@@ -133,12 +143,19 @@ class BringIndexTing(InheriTing, SimpleTing):
         slug = vals["info"].get("slug", "no description available")
         return {"name": self.name, "slug": slug}
 
-    async def get_pkgs(self, update: bool = False) -> Mapping[str, PkgTing]:
+    async def get_pkgs(
+        self, update: bool = False, raise_exception: bool = True
+    ) -> Mapping[str, PkgTing]:
 
         if update:
             await self.update()
 
-        return await self.get_value("pkgs")
+        pkgs = await self.get_value("pkgs")
+
+        if raise_exception and isinstance_or_subclass(pkgs, Exception):
+            print(type(pkgs))
+            raise pkgs
+        return pkgs
 
     @abstractmethod
     async def _get_pkgs(self) -> Mapping[str, PkgTing]:
@@ -147,6 +164,15 @@ class BringIndexTing(InheriTing, SimpleTing):
     @abstractmethod
     async def get_uri(self) -> str:
         pass
+
+    @abstractmethod
+    async def init(self, config: IndexConfig):
+
+        pass
+
+    @abstractmethod
+    async def _create_update_tasks(self) -> Optional[Task]:
+        raise NotImplementedError()
 
     async def get_metadata_timestamp(self, return_format: str = "default") -> str:
 
@@ -171,11 +197,6 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         return None
 
-    @abstractmethod
-    async def init(self, config: IndexConfig):
-
-        pass
-
     async def get_pkg(
         self, name: str, raise_exception: bool = True
     ) -> Optional[PkgTing]:
@@ -185,10 +206,15 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         if pkg is None and raise_exception:
             pkg_names = await self.pkg_names
+            if "." not in name:
+                _t = " default"
+                solution = f"Specify an index name and/or make sure the package name is correct, available packages: {', '.join(pkg_names)}."
+            else:
+                solution = f"Make sure the package name is correct, available packages: {', '.join(pkg_names)}."
             raise FrklException(
-                msg=f"Can't retrieve package '{name}' from index '{self.name}'.",
+                msg=f"Can't retrieve package '{name}' from{_t} index '{self.name}'.",
                 reason="No package with that name available.",
-                solution=f"Make sure the package name is correct, available packages: {', '.join(pkg_names)}.",
+                solution=solution,
             )
         elif isinstance_or_subclass(pkg, Exception) and raise_exception:
             raise pkg  # type: ignore
@@ -202,10 +228,6 @@ class BringIndexTing(InheriTing, SimpleTing):
 
         pkgs = await self.get_pkgs()
         return pkgs.keys()
-
-    @abstractmethod
-    async def _create_update_tasks(self) -> Optional[Task]:
-        raise NotImplementedError()
 
     async def update(self, in_background: bool = False) -> None:
         """Updates pkg metadata."""

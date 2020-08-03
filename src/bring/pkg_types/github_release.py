@@ -18,8 +18,7 @@ import arrow
 import httpx
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_types import SimplePkgType
-from frkl.common.exceptions import FrklException
-from httpx import Headers
+from bring.utils.github import get_data_from_github
 
 
 DEFAULT_URL_REGEXES = [
@@ -171,52 +170,13 @@ class GithubRelease(SimplePkgType):
 
         github_user = source_details.get("user_name")
         repo_name = source_details.get("repo_name")
+        request_path = f"/repos/{github_user}/{repo_name}/releases"
 
-        repo_url = f"https://api.github.com/repos/{github_user}/{repo_name}/releases"
-
-        req_headers = Headers({"Accept": "application/vnd.github.v3+json"})
-        async with httpx.AsyncClient() as client:
-            req: Dict[str, Any] = {"headers": req_headers}
-            if self._github_username and self._github_token:
-                req["auth"] = (self._github_username, self._github_token)
-
-            r = await client.get(repo_url, **req)
-            releases = r.json()
-
-        github_details = {}
-        github_details["limit"] = int(r.headers.get("X-RateLimit-Limit"))
-        github_details["remaining"] = int(r.headers.get("X-RateLimit-Remaining"))
-        github_details["reset_epoch"] = int(r.headers.get("X-RateLimit-Reset"))
-
-        gmtime = time.gmtime(github_details["reset_epoch"])
-        reset = arrow.get(gmtime)
-
-        log.info(
-            f"github requests remaining: {github_details['remaining']}, reset: {reset} ({reset.humanize()})"
+        releases = await get_data_from_github(
+            path=request_path,
+            github_username=self._github_username,
+            github_token=self._github_token,
         )
-
-        github_details["reset"] = reset
-        GithubRelease.last_github_limit_details = github_details
-
-        if r.status_code != 200:
-
-            if github_details["remaining"] == 0:
-                reason = f"Github rate limit exceeded (quota: {github_details['limit']}, reset: {reset.humanize()})"
-                if not self._github_username or not self._github_token:
-                    solution: Optional[
-                        str
-                    ] = "Set both 'github_user' and 'github_access_token' configuration values to make authenticated requests to GitHub and get a higher quota."
-                else:
-                    solution = f"Wait until your limit is reset: {str(reset)}"
-            else:
-                reason = r.text
-                solution = None
-
-            raise FrklException(
-                msg=f"Can't retrieve metadata for github release '{github_user}/{repo_name}.",
-                reason=reason,
-                solution=solution,
-            )
 
         url_regexes: Iterable[str] = source_details.get("url_regex", None)
         if not url_regexes:
