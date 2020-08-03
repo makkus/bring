@@ -25,7 +25,7 @@ source:
     os:
       linux: linux-gnu
 
-  content:
+  transform:
     items:
       bring:
         mode: 755
