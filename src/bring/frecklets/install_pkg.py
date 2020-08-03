@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Mapping, MutableMapping, Optional
 from bring.defaults import BRING_RESULTS_FOLDER, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
 from bring.mogrify import Transmogrificator
-from bring.mogrify.pkg_content import PkgContentLocalFolder
+from bring.mogrify.transform_folder import PkgContentLocalFolder
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkg_spec import PkgSpec
 from freckles.core.frecklet import FreckletException, FreckletVar

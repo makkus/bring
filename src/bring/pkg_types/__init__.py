@@ -333,7 +333,7 @@ class SimplePkgType(PkgType):
         self, source_details: Mapping[str, Any], version: Mapping[str, Any]
     ) -> Optional[Union[Mapping, Iterable]]:
 
-        content: Any = source_details.get("content", None)
+        content: Any = source_details.get("transform", None)
         pkg_vars = {}
         for k, v in version.items():
             if k.startswith("_"):
@@ -341,7 +341,7 @@ class SimplePkgType(PkgType):
             pkg_vars[k] = v
 
         pkg_content_mogrifier = {
-            "type": "pkg_content",
+            "type": "transform_folder",
             "pkg_vars": pkg_vars,
             "pkg_spec": content,
         }

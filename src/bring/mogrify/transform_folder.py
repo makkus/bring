@@ -94,13 +94,13 @@ class PkgContentLocalFolder(LocalFolder):
         return self._merged_items.keys()
 
 
-class PkgContentMogrifier(SimpleMogrifier):
+class FolderContentMogrifier(SimpleMogrifier):
     """Merge multiple folders into a single one, using one of the available merge strategies.
 
     This mogrifier is used internally, and, for now, can't be used in user-created mogrifier lists.
     """
 
-    _plugin_name: str = "pkg_content"
+    _plugin_name: str = "transform_folder"
 
     _requires: Mapping[str, str] = {
         "folder_path": "list",
