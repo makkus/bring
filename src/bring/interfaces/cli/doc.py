@@ -148,7 +148,7 @@ class PkgTypePluginGroup(BringPluginGroup):
             plugin = self.get_plugin(name)
 
             args = plugin.get_args()
-            record_arg = self._arg_hive.create_record_arg(childs=args)
+            record_arg = self.arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)
             all.append(arg_table)
 
@@ -203,7 +203,7 @@ class MogrifyPluginGroup(BringPluginGroup):
                 args = plugin._requires
             else:
                 args = plugin.requires(None)
-            record_arg = self._arg_hive.create_record_arg(childs=args)
+            record_arg = self.arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)
             all.append(arg_table)
 
@@ -220,7 +220,7 @@ class MogrifyPluginGroup(BringPluginGroup):
                 args = plugin._provides
             else:
                 args = plugin.provides(None)
-            record_arg = self._arg_hive.create_record_arg(childs=args)
+            record_arg = self.arg_hive.create_record_arg(childs=args)
             arg_table = to_rich_table(record_arg)
             all.append(arg_table)
 

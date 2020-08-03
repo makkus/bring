@@ -253,10 +253,9 @@ class BringCommandGroup(FrklBaseCommand):
             command = BringDocGroup(freckles=self._freckles, arg_hive=self.arg_hive)
 
         elif name == "dev":
-            from bring.interfaces.cli.dev import dev
+            from bring.interfaces.cli.dev import BringDevGroup
 
-            ctx.obj["bring"] = self.bring
-            command = dev
+            command = BringDevGroup(bring=self.bring, arg_hive=self.arg_hive)
 
         # elif name == "plugin":
         #     ctx.obj["bring"] = self.bring

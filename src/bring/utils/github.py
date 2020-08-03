@@ -31,6 +31,7 @@ async def get_data_from_github(
         github_username = ""
     try:
         result_list: List[Mapping[str, Any]] = []
+
         async with httpx.AsyncClient() as client:
             gh: GitHubAPI = gidgethub.httpx.GitHubAPI(
                 client, github_username, oauth_token=github_token
