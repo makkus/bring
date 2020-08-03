@@ -9,6 +9,7 @@ from anyio import create_task_group
 from bring.bring import Bring
 from bring.defaults import BRING_DEFAULT_MAX_PARALLEL_TASKS, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
+from bring.frecklets.install_pkg import InstallMergeResult
 from bring.utils import parse_pkg_string
 from freckles.core.frecklet import FreckletVar
 from frkl.args.arg import Arg, RecordArg
@@ -155,11 +156,13 @@ class InstallAssemblyPostprocessTask(PostprocessTask):
         previous_task: Task,
         target: Optional[str] = None,
         target_config: Optional[Mapping[str, Any]] = None,
+        subtarget_map: Optional[Mapping[str, Any]] = None,
         **kwargs,
     ):
 
         self._target: Optional[str] = target
         self._target_config: Optional[Mapping[str, Any]] = target_config
+        self._subtarget_map: Optional[Mapping[str, Any]] = subtarget_map
         self._target_details = parse_target_data(
             self._target, self._target_config, temp_folder_prefix="install_pkgs_"
         )
@@ -171,24 +174,39 @@ class InstallAssemblyPostprocessTask(PostprocessTask):
         result = task.result.result_value
 
         folders: Dict[str, Mapping[str, Any]] = {}
-        for k, v in result.items():
-
-            folder_path = v.result_value["folder_path"]
-            metadata = v.result_value["item_metadata"]
-            folders[folder_path] = metadata
 
         _target_path = self._target_details["target_path"]
         # _target_msg = self._target_details["target_msg"]
         _merge_config = self._target_details["target_config"]
 
-        target_folder = TrackingLocalFolder(path=_target_path)
-        merge_result = FolderMergeResult(target=target_folder)
+        for k, v in result.items():
 
-        for source_folder, _item_metadata in folders.items():
-            result = await target_folder.merge_folders(
+            folder_path = v.result_value["folder_path"]
+            metadata = v.result_value["item_metadata"]
+
+            if not self._subtarget_map or not self._subtarget_map.get(k, None):
+                _target = _target_path
+            else:
+                subtarget = self._subtarget_map[k]
+                if not os.path.isabs(subtarget):
+                    _target = os.path.join(_target_path, subtarget)
+                else:
+                    _target = subtarget
+
+            folders[folder_path] = {"metadata": metadata, "target": _target}
+
+        merge_result = InstallMergeResult()
+
+        for source_folder, details in folders.items():
+            _item_metadata = details["metadata"]
+            _target = details["target"]
+            target_folder = TrackingLocalFolder(path=_target)
+            _result: FolderMergeResult = await target_folder.merge_folders(
                 source_folder, item_metadata=_item_metadata, merge_config=_merge_config
             )
-            merge_result.add_merge_result(result)
+            for k, v in _result.merged_items.items():
+                full_path = _result.target.get_full_path(k)
+                merge_result.add_merge_item(full_path, **v)
 
         return {
             "folder_path": _target_path,
@@ -236,13 +254,18 @@ class ParallelAssemblyTask(Tasks):
 
         temp_root = tempfile.mkdtemp(prefix="pkg_assembly_", dir=BRING_WORKSPACE_FOLDER)
 
+        subtarget_map: Dict[str, Any] = {}
         for index, pkg_config in enumerate(self._assembly.pkg_data):
+
             pkg = pkg_config["pkg"]
             pkg_name = pkg["name"]
             pkg_index = pkg["index"]
 
             vars = pkg_config.get("vars", {})
-            # transform = pkg_config.get("tarnsform", None)
+
+            transform = pkg_config.get("transform", None)
+            sub_target = pkg_config.get("target", None)
+
             frecklet_config = {"type": "install_pkg", "id": f"{pkg_name}.{pkg_index}"}
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
@@ -252,9 +275,14 @@ class ParallelAssemblyTask(Tasks):
             input_values["target"] = os.path.join(
                 temp_root, f"pkg_{pkg_name}.{pkg_index}_{1}"
             )
+            if transform:
+                input_values["transform"] = transform
+
             await frecklet.add_input_set(**input_values)
 
             task = await frecklet.get_frecklet_task()
+            if sub_target:
+                subtarget_map[task.id] = sub_target
             await install_tasks.add_tasklet(task)
 
         await self.add_tasklet(install_tasks)
@@ -264,6 +292,7 @@ class ParallelAssemblyTask(Tasks):
             previous_task=install_tasks,
             target=self._target,
             target_config=self._target_config,
+            subtarget_map=subtarget_map,
             task_desc=task_desc,
         )
         await self.add_tasklet(postprocess_task)

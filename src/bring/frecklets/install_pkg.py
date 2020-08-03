@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+
 import collections
+import logging
 import tempfile
-from typing import Any, Dict, List, Mapping, MutableMapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping, Optional
 
 from bring.defaults import BRING_RESULTS_FOLDER, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
@@ -11,11 +13,68 @@ from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkg_spec import PkgSpec
 from freckles.core.frecklet import FreckletException, FreckletVar
 from frkl.args.arg import RecordArg
+from frkl.explain.explanation import Explanation
 from frkl.targets.local_folder import TrackingLocalFolder
 from frkl.tasks.exceptions import FrklTaskRunException
 from frkl.tasks.task import Task, TaskResult
 from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.tasks import Tasks
+
+
+if TYPE_CHECKING:
+    from rich.console import ConsoleOptions, Console, RenderResult
+
+log = logging.getLogger("frtls")
+
+
+class InstallMergeResult(Explanation):
+    def __init__(self, **metadata: Any):
+
+        self._metadata: Dict[str, Any] = dict(metadata)
+        self._items: Dict[str, MutableMapping[str, Any]] = {}
+
+        super().__init__()
+
+    def add_merge_item(self, id: str, **result_metadata: Any) -> None:
+
+        # TODO: check if already exists?
+        self._items[id] = dict(result_metadata)
+        if "merged" not in self._items[id].keys():
+            self._items[id]["merged"] = True
+        if "msg" not in self._items[id].keys():
+            self._items[id]["msg"] = "merged"
+
+    def add_merge_result(self, result: "InstallMergeResult") -> None:
+
+        self._items.update(result.merged_items)
+
+    async def create_explanation_data(self) -> Mapping[str, Any]:
+
+        return self.merged_items
+
+    def add_metadata(self, key: str, value: Any) -> None:
+        self._metadata[key] = value
+
+    @property
+    def merged_items(self):
+        return self._items
+
+    @property
+    def metadata(self) -> Mapping[str, Any]:
+        return self._metadata
+
+    def __rich_console__(
+        self, console: "Console", options: "ConsoleOptions"
+    ) -> "RenderResult":
+
+        if not self.merged_items:
+            yield "- no items merged[/italic]'"
+            return
+
+        for id, details in self.merged_items.items():
+            yield f"  [key2]{id}[/key2]: [value]{details['msg']}[/value]"
+
+        return
 
 
 class PkgContentTask(Task):
@@ -88,7 +147,7 @@ class MoveToTargetTask(Task):
         self._item_metadata: Mapping[str, Any] = item_metadata
 
         self._target_details = parse_target_data(
-            self._target, self._target_config, temp_folder_prefix="move_to_target_"
+            self._target, self._target_config, temp_folder_prefix="install_"
         )
 
         task_desc = TaskDesc(
@@ -135,7 +194,7 @@ class BringInstallTask(Tasks):
         input_values: Optional[Mapping[str, Any]] = None,
         target: Optional[str] = None,
         target_config: Optional[Mapping[str, Any]] = None,
-        pkg_content: Optional[Mapping[str, Any]] = None,
+        transform_pkg: Optional[Mapping[str, Any]] = None,
     ):
 
         self._pkg: PkgTing = pkg
@@ -144,7 +203,7 @@ class BringInstallTask(Tasks):
         self._input_values: Mapping[str, Any] = input_values
         self._target: Optional[str] = target
         self._target_config: Optional[Mapping[str, Any]] = target_config
-        self._pkg_content: Optional[Mapping[str, Any]] = pkg_content
+        self._transform_pkg: Optional[Mapping[str, Any]] = transform_pkg
 
         task_desc = TaskDesc(
             name=self._pkg.name, msg=f"installing pkg '{self._pkg.name}'",
@@ -172,11 +231,11 @@ class BringInstallTask(Tasks):
         }
         item_metadata["vars"] = vars
 
-        if self._pkg_content:
+        if self._transform_pkg:
 
             pct = PkgContentTask(
                 prior_task_result=transmogrificator.result,
-                pkg_spec=self._pkg_content,
+                pkg_spec=self._transform_pkg,
                 item_metadata=item_metadata,
             )
             await self.add_tasklet(pct)
@@ -231,6 +290,11 @@ class BringInstallFrecklet(BringFrecklet):
                 # TODO: reference
                 "required": False,
             },
+            "transform": {
+                "type": "dict",
+                "doc": "(optional) transform instructions for the package folder",
+                "required": False,
+            },
         }
         return self._bring.arg_hive.create_record_arg(childs=args)
 
@@ -240,6 +304,9 @@ class BringInstallFrecklet(BringFrecklet):
 
             pkg_name = input_vars["pkg_name"].value
             pkg_index = input_vars["pkg_index"].value
+
+            # TODO: validate/expand transform value
+            # transform = input_vars.get("transform", None)
 
             pkg = await self._bring.get_pkg(pkg_name, pkg_index, raise_exception=True)
 
@@ -307,12 +374,14 @@ class BringInstallFrecklet(BringFrecklet):
 
         target = input_values.pop("target", None)
         target_config = input_values.pop("target_config", None)
+        transform_pkg = input_values.pop("transform", None)
 
         frecklet_task = BringInstallTask(
             pkg=pkg,
             input_values=input_values,
             target=target,
             target_config=target_config,
+            transform_pkg=transform_pkg,
         )
 
         return frecklet_task
