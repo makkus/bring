@@ -3,6 +3,7 @@ import logging
 from typing import Any, List, Mapping, Optional
 
 import gidgethub
+import gidgethub.httpx
 import httpx
 from frkl.common.environment import get_var_value_from_env
 from frkl.common.exceptions import FrklException
@@ -38,9 +39,10 @@ async def get_data_from_github(
             async for i in data:
                 result_list.append(i)
 
-            log.debug(
-                f"github requests remaining: {gh.rate_limit.remaining}, reset: {gh.rate_limit.reset_datetime}"
-            )
+            if gh.rate_limit:
+                log.debug(
+                    f"github requests remaining: {gh.rate_limit.remaining}, reset: {gh.rate_limit.reset_datetime}"
+                )
 
         return result_list
     except gidgethub.RateLimitExceeded as rle:
