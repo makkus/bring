@@ -96,11 +96,3 @@ class TemplateUrlResolver(PkgType):
 
         id = calculate_cache_location_for_url(source_details["url"], sep="_")
         return id
-
-    # def get_download_url(self, version: Dict[str, str], source_detail: Dict[str, Any]):
-    #
-    #     url_template = source_detail["url"]
-    #
-    #     url = replace_string(url_template, version)
-    #
-    #     return url

@@ -284,7 +284,3 @@ class GithubRelease(PkgType):
             result.append(_version_data)
 
         return result
-
-    # def get_download_url(self, version: Dict[str, str], source_details: Dict):
-    #
-    #     return version["_meta"]["url"]

@@ -30,9 +30,6 @@ class GitRepo(PkgType):
 
         return "git"
 
-    # def _supports(self) -> Iterable[str]:
-    #     return ["git"]
-
     def get_args(self) -> Mapping[str, Any]:
 
         return {

@@ -33,9 +33,6 @@ class Folder(PkgType):
             }
         }
 
-    # def _supports(self) -> Iterable[str]:
-    #     return ["folder"]
-
     def _get_unique_source_type_id(self, source_details: Mapping) -> str:
 
         return source_details["path"]
