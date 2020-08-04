@@ -79,7 +79,7 @@ Packages often come in different flavours (e.g. which architecture, OS, etc.), a
 
 But, often it is advisable to exactly specify the version of a package to install. If that is desired, you can use the ``--help`` parameter some-where after the package name to get ``bring`` to display information about the supported arguments:
 
-{{ cli_html("bring", "install", "binaries.fd", "--help") }}
+{{ cli("bring", "install", "binaries.fd", "--help") }}
 
 
 ### Install details

@@ -138,15 +138,15 @@ def define_env(env):
         post = "</pre>"
 
         if max_height is not None and max_height > 0:
-            start = "<div style='max-height:{max_height}px;overflow:auto' class='terminal-output'>\n"
+            start = f"""<div style="max-height:{max_height}px;overflow:auto" class="terminal-output">\n"""
         else:
-            start = "<div style=overflow:auto' class='terminal-output'>\n"
+            start = """<div style="overflow:auto" class="terminal-output">\n"""
 
         html_output = html_output.strip()
         if print_command:
             html_output = f"""> {' '.join(command)}\n\n{html_output}"""
 
-        end = "\n </div>"
+        end = "\n</div>"
 
         result_string = f"{pre}{start}{html_output}{end}{post}"
         return result_string
