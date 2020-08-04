@@ -475,7 +475,7 @@ class DynamicPkgTing(PkgTing):
 
         resolver = self._get_resolver(source_dict)
 
-        cached = resolver.metadata_is_valid(
+        cached = await resolver.get_cached_metadata(
             source_details=source_dict, override_config=config
         )
         if not cached and register_task:

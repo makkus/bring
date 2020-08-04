@@ -248,7 +248,7 @@ class BringCommandGroup(FrklBaseCommand):
             command.short_help = "update index metadata"
 
         elif name == "doc":
-            from bring.interfaces.cli.doc import BringDocGroup
+            from bring.interfaces.cli.commands.doc import BringDocGroup
 
             command = BringDocGroup(freckles=self._freckles, arg_hive=self.arg_hive)
 

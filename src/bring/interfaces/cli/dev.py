@@ -74,14 +74,10 @@ class BringCreatePkgCommand(click.Command):
 
         source_details = {"user_name": "cloudflare", "repo_name": "wrangler"}
 
-        class Test:
-            def __init__(self):
-                self.full_name = "xxx.xxx"
-
         for r in regexes_to_try:
             source_details["url_regex"] = r
-            md = await plugin.get_pkg_metadata(source_details, Test())
-            versions = md["versions"]
+            md = await plugin.get_pkg_metadata(source_details)
+            versions = md.versions
             if not versions:
                 continue
             print(versions[0])

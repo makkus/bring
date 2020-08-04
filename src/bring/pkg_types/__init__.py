@@ -99,6 +99,7 @@ class PkgMetadata(object):
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]):
 
+        source_details = data["source_details"]
         versions = data["versions"]
         version_list: List[PkgVersion] = []
         for v in versions:
@@ -111,6 +112,7 @@ class PkgMetadata(object):
         aliases = data.get("aliases", None)
 
         return PkgMetadata(
+            source_details=source_details,
             versions=version_list,
             vars=vars,
             metadata_timestamp=_metadata_timestamp,
@@ -119,12 +121,14 @@ class PkgMetadata(object):
 
     def __init__(
         self,
+        source_details: Mapping[str, Any],
         versions: Iterable[PkgVersion],
         vars: Mapping[str, Mapping[str, Any]],
         metadata_timestamp: Optional[datetime] = None,
         aliases: Optional[Mapping[str, Mapping[str, Any]]] = None,
     ):
 
+        self._source_details: Mapping[str, Any] = source_details
         self._versions: Iterable[PkgVersion] = versions
         self._vars: Mapping[str, Mapping[str, Any]] = vars
         if metadata_timestamp is None:
@@ -134,6 +138,10 @@ class PkgMetadata(object):
         if aliases is None:
             aliases = {}
         self._aliases: Mapping[str, Mapping[str, Any]] = aliases
+
+    @property
+    def source_details(self) -> Mapping[str, Any]:
+        return self._source_details
 
     @property
     def versions(self) -> Iterable[PkgVersion]:
@@ -154,6 +162,7 @@ class PkgMetadata(object):
     def to_dict(self) -> Mapping[str, Any]:
 
         result: Dict[str, Any] = {}
+        result["source_details"] = self._source_details
         result["versions"] = []
         for v in self.versions:
             result["versions"].append(v.to_dict())
@@ -273,14 +282,19 @@ class PkgType(metaclass=ABCMeta):
     async def get_cached_metadata(
         self,
         source_details: Mapping[str, Any],
-        config: Mapping[str, Any],
+        override_config: Optional[Mapping[str, Any]],
+        skip_validity_check: bool = False,
         _source_id: Optional[str] = None,
     ) -> Optional[PkgMetadata]:
 
-        if not self.metadata_is_valid(
-            source_details=source_details, _source_id=_source_id
-        ):
-            return None
+        if not skip_validity_check:
+
+            if not self.metadata_is_valid(
+                source_details=source_details,
+                _source_id=_source_id,
+                override_config=override_config,
+            ):
+                return None
 
         details = self._get_cache_details(
             source_details=source_details, _source_id=_source_id
@@ -295,6 +309,10 @@ class PkgType(metaclass=ABCMeta):
             content = await f.read()
 
         metadata: PkgMetadata = pickle.loads(content)
+
+        if metadata.source_details != source_details:
+            return None
+
         return metadata
 
     def metadata_is_valid(
@@ -329,6 +347,12 @@ class PkgType(metaclass=ABCMeta):
             log.debug(f"Metadata cache expired for: {cache_details['path']}")
 
             return False
+
+        # content: PkgMetadata = await self.get_cached_metadata(source_details=_source_details, config=override_config, _source_id=_source_id, skip_validity_check=True)
+        #
+        # if content.source_details != _source_details:
+        #     return False
+
         return True
 
     async def get_pkg_metadata(
@@ -354,12 +378,12 @@ class PkgType(metaclass=ABCMeta):
         else:
             _source_details = source_details
 
-        _config = get_seeded_dict(self.resolver_config, override_config)
-
         source_id = self.get_unique_source_id(source_details=_source_details)
 
         cached_metadata = await self.get_cached_metadata(
-            source_details=_source_details, config=_config, _source_id=source_id
+            source_details=_source_details,
+            override_config=override_config,
+            _source_id=source_id,
         )
 
         if cached_metadata:
@@ -472,7 +496,7 @@ class PkgType(metaclass=ABCMeta):
         metadata["metadata_timestamp"] = str(arrow.Arrow.now())
         # await self.write_metadata(metadata_file, metadata, source_details, bring_index)
 
-        pkg_md = PkgMetadata(**metadata)
+        pkg_md = PkgMetadata(source_details=_source_details, **metadata)
 
         await self.write_metadata(source_id=source_id, metadata=pkg_md)
 
