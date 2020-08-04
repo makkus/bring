@@ -2,18 +2,18 @@
 import os
 from typing import Any, Iterable, Mapping, MutableMapping
 
-from bring.pkg_index.index import BringIndexTing
-from bring.pkg_types import SimplePkgType
+from bring.pkg_types import PkgType, PkgVersion
 from pydriller import GitRepository
 
 
-class Folder(SimplePkgType):
+class Folder(PkgType):
     """A package type to represent a local folder.
 
     This is mostly used in local development, documentation still to be done...
     """
 
     _plugin_name: str = "folder"
+    _plugin_supports: Iterable[str] = "folder"
 
     def __init__(self, **config: Any):
 
@@ -23,39 +23,36 @@ class Folder(SimplePkgType):
 
         return "folder"
 
-    # def get_args(self) -> Mapping[str, Any]:
-    #
-    #     return {
-    #         "path": {
-    #             "type": "string",
-    #             "required": True,
-    #             "doc": "The path to the local folder that represents the package.",
-    #         }
-    #     }
+    def get_args(self) -> Mapping[str, Mapping[str, Any]]:
 
-    def _supports(self) -> Iterable[str]:
-        return ["folder"]
+        return {
+            "path": {
+                "type": "string",
+                "required": True,
+                "doc": "The path to the local folder that represents the package.",
+            }
+        }
 
-    def get_unique_source_id(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> str:
+    # def _supports(self) -> Iterable[str]:
+    #     return ["folder"]
+
+    def _get_unique_source_type_id(self, source_details: Mapping) -> str:
 
         return source_details["path"]
 
-    async def _process_pkg_versions(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> Mapping[str, Any]:
+    async def _process_pkg_versions(self, source_details: Mapping) -> Mapping[str, Any]:
 
         return {
             "versions": [
-                {
-                    "_mogrify": [
+                PkgVersion(
+                    vars={},
+                    steps=[
                         {
                             "type": "folder",
                             "folder_path": os.path.abspath(source_details["path"]),
                         }
-                    ]
-                }
+                    ],
+                )
             ]
         }
 

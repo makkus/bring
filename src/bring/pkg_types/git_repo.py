@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Mapping, MutableMapping, Optional
 
 import git
-from bring.pkg_index.index import BringIndexTing
-from bring.pkg_types import SimplePkgType
+from bring.pkg_types import PkgType, PkgVersion
 from bring.utils.git import ensure_repo_cloned
 from pydriller import Commit, GitRepository
 
 
-class GitRepo(SimplePkgType):
+class GitRepo(PkgType):
     """A package that represents a git repository (or contents thereof).
 
     By default, all tags and branches will be used as version names. If '*use_commits_as_versions*' is set to '*true*',
@@ -21,6 +20,7 @@ class GitRepo(SimplePkgType):
     """
 
     _plugin_name: str = "git"
+    _plugin_supports: str = "git"
 
     def __init__(self, **config: Any):
 
@@ -30,8 +30,8 @@ class GitRepo(SimplePkgType):
 
         return "git"
 
-    def _supports(self) -> Iterable[str]:
-        return ["git"]
+    # def _supports(self) -> Iterable[str]:
+    #     return ["git"]
 
     def get_args(self) -> Mapping[str, Any]:
 
@@ -45,15 +45,11 @@ class GitRepo(SimplePkgType):
             },
         }
 
-    def get_unique_source_id(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> str:
+    def _get_unique_source_type_id(self, source_details: Mapping) -> str:
 
         return source_details["url"]
 
-    async def _process_pkg_versions(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> Mapping[str, Any]:
+    async def _process_pkg_versions(self, source_details: Mapping) -> Mapping[str, Any]:
 
         cache_path = await ensure_repo_cloned(url=source_details["url"], update=True)
 
@@ -85,38 +81,33 @@ class GitRepo(SimplePkgType):
                 await self._update_commits(gr, commits, k)
             c = commits[tags[k].hexsha]
             timestamp = str(c.author_date)
-            versions.append(
-                {
-                    "version": k,
-                    "_meta": {"release_date": timestamp},
-                    "_mogrify": [
-                        {
-                            "type": "git_clone",
-                            "url": source_details["url"],
-                            "version": k,
-                        }
-                    ],
-                }
+            _v = PkgVersion(
+                steps=[
+                    {"type": "git_clone", "url": source_details["url"], "version": k}
+                ],
+                vars={"version": k},
+                metadata={"release_data": timestamp},
             )
+            versions.append(_v)
 
         if "master" in branches.keys():
             if latest is None:
                 latest = "master"
             c = commits[branches["master"].hexsha]
             timestamp = str(c.author_date)
-            versions.append(
-                {
-                    "version": "master",
-                    "_meta": {"release_date": timestamp},
-                    "_mogrify": [
-                        {
-                            "type": "git_clone",
-                            "url": source_details["url"],
-                            "version": "master",
-                        }
-                    ],
-                }
+            _v = PkgVersion(
+                steps=[
+                    {
+                        "type": "git_clone",
+                        "url": source_details["url"],
+                        "version": "master",
+                    }
+                ],
+                vars={"version": "master"},
+                metadata={"release_data": timestamp},
             )
+            versions.append(_v)
+
         for b in branches.keys():
             if b == "master":
                 continue
@@ -125,36 +116,32 @@ class GitRepo(SimplePkgType):
                 await self._update_commits(gr, commits, b)
             c = commits[branches[b].hexsha]
             timestamp = str(c.author_date)
-            versions.append(
-                {
-                    "version": b,
-                    "_meta": {"release_date": timestamp},
-                    "_mogrify": [
-                        {
-                            "type": "git_clone",
-                            "url": source_details["url"],
-                            "version": b,
-                        }
-                    ],
-                }
+
+            _v = PkgVersion(
+                steps=[
+                    {"type": "git_clone", "url": source_details["url"], "version": b}
+                ],
+                vars={"version": b},
+                metadata={"release_data": timestamp},
             )
+            versions.append(_v)
 
         if source_details.get("use_commits_as_versions", False):
             for c_hash, c in commits.items():
                 timestamp = str(c.author_date)
-                versions.append(
-                    {
-                        "version": c_hash,
-                        "_meta": {"release_date": timestamp},
-                        "_mogrify": [
-                            {
-                                "type": "git_clone",
-                                "url": source_details["url"],
-                                "version": c_hash,
-                            }
-                        ],
-                    }
+
+                _v = PkgVersion(
+                    steps=[
+                        {
+                            "type": "git_clone",
+                            "url": source_details["url"],
+                            "version": c_hash,
+                        }
+                    ],
+                    vars={"version": c_hash},
+                    metadata={"release_data": timestamp},
                 )
+                versions.append(_v)
 
         result: Dict[str, Any] = {"versions": versions}
 

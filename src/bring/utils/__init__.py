@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
+import collections
 import os
 import typing
-from collections import Sequence
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 from bring.defaults import BRING_ALLOWED_MARKER_NAME, BRING_METADATA_FOLDER_NAME
+from bring.pkg_types import PkgMetadata, PkgVersion
 
 
 def is_valid_bring_target(target: Union[str, Path]):
@@ -54,12 +55,12 @@ def set_folder_bring_allowed(path: Union[str, Path]):
 
 
 def replace_var_aliases(
-    vars: Mapping[str, Any], metadata: Mapping[str, Any]
+    vars: Mapping[str, Any], metadata: PkgMetadata
 ) -> Mapping[str, Any]:
 
-    aliases = metadata.get("aliases", {})
-    version_vars = metadata["pkg_vars"]["version_vars"]
-    mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
+    aliases = metadata.aliases
+    version_vars = metadata.vars["version_vars"]
+    mogrify_vars = metadata.vars["mogrify_vars"]
 
     relevant_vars = {}
 
@@ -80,12 +81,12 @@ def replace_var_aliases(
 
 
 def find_pkg_aliases(
-    _pkg_metadata: Mapping[str, Any], **orig_vars: Any
+    _pkg_metadata: PkgMetadata, **orig_vars: Any
 ) -> Mapping[str, Optional[str]]:
 
-    aliases = _pkg_metadata.get("aliases", {})
-    version_vars = _pkg_metadata["pkg_vars"]["version_vars"]
-    mogrify_vars = _pkg_metadata["pkg_vars"]["mogrify_vars"]
+    aliases = _pkg_metadata.aliases
+    version_vars = _pkg_metadata.vars["version_vars"]
+    mogrify_vars = _pkg_metadata.vars["mogrify_vars"]
 
     alias_map = {}
 
@@ -106,10 +107,10 @@ def find_pkg_aliases(
 
 
 def find_versions(
-    vars: Mapping[str, str], metadata: Mapping[str, Any], var_aliases_replaced=False
-) -> typing.Sequence[Tuple[Mapping[str, Any], int]]:
+    vars: Mapping[str, str], metadata: PkgMetadata, var_aliases_replaced=False
+) -> List[Tuple[PkgVersion, int]]:
 
-    versions: Sequence[Mapping] = metadata["versions"]
+    versions: typing.Iterable[PkgVersion] = metadata.versions
 
     if not var_aliases_replaced:
         vars = replace_var_aliases(vars=vars, metadata=metadata)
@@ -124,14 +125,14 @@ def find_versions(
 
         match = True
         matched_keys = 0
-        for k, v in version.items():
-            if k == "_meta" or k == "_mogrify":
-                continue
+        for k, v in version.vars.items():
 
             comp_v = vars.get(k, None)
             if comp_v is None:
                 continue
-            elif not isinstance(comp_v, str) and isinstance(comp_v, Sequence):
+            elif not isinstance(comp_v, str) and isinstance(
+                comp_v, collections.abc.Iterable
+            ):
                 temp_match = False
                 for c in comp_v:
                     if c == v:
@@ -155,8 +156,8 @@ def find_versions(
 
 
 def find_version(
-    vars: Mapping[str, str], metadata: Mapping[str, Any], var_aliases_replaced=False
-) -> Optional[Mapping[str, Any]]:
+    vars: Mapping[str, str], metadata: PkgMetadata, var_aliases_replaced=False
+) -> Optional[PkgVersion]:
     """Return details about one version item of a package, using the provided vars to find one (or the first) version that matches most/all of the provided vars.
 
         Args:

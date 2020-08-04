@@ -18,7 +18,7 @@ from typing import (
 
 from bring.defaults import BRING_PKG_VERSION_CACHE
 from bring.mogrify import Transmogrificator, Transmogritory
-from bring.pkg_types import PkgType
+from bring.pkg_types import PkgMetadata, PkgType, PkgVersion
 from bring.utils import find_version, replace_var_aliases
 from deepdiff import DeepHash
 from frkl.args.arg import RecordArg
@@ -93,14 +93,14 @@ class PkgTing(SimpleTing):
             "index_name": "string",
         }
 
-    async def _get_aliases(self, metadata):
-
-        return metadata.get("aliases", {})
+    # async def _get_aliases(self, metadata: PkgMetadata):
+    #
+    #     return metadata.get("aliases", {})
 
     async def get_aliases(self):
 
-        metadata = await self.get_metadata()
-        return await self._get_aliases(metadata)
+        metadata = await self.get_value("metadata")  # type: ignore
+        return metadata.aliases
 
     async def get_pkg_args(self) -> RecordArg:
 
@@ -110,9 +110,9 @@ class PkgTing(SimpleTing):
             self._pkg_args = await self._calculate_args(metadata)
         return self._pkg_args
 
-    async def _calculate_args(self, metadata) -> RecordArg:
+    async def _calculate_args(self, metadata: PkgMetadata) -> RecordArg:
 
-        pkg_args = metadata["pkg_vars"]["args"]
+        pkg_args = metadata.vars["args"]
         arg = self._tingistry_obj.arg_hive.create_record_arg(childs=pkg_args)
 
         return arg
@@ -120,27 +120,13 @@ class PkgTing(SimpleTing):
     @abstractmethod
     async def get_metadata(
         self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
-    ) -> Mapping[str, Any]:
+    ) -> PkgMetadata:
         """Return metadata associated with this package."""
 
         pass
 
-    # def _get_translated_value(self, var_map, value):
-    #
-    #     if value not in var_map.keys():
-    #         return value
-    #
-    #     return var_map[value]
-
-    # async def get_valid_var_combinations(self):
-    #
-    #     vals = await self.get_values("metadata")
-    #     metadata = vals["metadata"]
-    #
-    #     return self._get_valid_var_combinations(metadata=metadata)
-
     async def _get_valid_var_combinations(
-        self, metadata
+        self, versions=Iterable[PkgVersion]
     ) -> Iterable[Mapping[str, Any]]:
         """Return a list of valid var combinations that uniquely identify a version item.
 
@@ -148,11 +134,9 @@ class PkgTing(SimpleTing):
         Aliases are not considered here, those need to be translated before lookup.
         """
 
-        versions = metadata["versions"]
-
         result = []
         for version in versions:
-            temp = copy.copy(version)
+            temp = copy.copy(version.vars)
             temp.pop("_meta", None)
             temp.pop("_mogrify", None)
 
@@ -160,14 +144,14 @@ class PkgTing(SimpleTing):
 
         return result
 
-    async def update_metadata(self) -> Mapping[str, Any]:
+    async def update_metadata(self) -> PkgMetadata:
 
         return await self.get_metadata({"metadata_max_age": 0})
 
-    async def get_versions(self) -> Iterable[Mapping[str, Any]]:
+    async def get_versions(self) -> Iterable[PkgVersion]:
 
-        md = await self.get_value("metadata")
-        return md["versions"]
+        md: PkgMetadata = await self.get_value("metadata", raise_exception=True)
+        return md.versions
 
     async def get_info(
         self,
@@ -191,32 +175,30 @@ class PkgTing(SimpleTing):
 
         if include_metadata:
 
-            metadata: Mapping[str, Any] = await self.get_metadata(
+            metadata: PkgMetadata = await self.get_metadata(
                 config=retrieve_config, register_task=True
             )
 
-            timestamp = metadata["metadata_check"]
-
-            pkg_vars = metadata["pkg_vars"]
-            aliases = metadata["aliases"]
-
-            var_combinations = await self._get_valid_var_combinations(metadata=metadata)
-
-            metadata_result = {
-                "pkg_args": pkg_vars["args"],
-                "aliases": aliases,
-                "timestamp": timestamp,
-                "version_list": var_combinations,
-            }
-            result["metadata"] = metadata_result
+            # timestamp = metadata["metadata_check"]
+            #
+            # pkg_vars = metadata["pkg_vars"]
+            # aliases = metadata["aliases"]
+            #
+            # var_combinations = await self._get_valid_var_combinations(metadata.versions)
+            #
+            # metadata_result = {
+            #     "pkg_args": pkg_vars["args"],
+            #     "aliases": aliases,
+            #     "timestamp": timestamp,
+            #     "version_list": var_combinations,
+            # }
+            result["metadata"] = metadata.to_dict()
 
         return result
 
     async def find_version_data(
-        self,
-        vars: Optional[Mapping[str, Any]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
-    ) -> Optional[Mapping[str, Any]]:
+        self, metadata: PkgMetadata, vars: Optional[Mapping[str, Any]] = None,
+    ) -> Optional[PkgVersion]:
         """Find a matching version item for the provided vars dictionary.
 
         Returns:
@@ -225,8 +207,6 @@ class PkgTing(SimpleTing):
 
         if vars is None:
             vars = {}
-        if metadata is None:
-            metadata = {}
 
         version = find_version(vars=vars, metadata=metadata, var_aliases_replaced=True)
         return version
@@ -290,17 +270,18 @@ class PkgTing(SimpleTing):
         extra_mogrifiers: Iterable[Union[str, Mapping[str, Any]]] = None,
     ) -> Transmogrificator:
 
-        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
-            "metadata", resolve=True
+        metadata: PkgMetadata = await self.get_value(  # type: ignore
+            "metadata"
         )
-        metadata = vals["metadata"]
 
         if vars is None:
             vars = {}
 
         _vars = await self.calculate_full_vars(_pkg_metadata=metadata, **vars)
 
-        version = await self.find_version_data(vars=_vars, metadata=metadata)
+        version: Optional[PkgVersion] = await self.find_version_data(
+            vars=_vars, metadata=metadata
+        )
 
         if not version:
             if not vars:
@@ -313,7 +294,8 @@ class PkgTing(SimpleTing):
                     f"Can't find version match for vars combination:\n\n{vars_string}"
                 )
             raise FrklException(msg=f"Can't process pkg '{self.name}'.", reason=reason)
-        mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version["_mogrify"])
+
+        mogrify_list: List[Union[str, Mapping[str, Any]]] = list(version.steps)
         if extra_mogrifiers:
             mogrify_list.extend(extra_mogrifiers)
 
@@ -324,7 +306,7 @@ class PkgTing(SimpleTing):
             msg=f"gathering file(s) for package '{self.name}'",
         )
 
-        mogrify_vars = metadata["pkg_vars"]["mogrify_vars"]
+        mogrify_vars = metadata.vars["mogrify_vars"]
 
         tm = await self._transmogritory.create_transmogrificator(
             mogrify_list,
@@ -367,7 +349,7 @@ class PkgTing(SimpleTing):
 
     async def get_pkg_defaults(self) -> Mapping[str, Any]:
 
-        args: RecordArg = await self.get_value("args")
+        args: RecordArg = await self.get_value("args", raise_exception=True)
         return args.default
 
     async def calculate_defaults(self):
@@ -403,7 +385,7 @@ class PkgTing(SimpleTing):
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
             "metadata", "args", resolve=True
         )
-        _pkg_metadata: Mapping[str, Any] = vals["metadata"]
+        _pkg_metadata: PkgMetadata = vals["metadata"]
         args: RecordArg = vals["args"]
 
         _vars_replaced = replace_var_aliases(vars=filtered, metadata=_pkg_metadata)
@@ -430,12 +412,12 @@ class StaticPkgTing(PkgTing):
 
     async def get_metadata(
         self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
-    ) -> Mapping[str, Any]:
+    ) -> PkgMetadata:
 
-        vals: Mapping[str, Any] = await self.get_values(  # type: ignore
-            "metadata", resolve=True
+        val: PkgMetadata = await self.get_value(  # type: ignore
+            "metadata"
         )
-        return vals["metadata"]
+        return val
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
@@ -447,12 +429,19 @@ class StaticPkgTing(PkgTing):
 
         result: Dict[str, Any] = {}
 
+        if "args" in value_names or "metadata" in value_names:
+            rq = copy.deepcopy(requirements["metadata"])
+            md: Optional[PkgMetadata] = PkgMetadata.from_dict(rq)
+        else:
+            md = None
+
         for vn in value_names:
             if vn == "index_name":
                 result[vn] = self.bring_index.name
-                continue
-            if vn == "args":
-                result[vn] = await self._calculate_args(requirements["metadata"])
+            elif vn == "args":
+                result[vn] = await self._calculate_args(md)  # type: ignore
+            elif vn == "metadata":
+                result[vn] = md
             else:
                 result[vn] = requirements[vn]
 
@@ -466,7 +455,7 @@ class DynamicPkgTing(PkgTing):
 
     async def get_metadata(
         self, config: Optional[Mapping[str, Any]] = None, register_task: bool = False
-    ) -> Mapping[str, Any]:
+    ) -> PkgMetadata:
         """Return metadata associated with this package."""
 
         vals: Mapping[str, Any] = await self.get_values(  # type: ignore
@@ -481,13 +470,13 @@ class DynamicPkgTing(PkgTing):
         source_dict,
         config: Optional[Mapping[str, Any]] = None,
         register_task: bool = False,
-    ) -> Mapping[str, Any]:
+    ) -> PkgMetadata:
         """Return metadata associated with this package, doesn't look-up 'source' dict itself."""
 
         resolver = self._get_resolver(source_dict)
 
-        cached = await resolver.metadata_is_valid(
-            source_dict, self.bring_index, override_config=config
+        cached = resolver.metadata_is_valid(
+            source_details=source_dict, override_config=config
         )
         if not cached and register_task:
             task_desc = TaskDesc(
@@ -496,8 +485,8 @@ class DynamicPkgTing(PkgTing):
             )
             task_desc.task_started()
 
-        metadata = await resolver.get_pkg_metadata(
-            source_dict, self.bring_index, override_config=config
+        metadata: PkgMetadata = await resolver.get_pkg_metadata(
+            source_dict, override_config=config
         )
 
         if not cached and register_task:
@@ -549,7 +538,7 @@ class DynamicPkgTing(PkgTing):
 
         resolver = self._get_resolver(source_dict=source)
 
-        seed_data = await resolver.get_seed_data(source, bring_index=self.bring_index)
+        seed_data = await resolver.get_seed_data(source)
         if seed_data is None:
             seed_data = {}
 
@@ -559,7 +548,7 @@ class DynamicPkgTing(PkgTing):
         if "source" in value_names:
             result["source"] = source
 
-        metadata = None
+        metadata: Optional[PkgMetadata] = None
         if (
             "metadata" in value_names
             or "args" in value_names
@@ -570,10 +559,10 @@ class DynamicPkgTing(PkgTing):
             result["metadata"] = metadata
 
         if "args" in value_names:
-            result["args"] = await self._calculate_args(metadata=metadata)
+            result["args"] = await self._calculate_args(metadata=metadata)  # type: ignore
 
         if "aliases" in value_names:
-            result["aliases"] = await self._get_aliases(metadata)
+            result["aliases"] = metadata.aliases  # type: ignore
 
         if "info" in value_names:
             info = requirements.get("info", {})

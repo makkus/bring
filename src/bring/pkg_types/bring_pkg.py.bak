@@ -103,13 +103,13 @@ class BringPkgResolver(SimplePkgType):
 
         return ting  # type: ignore
 
-    def get_unique_source_id(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> str:
-
-        pkg = wrap_async_task(self.get_parent_pkg, source_details, bring_index)
-
-        return pkg.full_name
+    # def _get_unique_source_type_id(
+    #     self, source_details: Mapping
+    # ) -> str:
+    #
+    #     pkg = wrap_async_task(self.get_parent_pkg, source_details, bring_index)
+    #
+    #     return pkg.full_name
 
     async def _process_pkg_versions(
         self, source_details: Mapping, bring_index: BringIndexTing
@@ -129,5 +129,6 @@ class BringPkgResolver(SimplePkgType):
         _versions = []
         for v in versions:
             _versions.append(v[0])
-
+        # this give back PkgVersion objects, not dicts
+        raise NotImplementedError()
         return {"versions": _versions}

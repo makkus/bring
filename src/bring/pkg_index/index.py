@@ -8,6 +8,7 @@ from anyio import create_task_group
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_types import PkgMetadata
 from bring.utils.defaults import calculate_defaults
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.exceptions import FrklException
@@ -240,12 +241,20 @@ class BringIndexTing(InheriTing, SimpleTing):
         else:
             log.info(f"Index '{self.name}' does not support updates, doing nothing")
 
-    async def get_all_pkg_values(self, *value_names) -> Dict[str, Dict]:
+    async def get_all_pkg_values(
+        self, *value_names, serializeable: bool = False
+    ) -> Dict[str, Dict]:
 
         result = {}
 
         async def get_value(_pkg, _vn):
             _vals = await _pkg.get_values(*_vn)
+
+            if serializeable:
+                if "metadata" in value_names:
+                    md: PkgMetadata = _vals["metadata"]
+                    _vals["metadata"] = md.to_dict()
+
             result[_pkg.name] = _vals
 
         async with create_task_group() as tg:
@@ -263,17 +272,16 @@ class BringIndexTing(InheriTing, SimpleTing):
         timestamp = await self.get_metadata_timestamp()
 
         all_values = await self.get_all_pkg_values(
-            "source", "metadata", "aliases", "info", "labels", "tags"
+            "source",
+            "metadata",
+            "aliases",
+            "info",
+            "labels",
+            "tags",
+            serializeable=True,
         )
 
         _all_values: Dict[str, Any] = dict(all_values)
-        # config = await self.get_values()
-        # config_dict = await self.get_value("config")
-        # config.pop("auto_id", None)
-        # config.pop("id", None)
-        # config.pop("index_type", None)
-        # config.pop("index_config", None)
-        # _all_values["_bring_index_config"] = config_dict
 
         _all_values["_bring_metadata_timestamp"] = timestamp
 

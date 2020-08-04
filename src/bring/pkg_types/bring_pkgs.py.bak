@@ -139,16 +139,16 @@ class BringPkgsResolver(SimplePkgType):
 
         return ting  # type: ignore
 
-    def get_unique_source_id(
-        self, source_details: Mapping, bring_index: BringIndexTing
-    ) -> str:
-
-        pkgs = wrap_async_task(
-            self.get_child_pkgs, source_details=source_details, bring_index=bring_index
-        )
-        pkg_names = sorted(pkgs.keys())
-
-        return "_".join(pkg_names)
+    # def _get_unique_source_type_id(
+    #     self, source_details: Mapping
+    # ) -> str:
+    #
+    #     pkgs = wrap_async_task(
+    #         self.get_child_pkgs, source_details=source_details, bring_index=bring_index
+    #     )
+    #     pkg_names = sorted(pkgs.keys())
+    #
+    #     return "_".join(pkg_names)
 
     async def _process_pkg_versions(
         self, source_details: Mapping, bring_index: BringIndexTing
@@ -179,7 +179,7 @@ class BringPkgsResolver(SimplePkgType):
                 )
 
             mogrifier_list = assemble_mogrifiers(
-                version["_mogrify"],
+                version.steps,
                 vars=vars,
                 args=metadata["pkg_vars"]["mogrify_vars"],
                 task_desc={"name": name},
@@ -191,6 +191,6 @@ class BringPkgsResolver(SimplePkgType):
 
             mogrifier_lists.append(mogrifier_list)
 
-        version = {"_mogrify": [mogrifier_lists]}
+        _version = {"_mogrify": [mogrifier_lists]}
 
-        return {"versions": [version]}
+        return {"versions": [_version]}

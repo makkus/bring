@@ -77,6 +77,7 @@ class BringIndexFile(object):
 
         pkgs = await self.get_pkg_data()
         pkg_data = pkgs.get(pkg_name, None)
+
         if pkg_data is None:
             raise FrklException(
                 msg=f"Can't create ting '{pkg_name}'.",

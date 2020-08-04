@@ -204,8 +204,14 @@ async def diff_packages(
             pkgs_missing.append(pkg)
             continue
 
-        v_orig = await pkg.get_versions()
-        v_new = await pkg_new.get_versions()
+        _v_orig = await pkg.get_versions()
+        v_orig = []
+        for v in _v_orig:
+            v_orig.append(v.to_dict())
+        _v_new = await pkg_new.get_versions()
+        v_new = []
+        for v in _v_new:
+            v_new.append(v.to_dict())
 
         v_diff = diff_version_lists(v_orig, v_new)
         if v_diff:

@@ -16,8 +16,7 @@ from typing import (
 
 import arrow
 import httpx
-from bring.pkg_index.index import BringIndexTing
-from bring.pkg_types import SimplePkgType
+from bring.pkg_types import PkgType, PkgVersion
 from bring.utils.github import get_data_from_github
 
 
@@ -31,7 +30,7 @@ DEFAULT_URL_REGEXES = [
 log = logging.getLogger("bring")
 
 
-class GithubRelease(SimplePkgType):
+class GithubRelease(PkgType):
     """A package type that tracks GitHub release artefacts.
 
     To be able to get a list of all releases and their metadata, a package needs to specify the github user- and repo-names,
@@ -63,6 +62,9 @@ class GithubRelease(SimplePkgType):
 
 
     """
+
+    _plugin_name = "github_release"
+    _plugin_supports = "github_release"
 
     last_github_limit_details: Optional[Mapping] = None
 
@@ -108,13 +110,11 @@ class GithubRelease(SimplePkgType):
 
         super().__init__(**config)
 
-    def _supports(self) -> Iterable[str]:
+    # def _supports(self) -> Iterable[str]:
+    #
+    #     return ["github-release"]
 
-        return ["github-release"]
-
-    def get_unique_source_id(
-        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
-    ) -> str:
+    def _get_unique_source_type_id(self, source_details: Mapping[str, Any]) -> str:
 
         github_user = source_details.get("user_name")
         repo_name = source_details.get("repo_name")
@@ -165,7 +165,7 @@ class GithubRelease(SimplePkgType):
         }
 
     async def _process_pkg_versions(
-        self, source_details: Mapping[str, Any], bring_index: BringIndexTing
+        self, source_details: Mapping[str, Any]
     ) -> Mapping[str, Any]:
 
         github_user = source_details.get("user_name")
@@ -186,18 +186,20 @@ class GithubRelease(SimplePkgType):
 
         log.debug(f"Regexes for {github_user}/{repo_name}: {url_regexes}")
 
-        result: List[Mapping] = []
-        prereleases: List[Mapping] = []
+        result: List[PkgVersion] = []
+        prereleases: List[PkgVersion] = []
         aliases: Dict[str, MutableMapping] = {}
         for release in releases:
 
             version_data = self.parse_release_data(release, url_regexes, aliases)
             if version_data:
                 for vd in version_data:
-                    if vd.get("_meta", {}).get("prerelease", False):
-                        prereleases.append(vd)
+                    _vers_obj = PkgVersion(**vd)
+                    if vd.get("metadata", {}).get("prerelease", False):
+                        # _v = PkgVersion()
+                        prereleases.append(_vers_obj)
                     else:
-                        result.append(vd)
+                        result.append(_vers_obj)
 
         # args = copy.deepcopy(DEFAULT_ARGS_DICT)
         return {"versions": result + prereleases, "aliases": aliases}
@@ -267,12 +269,19 @@ class GithubRelease(SimplePkgType):
             # _m["content_type"] = content_type
             _m["size"] = size
             _m["url"] = browser_download_url
-            vars["_meta"] = _m
-            vars["_mogrify"] = [
-                {"type": "download", "url": _m["url"], "target_file_name": asset_name}
-            ]
+            _version_data = {
+                "vars": vars,
+                "metadata": _m,
+                "steps": [
+                    {
+                        "type": "download",
+                        "url": _m["url"],
+                        "target_file_name": asset_name,
+                    }
+                ],
+            }
 
-            result.append(vars)
+            result.append(_version_data)
 
         return result
 
