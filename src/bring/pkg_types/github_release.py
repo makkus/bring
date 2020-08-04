@@ -127,10 +127,10 @@ class GithubRelease(PkgType):
         return f"{github_user}_{repo_name}{artefact_name}"
 
     def get_artefact_mogrify(
-        self, source_details: Mapping[str, Any], version: Mapping[str, Any]
+        self, source_details: Mapping[str, Any], version: PkgVersion
     ) -> Union[Mapping, Iterable]:
 
-        url: str = version["_meta"].get("url")
+        url: str = version.metadata.get("url")  # type: ignore
 
         match = False
         for ext in [".zip", ".gz", "tar.bz2"]:
