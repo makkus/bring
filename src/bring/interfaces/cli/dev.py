@@ -70,6 +70,8 @@ class BringCreatePkgCommand(click.Command):
         regexes_to_try = [
             "https://github.com/.*/releases/download/v*(?P<version>.*)/.*-v*(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
             "https://github.com/.*/releases/download/(?P<version>.*)/.*-(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
+            "https://github.com/.*/releases/download/v(?P<version>.*)/.*-(?P<arch>[^-]*)-(?P<os>[^.]*)$",
+            "https://github.com/.*/releases/download/(?P<version>.*)/.*(-(?P<arch>[^.]*))?[^.sha256]?$",
         ]
 
         source_details = {"user_name": "cloudflare", "repo_name": "wrangler"}
@@ -80,6 +82,6 @@ class BringCreatePkgCommand(click.Command):
             versions = md.versions
             if not versions:
                 continue
-            print(versions[0])
+            print(versions[0].vars)
             matches = len(versions)
             print(f"Found {matches} matches")

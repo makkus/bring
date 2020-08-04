@@ -2,7 +2,6 @@
 from typing import Any, Dict, Mapping, Optional
 
 import arrow
-from bring.doc.args import create_table_from_pkg_args
 from bring.pkg_index.pkg import PkgTing
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.doc import Doc
@@ -108,7 +107,7 @@ class PkgInfoDisplay(InfoExplanation):
         info = await self.data.get_info(**args)
 
         metadata = info["metadata"]
-        age = arrow.get(metadata["timestamp"])
+        age = arrow.get(metadata["metadata_timestamp"])
 
         source = info["source"]
 
@@ -125,20 +124,20 @@ class PkgInfoDisplay(InfoExplanation):
         if info["tags"]:
             result["tags"] = info["tags"]
         result["metadata_timestamp"] = age.humanize()
-        args = metadata["pkg_args"]
-        aliases = metadata["aliases"]
 
-        arg_allowed_items: int = 10000
+        # aliases = metadata["aliases"]
 
-        args_table = create_table_from_pkg_args(
-            args=metadata["pkg_args"],
-            aliases=aliases,
-            limit_allowed=arg_allowed_items,
-            show_headers=False,
-            minimal=not self._display_full_args,
-        )
+        # arg_allowed_items: int = 10000
 
-        result["args"] = args_table
+        # args_table = create_table_from_pkg_args(
+        #     args=metadata["vars"],
+        #     aliases=aliases,
+        #     limit_allowed=arg_allowed_items,
+        #     show_headers=False,
+        #     minimal=not self._display_full_args,
+        # )
+        #
+        # result["args"] = args_table
 
         # result["args"] = metadata["pkg_args"]
         # result["aliases"] = aliases

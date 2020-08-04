@@ -18,9 +18,12 @@ markdown_extensions:
 nav:
 - Home: index.md
 - Install: install.md
-- Usage: usage.md
+- Quickstart: quick-start.md
+- Usage: usage/getting-started.md
 - API Documentation: api-documentation.md
 plugins:
 - search
 - macros:
    module_name: ci.docs
+extra_css:
+  - stylesheets/extra.css

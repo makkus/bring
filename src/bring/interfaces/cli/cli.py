@@ -22,4 +22,5 @@ AppEnvironment.set_main_app("bring")
 cli = BringCommandGroup()
 
 if __name__ == "__main__":
-    sys.exit(cli(_anyio_backend="asyncio"))  # pragma: no cover
+    exit_code = cli(_anyio_backend="asyncio")  # pragma: no cover
+    sys.exit(exit_code)

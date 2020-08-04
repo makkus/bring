@@ -10,7 +10,7 @@ from rich.theme import Theme
 
 bring_style = Style(color="black", blink=False, bold=False, bgcolor=None)
 
-bring_code_theme = "friendly"
+# bring_code_theme = "friendly"
 bring_code_theme = "solarized-light"
 
 LIGHT_THEME = Theme(
@@ -21,8 +21,15 @@ LIGHT_THEME = Theme(
         "value": Style.parse(""),
     }
 )
-
-width = os.environ.get("BRING_CONSOLE_WIDTH", None)
+DARK_THEME = Theme(
+    {
+        "title": Style.parse("bold white"),
+        "key": Style.parse("bold yellow"),
+        "key2": Style.parse("italic"),
+        "value": Style.parse(""),
+    }
+)
+width = os.environ.get("CONSOLE_WIDTH", None)
 if width is not None:
     _width: Optional[int] = int(width)
 else:

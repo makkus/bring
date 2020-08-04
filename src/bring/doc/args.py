@@ -49,6 +49,7 @@ def prepare_table_items(
 
         doc = Doc(v.get("doc", {}))
 
+        print(v.keys())
         item = {
             "name": k,
             "desc": doc.get_short_help(),
