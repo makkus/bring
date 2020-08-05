@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.pkg_types import PkgType
+from frkl.args.arg import RecordArg
 from frkl.args.cli.click_commands import FrklBaseCommand
 
 
@@ -43,45 +43,45 @@ class BringDevGroup(FrklBaseCommand):
         return ["create-pkg"]
 
     async def _get_command(self, ctx, name):
-
-        command = BringCreatePkgCommand(name="create-pkg", bring=self._bring)
+        plugin_manager = self._bring.typistry.get_plugin_manager(PkgType)
+        plugin: PkgType = plugin_manager.get_plugin("github_release")
+        command = BringCreatePkgCommand(
+            name="create-pkg", bring=self._bring, plugin=plugin
+        )
         return command
 
 
 class BringCreatePkgCommand(click.Command):
-    def __init__(self, name: str, bring: Bring, **kwargs):
-
-        print(name)
+    def __init__(self, name: str, bring: Bring, plugin: PkgType, **kwargs):
 
         self._bring: Bring = bring
-        self._plugin_manager = self._bring.tingistry.get_plugin_manager(PkgType)
-        super().__init__(name=name, callback=self.create_pkg, **kwargs)
+        self._plugin: PkgType = plugin
 
-    def get_plugin(self, plugin_name: str) -> Any:
+        args_dict = self._plugin.get_args()
+        arg_obj: RecordArg = self._bring.arg_hive.create_record_arg(args_dict)
 
-        return self._plugin_manager.get_plugin(plugin_name=plugin_name)
+        self._args_renderer = arg_obj.create_arg_renderer(
+            "cli", add_defaults=False, remove_required=True
+        )
+        params = self._args_renderer.rendered_arg
 
-    @click.pass_context
-    async def create_pkg(ctx, self):
+        super().__init__(name=name, callback=self.create_pkg, params=params, **kwargs)
 
-        print("XXXX")
-        plugin: PkgType = self.get_plugin("github-release")
+    # @click.pass_context
+    async def create_pkg(self, **kwargs):
 
-        regexes_to_try = [
-            "https://github.com/.*/releases/download/v*(?P<version>.*)/.*-v*(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
-            "https://github.com/.*/releases/download/(?P<version>.*)/.*-(?P=version)-(?P<arch>[^-]*)-(?P<os>[^.]*)\\..*$",
-            "https://github.com/.*/releases/download/v(?P<version>.*)/.*-(?P<arch>[^-]*)-(?P<os>[^.]*)$",
-            "https://github.com/.*/releases/download/(?P<version>.*)/.*(-(?P<arch>[^.]*))?[^.sha256]?$",
-        ]
+        arg_value = self._args_renderer.create_arg_value(kwargs)
+        user_input = arg_value.processed_input
 
-        source_details = {"user_name": "cloudflare", "repo_name": "wrangler"}
+        str = await self._plugin.create_pkg_desc_string(
+            "example_name", "github_release", **user_input
+        )
+        print(str)
 
-        for r in regexes_to_try:
-            source_details["url_regex"] = r
-            md = await plugin.get_pkg_metadata(source_details)
-            versions = md.versions
-            if not versions:
-                continue
-            print(versions[0].vars)
-            matches = len(versions)
-            print(f"Found {matches} matches")
+        # source = desc.pop("source")
+        #
+        # pkg_metadata = await self._plugin.get_pkg_metadata(source_details=source)
+        #
+        # md = PkgExplanation(pkg_name="example_name", pkg_metadata=pkg_metadata, **desc)
+        #
+        # get_console().print(md)

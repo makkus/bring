@@ -14,20 +14,31 @@ import arrow
 from anyio import aopen
 from bring.defaults import (
     BRING_PKG_CACHE,
+    BRING_RESOURCES_FOLDER,
     BRING_TEMP_CACHE,
     DEFAULT_ARGS_DICT,
     PKG_RESOLVER_DEFAULTS,
 )
 from deepdiff import DeepHash
+from frkl.args.hive import ArgHive
 from frkl.common.dicts import dict_merge, get_seeded_dict
 from frkl.common.filesystem import ensure_folder
-from frkl.common.jinja_templating import get_template_schema, template_schema_to_args
+from frkl.common.jinja_templating import (
+    get_global_jinja_env,
+    get_template_schema,
+    process_string_template,
+    template_schema_to_args,
+)
 from frkl.common.regex import find_var_names_in_obj, replace_var_names_in_obj
 from frkl.common.strings import from_camel_case
+from jinja2 import Environment
+from ruamel.yaml import YAML
 from tzlocal import get_localzone
 
 
 log = logging.getLogger("bring")
+
+DEFAULT_PKG_DESC_TEMPLATE_FILE = pathlib.Path(BRING_RESOURCES_FOLDER) / "pkg_desc.j2"
 
 
 class PkgVersion(object):
@@ -153,15 +164,18 @@ class PkgType(metaclass=ABCMeta):
 
     _plugin_type = "singleton"
 
-    def __init__(self, **config: Any):
+    def __init__(self, arg_hive: ArgHive, **config: Any):
         """ The base class to inherit from to create package metadata of a certain type.
 
             Supported config keys (so far):
         - *metadata_max_age*: age of metadata in seconds that is condsidered valid (set to 0 to always invalidate/re-load metadata, -1 to never invalidate)
         """
+
+        self._arg_hive: ArgHive = arg_hive
         self._cache_dir = os.path.join(
             BRING_PKG_CACHE, "resolvers", from_camel_case(self.__class__.__name__)
         )
+        self._jinja_env_obj: Optional[Environment] = None
         ensure_folder(self._cache_dir, mode=0o700)
 
         self._config: Mapping[str, Any] = get_seeded_dict(PKG_RESOLVER_DEFAULTS, config)
@@ -175,6 +189,13 @@ class PkgType(metaclass=ABCMeta):
     def get_args(self) -> Mapping[str, Mapping[str, Any]]:
         """A dictionary describing which arguments are necessary to create a package of this type."""
         pass
+
+    @property
+    def _jinja_env(self) -> Environment:
+
+        if self._jinja_env_obj is None:
+            self._jinja_env_obj = get_global_jinja_env(env_type="default")
+        return self._jinja_env_obj
 
     def get_unique_source_id(self, source_details: Mapping[str, Any]) -> str:
         """Return a calculated unique id for a package.
@@ -620,3 +641,54 @@ class PkgType(metaclass=ABCMeta):
          - *args*: (optional) a seed schema to describe the full or partial arguments that are allowed/required when searching for package versions. This will be merged/overwritten with the value of a potential 'args' key in the 'source' definition of a package
         """
         pass
+
+    async def create_pkg_desc_string(
+        self, pkg_name: str, pkg_type: str, **kwargs: Any
+    ) -> str:
+
+        arg_dict = self.get_args()
+
+        args = self._arg_hive.create_record_arg(arg_dict, remove_required=True)
+        validated_input: Dict[str, Any] = {}
+        for arg_name, arg in args.childs.items():
+
+            value = kwargs.get(arg_name, None)
+            if value is None:
+                if arg.default:
+                    default = arg.default
+                else:
+                    default = f"<{arg_name}_value>"
+                validated_input[arg_name] = {"value": default, "arg": arg.doc}
+            else:
+                validated = arg.validate(value)
+                validated_input[arg_name] = {
+                    "value": validated,
+                    "arg": arg.doc,
+                    "required": arg.required,
+                }
+
+        repl_dict = {
+            "pkg_name": pkg_name,
+            "info": {},
+            "args": validated_input,
+            "pkg_type": pkg_type,
+        }
+
+        result = process_string_template(
+            DEFAULT_PKG_DESC_TEMPLATE_FILE.read_text(),
+            replacement_dict=repl_dict,
+            jinja_env=self._jinja_env,
+        )
+
+        return result
+
+    async def create_pkg_desc(
+        self, pkg_name: str, pkg_type: str, **kwargs: Any
+    ) -> MutableMapping[str, Any]:
+
+        pkg_desc_str = await self.create_pkg_desc_string(
+            pkg_name=pkg_name, pkg_type=pkg_type, **kwargs
+        )
+        yaml = YAML()
+        pkg_desc = yaml.load(pkg_desc_str)
+        return pkg_desc

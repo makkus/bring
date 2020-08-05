@@ -1,11 +1,87 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional
 
 import arrow
+from bring.doc.args import create_table_from_pkg_args
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_types import PkgMetadata
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.doc import Doc
+from frkl.explain.explanation import Explanation
 from frkl.explain.explanations.doc import InfoExplanation
+from frkl.explain.explanations.utils import doc_to_table_rows
+from rich import box
+from rich.console import Console, ConsoleOptions, RenderResult
+from rich.table import Table
+
+
+class PkgExplanation(Explanation):
+    def __init__(
+        self,
+        pkg_name: str,
+        pkg_metadata: PkgMetadata,
+        info: Optional[Mapping[str, Any]] = None,
+        tags: Optional[Iterable[str]] = None,
+        labels: Optional[Mapping[str, Any]] = None,
+        **config,
+    ):
+
+        self._pkg_name: str = pkg_name
+        self._pkg_metadata: PkgMetadata = pkg_metadata
+        self._info: Doc = Doc(info, short_help_key="slug", help_key="desc")
+        if tags is None:
+            tags = []
+        self._tags: Iterable[str] = tags
+        if labels is None:
+            labels = {}
+        self._labels: Mapping[str, Any] = labels
+
+        super().__init__(**config)
+
+    async def create_explanation_data(self) -> Mapping[str, Any]:
+
+        return {
+            "metadata": self._pkg_metadata.to_dict(),
+            "info": self._info.exploded_dict(),
+            "tags": self._tags,
+            "labels": self._labels,
+        }
+
+    def __rich_console__(
+        self, console: Console, options: ConsoleOptions
+    ) -> RenderResult:
+
+        if self.config_value("show_title", True):
+            short_help = self._info.get_short_help(default=None)
+            if short_help:
+                short_help = f" [value]({short_help})[/value]"
+            else:
+                short_help = ""
+            yield f" [title]Package [underline]{self._pkg_name}[/underline][/title]{short_help}"
+
+        metadata_rows = doc_to_table_rows(self._info)
+        if metadata_rows:
+            table = Table(show_header=False, box=box.SIMPLE, padding=(0, 2, 0, 0))
+            table.add_column("Property", style="key2", no_wrap=True)
+            table.add_column("Value", style="value")
+
+            for row in metadata_rows:
+                table.add_row("", "")
+                table.add_row(*row)
+
+            yield table
+
+        yield ""
+        yield " [title]Variables[/title]"
+
+        args_table = create_table_from_pkg_args(
+            args=self._pkg_metadata.vars["args"],
+            aliases=self._pkg_metadata.aliases,
+            show_headers=False,
+        )
+        yield args_table
+
+        # if self.config_value("show_versions", True):
 
 
 class PkgInfoDisplay(InfoExplanation):

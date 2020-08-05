@@ -5,7 +5,7 @@ from bring.pkg_index.gitservice_user_index import (
     BringGitServiceRepo,
     BringGitServiceUserIndex,
 )
-from bring.utils.github import get_data_from_github
+from bring.utils.github import get_list_data_from_github
 
 
 class BringGithubUserIndex(BringGitServiceUserIndex):
@@ -15,7 +15,7 @@ class BringGithubUserIndex(BringGitServiceUserIndex):
     async def retrieve_user_repos(self) -> Mapping[str, BringGitServiceRepo]:
 
         request_path = f"/users/{self.service_username}/repos"
-        repo_data = await get_data_from_github(path=request_path)
+        repo_data = await get_list_data_from_github(path=request_path)
         user_repos = {}
         for data in repo_data:
 

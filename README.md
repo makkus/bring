@@ -79,10 +79,10 @@ For details (and other, minor targets), check the ``Makefile``.
 This project uses [cruft](https://github.com/timothycrosley/cruft) to apply updates to [the base Python project template](https://gitlab.com/frkl/template-python-project) to this repository. Check out it's documentation for more information.
 
 ``` console
-cruft update
+> cruft update
 # interactively approve changes, make changes if necessary
-git add *
-git commit -m "chore: updated project from template"
+> git add *
+> git commit -m "chore: updated project from template"
 ```
 
 

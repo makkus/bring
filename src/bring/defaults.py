@@ -211,7 +211,7 @@ BRING_INS_JINJA_ENV = get_global_jinja_env(delimiter_profile="frkl", env_type="n
 BRING_AUTO_ARG = {"type": "string", "required": True}
 DEFAULT_ARGS_DICT = {
     "os": {"doc": "The operating system to run on.", "type": "string"},
-    "arch": {"doc": "The architecture of the underlying system.", "type": "string"},
+    "arch": {"doc": "The architecture the binary is built for.", "type": "string"},
     "version": {"doc": "The version of the package.", "default": "latest"},
 }
 BRING_METADATA_FOLDER_NAME = ".bring"

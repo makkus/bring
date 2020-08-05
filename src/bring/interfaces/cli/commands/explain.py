@@ -7,14 +7,18 @@ import asyncclick as click
 from asyncclick import Command, Option
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
+from bring.defaults import DEFAULT_PKG_EXTENSION
 from bring.doc.index import IndexExplanation
-from bring.doc.pkg import PkgInfoDisplay
+from bring.doc.pkg import PkgExplanation, PkgInfoDisplay
 from bring.interfaces.cli import console
 from bring.interfaces.cli.config import BringContextGroup
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
+from bring.pkg_types import PkgType
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.hive import ArgHive
+from frkl.common.cli.exceptions import handle_exc_async
+from frkl.common.formats.auto import AutoInput
 from frkl.explain.explanations.doc import InfoListExplanation
 from frkl.targets.local_folder import TrackingLocalFolder
 
@@ -160,30 +164,66 @@ class BringInfoPkgsGroup(FrklBaseCommand):
 
             @click.command(short_help="show details about a package and its arguments")
             @click.argument("package", nargs=1, required=True)
-            @click.option(
-                "--update",
-                "-u",
-                help="update index before retrieving info",
-                is_flag=True,
-            )
-            @click.option(
-                "--args",
-                "-a",
-                help="display full information on package args",
-                is_flag=True,
-            )
+            # @click.option(
+            #     "--update",
+            #     "-u",
+            #     help="update index before retrieving info",
+            #     is_flag=True,
+            # )
+            # @click.option(
+            #     "--args",
+            #     "-a",
+            #     help="display full information on package args",
+            #     is_flag=True,
+            # )
             @click.pass_context
-            async def command(ctx, package, update, args):
+            @handle_exc_async
+            async def command(ctx, package):
 
-                bring = await self.get_bring()
-                console.line()
-                # await self._bring.add_indexes("kubernetes", "binaries")
-                pkg = await bring.get_pkg(name=package, raise_exception=True)
+                if (
+                    package.endswith(DEFAULT_PKG_EXTENSION)
+                    or package.endswith(".yaml")
+                    or package.endswith(".yml")
+                    or package.endswith(".json")
+                ):
 
-                pkg_info: PkgInfoDisplay = PkgInfoDisplay(
-                    data=pkg, update=update, full_info=True, display_full_args=args
-                )
-                console.print(pkg_info)
+                    package = os.path.abspath(package)
+                    ai = AutoInput(package)
+                    desc = await ai.get_content_async()
+                    source = desc.pop("source")
+
+                    pkg_type = source["type"]
+                    plugin_manager = self.arg_hive.typistry.get_plugin_manager(
+                        PkgType, plugin_config={"arg_hive": self.arg_hive}
+                    )
+                    plugin: PkgType = plugin_manager.get_plugin(pkg_type)
+
+                    pkg_metadata = await plugin.get_pkg_metadata(source_details=source)
+
+                    md = PkgExplanation(
+                        pkg_name=os.path.basename(package),
+                        pkg_metadata=pkg_metadata,
+                        **desc,
+                    )
+
+                    console.print(md)
+
+                else:
+                    bring = await self.get_bring()
+                    console.line()
+
+                    pkg = await bring.get_pkg(name=package, raise_exception=True)
+
+                    vals = await pkg.get_values()
+
+                    pkg_info: PkgExplanation = PkgExplanation(
+                        pkg_name=pkg.pkg_id,
+                        pkg_metadata=vals["metadata"],
+                        info=vals["info"],
+                        tags=vals["tags"],
+                        labels=vals["labels"],
+                    )
+                    console.print(pkg_info)
 
             return command
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, List, Mapping, MutableMapping, Optional
+from typing import Any, Dict, List, Mapping, MutableMapping
 
 from frkl.common.doc import Doc
 from frkl.common.formats.serialize import to_value_string
@@ -12,36 +12,34 @@ def prepare_table_items(
 ) -> List[MutableMapping[str, Any]]:
 
     items: List[MutableMapping] = []
+
     for k, v in sorted(args.items()):
 
         arg_aliases = aliases.get(k, {})
-        # aliases_reverse: Dict[str, List[str]] = {}
-        # allowed_no_alias = []
+        aliases_reverse: Dict[str, List[str]] = {}
+        allowed_no_alias = []
 
         allowed = v.get("allowed", [])
 
         if k != "version":
             allowed = sorted(allowed)
-        # for a in allowed:
-        #     if a in arg_aliases.keys():
-        #         aliases_reverse.setdefault(arg_aliases[a], []).append(a)
-        #     else:
-        #         allowed_no_alias.append(a)
 
-        # if v["default"] is not None:
-        #     default = v["default"]
-        # else:
-        #     default = ""
+        for a in allowed:
+            if a in arg_aliases.keys():
+                aliases_reverse.setdefault(arg_aliases[a], []).append(a)
+            else:
+                allowed_no_alias.append(a)
 
         # if allowed_no_alias:
         #     allowed_first = allowed_no_alias[0]
         # else:
         #     allowed_first = ""
+
         # if v.get("required", True):
         #     req = "yes"
         # else:
         #     req = "no"
-
+        #
         # if allowed_first in aliases_reverse.keys() and aliases_reverse[allowed_first]:
         #     alias = aliases_reverse[allowed_first][0]
         # else:
@@ -49,7 +47,6 @@ def prepare_table_items(
 
         doc = Doc(v.get("doc", {}))
 
-        print(v.keys())
         item = {
             "name": k,
             "desc": doc.get_short_help(),
@@ -67,7 +64,7 @@ def prepare_table_items(
 def create_table_from_pkg_args(
     args: Mapping[str, Any],
     aliases: Mapping[str, Any],
-    limit_allowed: Optional[int] = None,
+    limit_allowed: int = 8,
     show_headers: bool = True,
     minimal: bool = False,
 ) -> Table:

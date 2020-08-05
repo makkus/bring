@@ -59,7 +59,7 @@ class Bring(SimpleTing):
                 continue
             env_conf[k[6:]] = v
 
-        env_conf["bringistry"] = self
+        env_conf["arg_hive"] = self.arg_hive
         self.typistry.get_plugin_manager(PkgType, plugin_config=env_conf)
 
         # self._transmogritory = Transmogritory(self._tingistry_obj)

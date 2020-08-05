@@ -1,6 +1,9 @@
 site_name: bring
 repo_url: https://gitlab.com/frkl/bring
-theme: material
+theme:
+  name: material
+  palette:
+   scheme: default
 site_author: Markus Binsteiner
 docs_dir: docs
 site_dir: build/site
@@ -14,6 +17,10 @@ markdown_extensions:
     permalink: true
 - pymdownx.snippets:
     base_path: docs
+- pymdownx.highlight:
+    use_pygments: true
+- pymdownx.inlinehilite
+- pymdownx.superfences
 
 nav:
 - Home: index.md

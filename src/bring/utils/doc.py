@@ -41,7 +41,9 @@ async def create_mogrifier_markdown_string(
 
 async def create_pkg_type_markdown_string_from_plugin_name(bring: Bring, name: str):
 
-    pm = bring.typistry.get_plugin_manager(PkgType)
+    pm = bring.typistry.get_plugin_manager(
+        PkgType, plugin_config={"arg_hive": bring.arg_hive}
+    )
     doc = pm.get_plugin_doc(name)
     return create_pkg_type_markdown_string(bring=bring, plugin_doc=doc)
 

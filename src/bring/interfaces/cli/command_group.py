@@ -153,6 +153,7 @@ class BringCommandGroup(FrklBaseCommand):
             "list",
             "update",
             "export-index",
+            "create",
             "config",
             "doc",
             "plugin",
@@ -208,6 +209,15 @@ class BringCommandGroup(FrklBaseCommand):
                 arg_hive=self._tingistry_obj.arg_hive,
             )
             command.short_help = "display context, index, pkg, or target information"
+
+            return command
+
+        elif name == "create":
+
+            from bring.interfaces.cli.commands.create import BringCreateGroup
+
+            command = BringCreateGroup(name="create", arg_hive=self.arg_hive)
+            return command
 
         if not is_list_command:
 

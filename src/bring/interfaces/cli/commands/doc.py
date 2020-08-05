@@ -12,6 +12,7 @@ from bring.utils.doc import create_pkg_type_markdown_string
 from freckles.core.freckles import Freckles
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.renderers.rich import to_rich_table
+from frkl.types.plugins import PluginManager
 from frkl.types.typistry import Typistry
 from rich import box
 from rich.console import RenderGroup
@@ -79,18 +80,26 @@ class BringDocGroup(FrklBaseCommand):
 
 
 class BringPluginGroup(FrklBaseCommand):
-    def __init__(self, freckles: Freckles, plugin_class: Type):
+    def __init__(self, name: str, freckles: Freckles, plugin_class: Type):
 
         self._freckles: Freckles = freckles
         self._tingistry: Tingistry = self._freckles.tingistry
-        self._plugin_manager = self._tingistry.get_plugin_manager(plugin_class)
+
+        self._plugin_class: Type = plugin_class
+        self._plugin_manager: Optional[PluginManager] = None
 
         self._bring: Optional[Bring] = None
         super(BringPluginGroup, self).__init__(
-            name=self._plugin_manager.manager_name,
-            arg_hive=self._tingistry.arg_hive,
-            subcommand_metavar="PLUGIN",
+            name=name, arg_hive=self._tingistry.arg_hive, subcommand_metavar="PLUGIN",
         )
+
+    def get_plugin_manager(self) -> PluginManager:
+
+        if self._plugin_manager is None:
+            self._plugin_manager = self._tingistry.get_plugin_manager(
+                self._plugin_class
+            )
+        return self._plugin_manager
 
     @property
     def bring(self) -> Bring:
@@ -102,25 +111,33 @@ class BringPluginGroup(FrklBaseCommand):
 
     def get_plugin_doc(self, plugin_name: str):
 
-        return self._plugin_manager.get_plugin_doc(plugin_name=plugin_name)
+        return self.get_plugin_manager().get_plugin_doc(plugin_name=plugin_name)
 
     def get_plugin(self, plugin_name: str) -> Any:
 
-        return self._plugin_manager.get_plugin(plugin_name=plugin_name)
+        return self.get_plugin_manager().get_plugin(plugin_name=plugin_name)
 
     async def _list_commands(self, ctx):
 
-        return sorted(self._plugin_manager.plugin_names)
+        return sorted(self.get_plugin_manager().plugin_names)
 
 
 class PkgTypePluginGroup(BringPluginGroup):
     def __init__(self, freckles: Freckles):
 
-        super().__init__(freckles=freckles, plugin_class=PkgType)
+        super().__init__(name="pkg-type", freckles=freckles, plugin_class=PkgType)
+
+    def get_plugin_manager(self) -> PluginManager:
+
+        if self._plugin_manager is None:
+            self._plugin_manager = self._tingistry.get_plugin_manager(
+                self._plugin_class, plugin_config={"arg_hive": self.arg_hive}
+            )
+        return self._plugin_manager
 
     async def _get_command(self, ctx, name):
 
-        if name not in self._plugin_manager.plugin_names:
+        if name not in self.get_plugin_manager().plugin_names:
             return None
 
         @click.command()
@@ -173,7 +190,7 @@ class PkgTypePluginGroup(BringPluginGroup):
 class MogrifyPluginGroup(BringPluginGroup):
     def __init__(self, freckles: Freckles):
 
-        super().__init__(freckles=freckles, plugin_class=Mogrifier)
+        super().__init__(name="mogrifier", freckles=freckles, plugin_class=Mogrifier)
 
     async def _get_command(self, ctx, name):
         @click.command()

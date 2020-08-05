@@ -1,0 +1,30 @@
+---
+{{ info_yaml }}
+{% if not tags %}# tags:
+#  - <tag1>
+#  - <tag2>
+{% else %}tags:
+{% for t in tags %}  - {{ t }}
+{% endfor %}{% endif %}
+{% if not labels %}# labels:
+#   language: <language>
+{% else %}labels:
+{% for k, v in labels.items() %}  {{ k }}: "{{ v }}"
+{% endfor %}{% endif %}
+source:
+  type: {{ pkg_type }}
+{% for arg_name, details in args.items() %}{% if details['comment_out'] %}#{% endif %}  {{ arg_name }}: "{{ details['value'] }}"{{ "        # optional" if not details['required'] }}
+{% endfor %}
+#  aliases:
+#    <var_name>:
+#      <alias>: <actual_value>
+#      <alias_2>: <actual_value_2>
+#    arch:
+#      x86_64: x86-64
+
+#  artefact:
+#    type: archive
+
+#  transform:
+#    items:
+#      <target_file>: <orig_file>

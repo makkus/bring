@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from bring.defaults import bring_app_dirs as project_dirs
-from deepdiff import DeepHash
+from frkl.common.downloads.cache import calculate_cache_location_for_url
 from frkl.explain.explanations.exception import ExceptionExplanation
 from pydoc_markdown.main import RenderSession
 
@@ -16,7 +16,7 @@ if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
 
 os_env_vars = copy.copy(os.environ)
-os_env_vars["CONSOLE_WIDTH"] = "200"
+os_env_vars["CONSOLE_WIDTH"] = "100"
 
 
 def define_env(env):
@@ -29,14 +29,20 @@ def define_env(env):
 
     # env.variables["baz"] = "John Doe"
 
+    def get_cache_key(key: str, *command: str):
+
+        hash_obj = [key] + list(command)
+        return calculate_cache_location_for_url("_".join(hash_obj), sep="_")
+
+        # hashes = DeepHash(hash_obj)
+        # hash_str = str(hashes[hash_obj])
+
     def read_cache(key: str, *command: str) -> Optional[str]:
 
         if os.environ.get("USE_DOCS_CACHE", "false").lower() != "true":
             return None
 
-        hash_obj = [key] + list(command)
-        hashes = DeepHash(hash_obj)
-        hash_str = str(hashes[hash_obj])
+        hash_str = get_cache_key(key, *command)
 
         cache_file: Path = Path(os.path.join(CACHE_DIR, hash_str))
         text = None
@@ -50,9 +56,7 @@ def define_env(env):
         if os.environ.get("USE_DOCS_CACHE", "false").lower() != "true":
             return
 
-        hash_obj = [key] + list(command)
-        hashes = DeepHash(hash_obj)
-        hash_str = str(hashes[hash_obj])
+        hash_str = get_cache_key(key, *command)
 
         cache_file: Path = Path(os.path.join(CACHE_DIR, hash_str))
         cache_file.write_text(text)
@@ -119,7 +123,7 @@ def define_env(env):
                     if "HTML_END" in line:
                         break
 
-                    output.append(line)
+                    output.append(line.rstrip())
 
                 html_output = "\n".join(output)
                 write_cache("cli_html", *command, text=html_output)
@@ -134,7 +138,7 @@ def define_env(env):
                 stdout = "```\n" + ex_str + "\n```\n"
                 return stdout
 
-        pre = """<pre style="font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace;">"""
+        pre = """<pre style="font-family:'Roboto Mono',Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace;">"""
         post = "</pre>"
 
         if max_height is not None and max_height > 0:

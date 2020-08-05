@@ -1,0 +1,32 @@
+---
+{% if info %}info:
+  homepage: {{ info.get('homepage', 'https://example.com') }}
+  slug: {{ info.get('slug', '<' + pkg_name + '_package_description>') }}
+{% else %}# info:
+#   homepage: 'https://example.com'
+#   slug: <{{ pkg_name }}_package_description>
+{% endif %}
+# tags:
+#  - <tag1>
+#  - <tag2>
+
+# labels:
+#   language: <language>
+
+source:
+  type: {{ pkg_type }}
+{% for arg_name, details in args.items() %}{% if not details['required'] %}#{% endif %}  {{ arg_name }}: "{{ details['value'] }}"{{ "        # optional" if not details['required'] }}
+{% endfor %}
+#  aliases:
+#    <var_name>:
+#      <alias>: <actual_value>
+#      <alias_2>: <actual_value_2>
+#    arch:
+#      x86_64: x86-64
+
+#  artefact:
+#    type: archive
+
+#  transform:
+#    items:
+#      <target_file>: <orig_file>
