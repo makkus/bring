@@ -14,7 +14,6 @@ from frkl.common.async_utils import wrap_async_task
 from frkl.common.exceptions import FrklException
 from frkl.common.types import isinstance_or_subclass
 from frkl.tasks.task import Task
-from tings.exceptions import TingValueError
 from tings.ting import SimpleTing, TingMeta
 from tings.ting.inheriting import InheriTing
 
@@ -124,8 +123,8 @@ class BringIndexTing(InheriTing, SimpleTing):
                     f"Error retrieving packages for index '{self.full_name}'.",
                     exc_info=True,
                 )
-                result["pkgs"] = TingValueError(
-                    e, msg=f"Can't retrieve packages for index '{self.id}'."
+                result["pkgs"] = FrklException(
+                    msg=f"Can't retrieve packages for index '{self.id}': {e}", parent=e
                 )
 
         if "metadata_timestamp" in value_names:

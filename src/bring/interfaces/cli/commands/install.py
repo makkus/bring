@@ -237,6 +237,7 @@ class BringInstallGroup(FrklBaseCommand):
                     res = ResultEvent(merge_result)
                     self._bring.add_app_event(res)
                 except Exception as e:
+
                     ee = ExceptionEvent(e)
                     self._bring.add_app_event(ee)
                     sys.exit(1)

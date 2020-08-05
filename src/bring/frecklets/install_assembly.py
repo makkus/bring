@@ -173,6 +173,9 @@ class InstallAssemblyPostprocessTask(PostprocessTask):
 
         result = task.result.result_value
 
+        if not task.success:
+            raise task.result.error
+
         folders: Dict[str, Mapping[str, Any]] = {}
 
         _target_path = self._target_details["target_path"]
@@ -300,7 +303,7 @@ class ParallelAssemblyTask(Tasks):
     async def execute_tasklets(self, *tasklets: Task) -> None:
 
         for t in tasklets:
-            await t.run_async()
+            await t.run_async(raise_exception=True)
 
     async def create_result_value(self, *tasklets: Task) -> Any:
 

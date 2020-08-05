@@ -82,11 +82,11 @@ class Mogrifiception(FrklException):
 
 
 class MogrifierException(FrklException):
-    def __init__(self, mogrifier: "Mogrifier", exception: Optional[Exception]):
+    def __init__(self, mogrifier: "Mogrifier", parent: Optional[Exception], **kwargs):
 
         self._mogrifier: "Mogrifier" = mogrifier
 
-        super().__init__(parent=exception)
+        super().__init__(parent=parent, **kwargs)
 
     @property
     def mogrifier(self):
@@ -287,8 +287,10 @@ class Transmogrificator(SimpleTasks):
         for child in tasklets:
             last_result = await child.run_async()
             if not last_result.success:
-                exc = MogrifierException(child, last_result.error)  # type: ignore
-                raise exc
+                # msg = "Error executing retrieval pipeline."
+                # exc = MogrifierException(child, last_result.error, msg=msg)  # type: ignore
+                # raise exc
+                raise last_result.error
 
     async def create_result_value(self, *tasklets: Task) -> Any:
 
