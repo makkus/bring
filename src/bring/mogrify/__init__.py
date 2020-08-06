@@ -82,11 +82,11 @@ class Mogrifiception(FrklException):
 
 
 class MogrifierException(FrklException):
-    def __init__(self, mogrifier: "Mogrifier", parent: Optional[Exception], **kwargs):
+    def __init__(self, mogrifier: "Mogrifier", **kwargs):
 
         self._mogrifier: "Mogrifier" = mogrifier
 
-        super().__init__(parent=parent, **kwargs)
+        super().__init__(**kwargs)
 
     @property
     def mogrifier(self):

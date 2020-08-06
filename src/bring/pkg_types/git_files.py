@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
 
 from bring.pkg_types import PkgType, PkgVersion
 from frkl.common.subprocesses import GitProcess
@@ -36,11 +36,18 @@ class GitFiles(PkgType):
 
         return source_details["url"]
 
+    def get_artefact_mogrify(
+        self, source_details: Mapping[str, Any], version: PkgVersion
+    ) -> Union[Mapping, Iterable]:
+
+        return {"type": "archive"}
+
     async def _process_pkg_versions(self, source_details: Mapping) -> Mapping[str, Any]:
 
         url = source_details["url"]
         tag_filter = source_details.get("tag_filter", None)
         use_commits = source_details.get("use_commits_as_versions", False)
+        files = source_details["files"]
 
         if use_commits:
             raise NotImplementedError("'use_commits_as_versions' is not supprted yet.")
@@ -84,7 +91,14 @@ class GitFiles(PkgType):
             if latest is None:
                 latest = t
             _v = PkgVersion(
-                [{"type": "git_clone", "url": source_details["url"], "version": t}],
+                [
+                    {
+                        "type": "git_archive",
+                        "url": source_details["url"],
+                        "version": t,
+                        "files": files,
+                    }
+                ],
                 vars={"version": t},
                 metadata={},
             )
@@ -98,9 +112,10 @@ class GitFiles(PkgType):
             _v = PkgVersion(
                 [
                     {
-                        "type": "git_clone",
+                        "type": "git_archive",
                         "url": source_details["url"],
                         "version": "master",
+                        "files": files,
                     }
                 ],
                 vars={"version": "master"},
@@ -113,7 +128,14 @@ class GitFiles(PkgType):
                 continue
 
             _v = PkgVersion(
-                [{"type": "git_clone", "url": source_details["url"], "version": h}],
+                [
+                    {
+                        "type": "git_archive",
+                        "url": source_details["url"],
+                        "version": h,
+                        "files": files,
+                    }
+                ],
                 vars={"version": h},
                 metadata={},
             )

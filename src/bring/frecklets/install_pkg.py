@@ -318,14 +318,15 @@ class BringInstallFrecklet(BringFrecklet):
             if isinstance(pkg_input, str):
                 _result = await self._bring.get_pkg_and_index(pkg_input)
                 if _result is not None:
-
                     pkg_metadata = {"name": _result[0].name, "index": _result[1].id}  # type: ignore
+                    pkg = _result[0]
 
                 else:
                     full_path = os.path.abspath(os.path.expanduser(pkg_input))
                     ai = AutoInput(full_path)
                     content = await ai.get_content_async()
                     if "source" in content.keys():
+                        defaults["pkg"] = content["source"]
                         ting_name = content.get("info", {}).get("name", None)
                         if ting_name is None:
                             ting_name = generate_valid_identifier(pkg_input)
@@ -336,7 +337,23 @@ class BringInstallFrecklet(BringFrecklet):
                         pkg.set_input(**content)  # type: ignore
                         pkg_metadata = {"source": content["source"]}
             elif isinstance(pkg_input, Mapping):
+
+                if "source" in pkg_input.keys():
+                    _data = pkg_input["source"]
+                    defaults["pkg"] = _data
+                elif "type" not in pkg_input:
+                    # TODO: references
+                    _r = to_value_string(pkg_input, reindent=4)
+                    raise FreckletException(
+                        frecklet=self,
+                        msg="Can't create package from provided input dict.",
+                        reason=f"Input data does not contain a 'type' key:\n\n{_r}",
+                    )
+                else:
+                    _data = pkg_input
+
                 ting_name = pkg_input.get("info", {}).get("name", None)
+
                 if ting_name is None:
                     ting_name = generate_valid_identifier()
                 pkg = self.tingistry.create_ting(  # type: ignore
@@ -379,7 +396,7 @@ class BringInstallFrecklet(BringFrecklet):
 
             # we don't want defaults overwrite inputs in this case
             for k in input_vars.keys():
-                if k in defaults.keys():
+                if k in defaults.keys() and not k == "pkg":
                     defaults.pop(k)
 
             pkg_args: RecordArg = await pkg.get_pkg_args()
