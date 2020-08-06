@@ -1,5 +1,9 @@
 ---
-{{ info_yaml }}
+{% if info_yaml %}{{ info_yaml }}
+{% else %}# info:
+#   slug: <package_description>
+#   homepage: 'https://example.com'
+{% endif %}
 {% if not tags %}# tags:
 #  - <tag1>
 #  - <tag2>

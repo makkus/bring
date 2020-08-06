@@ -9,11 +9,10 @@ from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.defaults import DEFAULT_PKG_EXTENSION
 from bring.doc.index import IndexExplanation
-from bring.doc.pkg import PkgExplanation, PkgInfoDisplay
+from bring.doc.pkg import PkgExplanation
 from bring.interfaces.cli import console
 from bring.interfaces.cli.config import BringContextGroup
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import PkgType
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.hive import ArgHive
@@ -211,13 +210,14 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                 else:
                     bring = await self.get_bring()
                     console.line()
-
                     pkg = await bring.get_pkg(name=package, raise_exception=True)
+
+                    full_name = await self._bring.get_full_package_name(package)
 
                     vals = await pkg.get_values()
 
                     pkg_info: PkgExplanation = PkgExplanation(
-                        pkg_name=pkg.pkg_id,
+                        pkg_name=full_name,
                         pkg_metadata=vals["metadata"],
                         info=vals["info"],
                         tags=vals["tags"],
@@ -287,57 +287,57 @@ class IndexInfoTingCommand(Command):
         console.print(self._index_info)
 
 
-class PkgInfoTingCommand(Command):
-    def __init__(self, name: str, pkg: PkgTing, load_details: bool = False, **kwargs):
-
-        self._pkg: PkgTing = pkg
-
-        self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(data=pkg, full_info=True)
-        try:
-
-            # slug = self._pkg_info.slug
-            short_help = self._pkg_info.short_help
-
-            kwargs["short_help"] = short_help
-            desc = self._pkg_info.desc
-            help = f"Display info for the '{self._pkg.name}' package."
-            if desc:
-                help = f"{help}\n\n{desc}"
-
-            params = [
-                Option(
-                    ["--update", "-u"],
-                    help="update package metadata",
-                    is_flag=True,
-                    required=False,
-                ),
-                Option(
-                    ["--args", "-a"],
-                    help="display only full arguments for package",
-                    is_flag=True,
-                    required=False,
-                ),
-                Option(
-                    ["--full", "-f"],
-                    help="display full information for package",
-                    is_flag=True,
-                    required=False,
-                ),
-            ]
-
-            kwargs["help"] = help
-        except (Exception) as e:
-            log.debug(f"Can't create PkgInstallTingCommand object: {e}", exc_info=True)
-            raise e
-
-        super().__init__(name=name, callback=self.info, params=params, **kwargs)
-
-    @click.pass_context
-    async def info(
-        ctx, self, update: bool = False, full: bool = False, args: bool = False
-    ):
-
-        self._pkg_info.update = update
-        self._pkg_info.display_full_args = args
-        self._pkg_info.display_full = full
-        console.print(self._pkg_info)
+# class PkgInfoTingCommand(Command):
+#     def __init__(self, name: str, pkg: PkgTing, load_details: bool = False, **kwargs):
+#
+#         self._pkg: PkgTing = pkg
+#
+#         self._pkg_info: PkgInfoDisplay = PkgInfoDisplay(data=pkg, full_info=True)
+#         try:
+#
+#             # slug = self._pkg_info.slug
+#             short_help = self._pkg_info.short_help
+#
+#             kwargs["short_help"] = short_help
+#             desc = self._pkg_info.desc
+#             help = f"Display info for the '{self._pkg.name}' package."
+#             if desc:
+#                 help = f"{help}\n\n{desc}"
+#
+#             params = [
+#                 Option(
+#                     ["--update", "-u"],
+#                     help="update package metadata",
+#                     is_flag=True,
+#                     required=False,
+#                 ),
+#                 Option(
+#                     ["--args", "-a"],
+#                     help="display only full arguments for package",
+#                     is_flag=True,
+#                     required=False,
+#                 ),
+#                 Option(
+#                     ["--full", "-f"],
+#                     help="display full information for package",
+#                     is_flag=True,
+#                     required=False,
+#                 ),
+#             ]
+#
+#             kwargs["help"] = help
+#         except (Exception) as e:
+#             log.debug(f"Can't create PkgInstallTingCommand object: {e}", exc_info=True)
+#             raise e
+#
+#         super().__init__(name=name, callback=self.info, params=params, **kwargs)
+#
+#     @click.pass_context
+#     async def info(
+#         ctx, self, update: bool = False, full: bool = False, args: bool = False
+#     ):
+#
+#         self._pkg_info.update = update
+#         self._pkg_info.display_full_args = args
+#         self._pkg_info.display_full = full
+#         console.print(self._pkg_info)

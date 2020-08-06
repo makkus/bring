@@ -9,6 +9,7 @@ from bring.defaults import BRING_RESULTS_FOLDER, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
 from bring.mogrify import Transmogrificator
 from bring.mogrify.transform_folder import PkgContentLocalFolder
+from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkg_spec import PkgSpec
 from freckles.core.frecklet import FreckletException, FreckletVar
@@ -281,7 +282,7 @@ class BringInstallFrecklet(BringFrecklet):
             "pkg_index": {
                 "type": "string",
                 "doc": "the name of the index that contains the package",
-                "required": True,
+                "required": False,
             },
             "target": {"type": "string", "doc": "the target folder", "required": False},
             "target_config": {
@@ -302,8 +303,16 @@ class BringInstallFrecklet(BringFrecklet):
 
         if self.current_amount_of_inputs == 0:
 
+            defaults = {}
+
             pkg_name = input_vars["pkg_name"].value
-            pkg_index = input_vars["pkg_index"].value
+            _pkg_index = input_vars.get("pkg_index", None)
+
+            if _pkg_index is None or _pkg_index.value is None:
+                pkg_index = await self._bring.get_default_index()
+                defaults["pkg_index"] = FreckletVar(pkg_index, origin="context default")
+            else:
+                pkg_index = _pkg_index.value
 
             # TODO: validate/expand transform value
             # transform = input_vars.get("transform", None)
@@ -318,10 +327,11 @@ class BringInstallFrecklet(BringFrecklet):
                 )
             self.set_processed_input("pkg", pkg)
 
-            self._msg = f"installing package '{pkg.pkg_id}'"
+            self._msg = f"installing package '{pkg.name}'"
 
-            defaults = {}
-            index_defaults = await pkg.bring_index.get_index_defaults()
+            index: BringIndexTing = await self._bring.get_index(pkg_index)
+            index_defaults = await index.get_index_defaults()
+            # index_defaults = await pkg.bring_index.get_index_defaults()
             for k, v in index_defaults.items():
                 defaults[k] = FreckletVar(v, origin="index defaults")
             bring_defaults = await self._bring.get_defaults()
@@ -335,10 +345,11 @@ class BringInstallFrecklet(BringFrecklet):
 
             # we don't want defaults overwrite inputs in this case
             for k in input_vars.keys():
-                if k in defaults.keys():
+                if k in defaults.keys() and k != "pkg_index":
                     defaults.pop(k)
 
             pkg_args: RecordArg = await pkg.get_pkg_args()
+
             return (pkg_args, defaults)
 
         elif self.current_amount_of_inputs == 1:

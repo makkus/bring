@@ -14,6 +14,7 @@ from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
 from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import PkgType
+from bring.utils import parse_pkg_string
 from bring.utils.defaults import calculate_defaults
 from freckles.core.freckles import Freckles
 from frkl.args.hive import ArgHive
@@ -436,6 +437,16 @@ class Bring(SimpleTing):
                 await tg.spawn(add_pkg, pkg_name, pkg)
 
         return result
+
+    async def get_full_package_name(self, package_name: str):
+
+        _pkg_name, _pkg_index = parse_pkg_string(package_name)
+
+        # TODO: check package exists?
+        if _pkg_index is None:
+            _pkg_index = await self.get_default_index()
+
+        return f"{_pkg_index}.{_pkg_name}"
 
     async def get_pkg(
         self, name: str, index: Optional[str] = None, raise_exception: bool = False

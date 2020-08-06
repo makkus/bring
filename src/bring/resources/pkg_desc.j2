@@ -1,10 +1,10 @@
 ---
 {% if info %}info:
+  slug: {{ info.get('slug', '<package_description>') }}
   homepage: {{ info.get('homepage', 'https://example.com') }}
-  slug: {{ info.get('slug', '<' + pkg_name + '_package_description>') }}
 {% else %}# info:
+#   slug: <package_description>
 #   homepage: 'https://example.com'
-#   slug: <{{ pkg_name }}_package_description>
 {% endif %}
 # tags:
 #  - <tag1>

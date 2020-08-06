@@ -2,17 +2,7 @@
 import copy
 import logging
 from abc import abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
 from bring.pkg_types import PkgMetadata, PkgType, PkgVersion
@@ -28,9 +18,6 @@ from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
 
-
-if TYPE_CHECKING:
-    from bring.pkg_index.index import BringIndexTing
 
 log = logging.getLogger("bring")
 
@@ -55,25 +42,25 @@ class PkgTing(SimpleTing):
         self._pkg_args: Optional[RecordArg] = None
 
         super().__init__(name=name, meta=meta)
-        self._index: Optional["BringIndexTing"] = None
+        # self._index: Optional["BringIndexTing"] = None
 
-    @property
-    def bring_index(self) -> "BringIndexTing":
+    # @property
+    # def bring_index(self) -> "BringIndexTing":
+    #
+    #     if self._index is None:
+    #         raise Exception(f"Index not (yet) set for PkgTing '{self.full_name}'.")
+    #     return self._index
+    #
+    # @bring_index.setter
+    # def bring_index(self, index):
+    #     if self._index:
+    #         raise Exception(f"Index already set for PkgTing '{self.full_name}'.")
+    #     self._index = index
 
-        if self._index is None:
-            raise Exception(f"Index not (yet) set for PkgTing '{self.full_name}'.")
-        return self._index
-
-    @bring_index.setter
-    def bring_index(self, index):
-        if self._index:
-            raise Exception(f"Index already set for PkgTing '{self.full_name}'.")
-        self._index = index
-
-    @property
-    def pkg_id(self) -> str:
-
-        return f"{self.bring_index.id}.{self.name}"
+    # @property
+    # def pkg_id(self) -> str:
+    #
+    #     return f"{self.bring_index.id}.{self.name}"
 
     def provides(self) -> Dict[str, str]:
 
@@ -85,7 +72,7 @@ class PkgTing(SimpleTing):
             "info": "dict",
             "labels": "dict",
             "tags": "list",
-            "index_name": "string",
+            # "index_name": "string",
         }
 
     # async def _get_aliases(self, metadata: PkgMetadata):
@@ -429,11 +416,11 @@ class StaticPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self._index:
-            raise FrklException(
-                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
-                reason="Index not set yet.",
-            )
+        # if not self._index:
+        #     raise FrklException(
+        #         msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
+        #         reason="Index not set yet.",
+        #     )
 
         result: Dict[str, Any] = {}
 
@@ -444,9 +431,9 @@ class StaticPkgTing(PkgTing):
             md = None
 
         for vn in value_names:
-            if vn == "index_name":
-                result[vn] = self.bring_index.name
-            elif vn == "args":
+            # if vn == "index_name":
+            #     result[vn] = self.bring_index.name
+            if vn == "args":
                 result[vn] = await self._calculate_args(md)  # type: ignore
             elif vn == "metadata":
                 result[vn] = md
@@ -535,11 +522,11 @@ class DynamicPkgTing(PkgTing):
 
     async def retrieve(self, *value_names: str, **requirements) -> Mapping[str, Any]:
 
-        if not self._index:
-            raise FrklException(
-                msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
-                reason="Index not set yet.",
-            )
+        # if not self._index:
+        #     raise FrklException(
+        #         msg=f"Can't retrieve values for PkgTing '{self.full_name}'.",
+        #         reason="Index not set yet.",
+        #     )
 
         result: Dict[str, Any] = {}
         source = requirements["source"]
@@ -550,8 +537,8 @@ class DynamicPkgTing(PkgTing):
         if seed_data is None:
             seed_data = {}
 
-        if "index_name" in value_names:
-            result["index_name"] = self.bring_index.name
+        # if "index_name" in value_names:
+        #     result["index_name"] = self.bring_index.name
 
         if "source" in value_names:
             result["source"] = source

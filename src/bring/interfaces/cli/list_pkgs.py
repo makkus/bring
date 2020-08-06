@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
 from bring.pkg_index.index import BringIndexTing
+from bring.pkg_index.pkg import PkgTing
+from bring.utils import parse_pkg_string
 from bring.utils.pkgs import (
     create_info_table_string,
     create_pkg_info_table_string,
@@ -65,16 +67,22 @@ class BringListPkgsGroup(FrklBaseCommand):
         if ctx.invoked_subcommand:  # type: ignore
             return
 
-        print()
+        click.echo()
         # all: Iterable[PkgTing] = await self._tingistry.get_all_pkgs()
         index_ids = self._bring.index_ids
 
-        pkgs = await self._bring.get_alias_pkg_map()
-        pkgs_info = await get_values_for_pkgs(pkgs.values(), "info")
+        pkgs: Mapping[str, PkgTing] = await self._bring.get_alias_pkg_map()
+
+        pkgs_info: Mapping[str, Any] = await get_values_for_pkgs(pkgs, "info")
 
         index_info = {}
-        for pkg, info in pkgs_info.items():
-            index_info.setdefault(pkg.bring_index.id, {})[pkg] = info
+        for pkg_name, info in pkgs_info.items():
+            pkg_name, index_name = parse_pkg_string(pkg_name)
+            if index_name is None:
+                raise Exception(
+                    f"No index name for pkg: {pkg_name}. This is most likely a bug."
+                )
+            index_info.setdefault(index_name, {})[pkg_name] = info
 
         for idx_id in index_ids:
             click.secho(idx_id, bold=True)
@@ -103,7 +111,7 @@ class BringListPkgsGroup(FrklBaseCommand):
             if not _pkgs:
                 print("  No packages")
             else:
-                table_str = await create_pkg_info_table_string(_pkgs.values())
+                table_str = await create_pkg_info_table_string(_pkgs)
                 click.echo(table_str)
             print()
 

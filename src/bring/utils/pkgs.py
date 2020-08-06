@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from anyio import create_task_group
 from bring.pkg_index.pkg import PkgTing
@@ -14,14 +14,14 @@ log = logging.getLogger("bring")
 
 
 async def get_values_for_pkgs(
-    pkgs: Iterable[PkgTing], *value_names: str, skip_pkgs_with_error: bool = False
-) -> Mapping[PkgTing, Union[Mapping[str, Any], TingTaskException]]:
+    pkgs: Mapping[str, PkgTing], *value_names: str, skip_pkgs_with_error: bool = False
+) -> Mapping[str, Union[Mapping[str, Any], TingTaskException]]:
 
-    result: Dict[PkgTing, Union[Mapping[str, Any], TingTaskException]] = {}
+    result: Dict[str, Union[Mapping[str, Any], TingTaskException]] = {}
 
-    async def get_values(_pkg: PkgTing):
+    async def get_values(_pkg_name: str, _pkg: PkgTing):
         try:
-            result[_pkg] = await _pkg.get_values(  # type: ignore
+            result[_pkg_name] = await _pkg.get_values(  # type: ignore
                 *value_names, raise_exception=True
             )  # type: ignore
         except TingTaskException as e:
@@ -29,36 +29,37 @@ async def get_values_for_pkgs(
                 f"Can't retrieve values for pkg '{_pkg.name}': {e}", exc_info=True
             )
             if not skip_pkgs_with_error:
-                result[_pkg] = e
+                result[_pkg_name] = e
 
     async with create_task_group() as tg:
-        for pkg in pkgs:
-            await tg.spawn(get_values, pkg)
+        for pkg_name, pkg in pkgs.items():
+            await tg.spawn(get_values, pkg_name, pkg)
 
     return result
 
 
 async def create_pkg_info_table_string(
-    pkgs: Iterable[PkgTing], header: bool = False
+    pkgs: Mapping[str, PkgTing], header: bool = False
 ) -> str:
 
     pkg_vals: Mapping[
-        PkgTing, Mapping[str, Any]
+        str, Mapping[str, Any]
     ] = await get_values_for_pkgs(  # type: ignore
         pkgs, "info"
     )  # type: ignore
+
     table = create_info_table_string(info_dicts=pkg_vals, header=header)
     return table
 
 
 def create_info_table_string(
-    info_dicts: Mapping[PkgTing, Mapping[str, Any]], header: bool = False
+    info_dicts: Mapping[str, Mapping[str, Any]], header: bool = False
 ):
 
     data = SortedDict()
-    for pkg in sorted(info_dicts.keys()):
-        pkg_name = pkg.name
-        p = info_dicts[pkg]
+    for pkg_name in sorted(info_dicts.keys()):
+
+        p = info_dicts[pkg_name]
         if isinstance(p, TingTaskException):
             slug = f"{Fore.RED}{p}{Style.RESET_ALL}"
         else:
@@ -69,6 +70,7 @@ def create_info_table_string(
         _header: Optional[List[str]] = ["pkg", "desc"]
     else:
         _header = None
+
     table_str = create_two_column_table(data, header=_header)
 
     return table_str

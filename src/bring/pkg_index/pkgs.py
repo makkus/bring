@@ -35,7 +35,7 @@ class Pkgs(SubscripTings):
 
         if not isinstance(ting, PkgTing):
             raise TypeError(f"Invalid type '{type(ting)}', 'PkgTing' required.")
-        ting.bring_index = self._bring_index
+        # ting.bring_index = self._bring_index
         self._pkgs[ting.name] = ting
 
     def _ting_removed(self, ting: Ting) -> None:

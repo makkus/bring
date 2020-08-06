@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import sys
+from typing import Optional
 
 import asyncclick as click
-from asyncclick import Argument
+from anyio import aopen
+from asyncclick import Argument, Option
 from bring.defaults import DEFAULT_PKG_EXTENSION
 from bring.pkg_types import PkgType
 from frkl.args.arg import RecordArg
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.hive import ArgHive
+from frkl.common.cli import get_console
 from frkl.common.cli.exceptions import handle_exc_async
+from frkl.common.filesystem import ensure_folder
 from frkl.types.plugins import PluginManager
 
 
@@ -94,31 +99,56 @@ class BringCreatePkgDescCommand(click.Command):
             "cli", add_defaults=False, remove_required=True
         )
 
-        pkg_desc_file = Argument(("pkg_desc_file",), nargs=1)
-        params = self._args_renderer.rendered_arg + [pkg_desc_file]
+        pkg_desc_file = Argument(("pkg_name_or_path",), nargs=1, required=False)
+        force = Option(
+            ["--force", "-f"],
+            help="overwrite existing package description",
+            is_flag=True,
+            required=False,
+        )
+        params = self._args_renderer.rendered_arg + [pkg_desc_file, force]
         # params = self._args_renderer.rendered_arg
         super().__init__(name=name, callback=self.create_pkg_desc, params=params)
 
     @click.pass_context
     @handle_exc_async
-    async def create_pkg_desc(ctx, self, pkg_desc_file, **kwargs):
+    async def create_pkg_desc(ctx, self, pkg_name_or_path, force, **kwargs):
 
-        pkg_desc_path = os.path.abspath(pkg_desc_file)
-        pkg_desc_filename = os.path.basename(pkg_desc_path)
+        pkg_desc_path: Optional[str] = None
 
-        if "." not in pkg_desc_filename:
-            pkg_desc_filename = f"{pkg_desc_filename}.{DEFAULT_PKG_EXTENSION}"
+        if pkg_name_or_path is not None:
 
-        pkg_name, extension = pkg_desc_filename.split(".", maxsplit=1)
+            basename = os.path.basename(pkg_name_or_path)
+            if "." not in basename:
+                pkg_name_or_path = f"{pkg_name_or_path}{DEFAULT_PKG_EXTENSION}"
+
+            pkg_desc_path = os.path.abspath(pkg_name_or_path)
 
         arg_value = self._args_renderer.create_arg_value(kwargs)
         user_input = arg_value.processed_input
 
-        str = await self._plugin.create_pkg_desc_string(
-            pkg_name, self.name, **user_input
+        pkg_desc_str = await self._plugin.create_pkg_desc_string(
+            self.name, **user_input
         )
 
-        print(str)
+        if not pkg_desc_path:
+            get_console().print(pkg_desc_str)
+        else:
+            get_console().line()
+            if os.path.exists(pkg_desc_path) and not force:
+                get_console().print(
+                    f"Not writing package description to: {pkg_desc_path}"
+                )
+                get_console().print(
+                    "  -> file already exists and 'force' not specified"
+                )
+                sys.exit(1)
+
+            ensure_folder(os.path.dirname(pkg_desc_path))
+            async with await aopen(pkg_desc_path, "w") as f:
+                await f.write(pkg_desc_str)
+
+            get_console().print(f"Saved package descrition to: {pkg_desc_path}")
 
         # source = desc.pop("source")
         #

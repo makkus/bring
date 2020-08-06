@@ -294,9 +294,7 @@ class GithubRelease(PkgType):
 
         return result
 
-    async def create_pkg_desc_string(
-        self, pkg_name: str, pkg_type: str, **kwargs: Any
-    ) -> str:
+    async def create_pkg_desc_string(self, pkg_type: str, **kwargs: Any) -> str:
 
         arg_dict = self.get_args()
 
@@ -317,6 +315,7 @@ class GithubRelease(PkgType):
                     "value": default,
                     "arg": arg.doc,
                     "comment_out": True,
+                    "required": arg.required,
                 }
             else:
                 validated = arg.validate(value)
@@ -329,7 +328,6 @@ class GithubRelease(PkgType):
                 }
 
         repl_dict: Dict[str, Any] = {
-            "pkg_name": pkg_name,
             "info_yaml": "",
             "args": validated_input,
             "pkg_type": pkg_type,
@@ -370,7 +368,6 @@ class GithubRelease(PkgType):
 
         info_yaml = serialize({"info": data["info"]}, format="yaml")
         repl_dict = {
-            "pkg_name": pkg_name,
             "info_yaml": info_yaml,
             "labels": data.get("labels", {}),
             "tags": data.get("tags", []),

@@ -7,6 +7,7 @@ import asyncclick as click
 from bring.bring import Bring
 from bring.defaults import DEFAULT_PACKAGE_ASSEMBLY_EXTENSION
 from bring.interfaces.cli.utils import print_pkg_list_help
+from bring.utils import parse_pkg_string
 from freckles.core.explanation import FreckletInputExplanation
 from frkl.args.arg import Arg
 from frkl.args.cli.click_commands import FrklBaseCommand
@@ -151,9 +152,13 @@ class BringInstallGroup(FrklBaseCommand):
             and not name.endswith(".toml")
         ):
 
-            pkg = await self._bring.get_pkg(name, raise_exception=True)
-            install_args["pkg_name"] = pkg.name
-            install_args["pkg_index"] = pkg.bring_index.id
+            _pkg_name, _pkg_index = parse_pkg_string(name)
+            install_args["pkg_name"] = _pkg_name
+            install_args["pkg_index"] = _pkg_index
+
+            # pkg = await self._bring.get_pkg(name, raise_exception=True)
+            # install_args["pkg_name"] = pkg.name
+            # install_args["pkg_index"] = pkg.bring_index.id
 
             frecklet_config = {"type": "install_pkg"}
 

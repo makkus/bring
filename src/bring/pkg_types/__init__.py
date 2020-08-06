@@ -642,9 +642,7 @@ class PkgType(metaclass=ABCMeta):
         """
         pass
 
-    async def create_pkg_desc_string(
-        self, pkg_name: str, pkg_type: str, **kwargs: Any
-    ) -> str:
+    async def create_pkg_desc_string(self, pkg_type: str, **kwargs: Any) -> str:
 
         arg_dict = self.get_args()
 
@@ -668,7 +666,6 @@ class PkgType(metaclass=ABCMeta):
                 }
 
         repl_dict = {
-            "pkg_name": pkg_name,
             "info": {},
             "args": validated_input,
             "pkg_type": pkg_type,
@@ -683,12 +680,10 @@ class PkgType(metaclass=ABCMeta):
         return result
 
     async def create_pkg_desc(
-        self, pkg_name: str, pkg_type: str, **kwargs: Any
+        self, pkg_type: str, **kwargs: Any
     ) -> MutableMapping[str, Any]:
 
-        pkg_desc_str = await self.create_pkg_desc_string(
-            pkg_name=pkg_name, pkg_type=pkg_type, **kwargs
-        )
+        pkg_desc_str = await self.create_pkg_desc_string(pkg_type=pkg_type, **kwargs)
         yaml = YAML()
         pkg_desc = yaml.load(pkg_desc_str)
         return pkg_desc

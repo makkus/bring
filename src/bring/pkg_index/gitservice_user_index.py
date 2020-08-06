@@ -139,7 +139,7 @@ class BringGitServiceUserIndex(BringIndexTing):
             "bring.types.dynamic_pkg",
             f"{self.full_name}.pkgs.{pkg_name}",  # type: ignore
         )
-        ting.bring_index = self
+        # ting.bring_index = self
 
         ting.set_input(**pkg_data)
 

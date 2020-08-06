@@ -92,7 +92,7 @@ class BringIndexFile(object):
                 "bring.types.static_pkg",
                 f"{index.full_name}.pkgs.{pkg_name}",  # type: ignore
             )
-            ting.bring_index = index
+            # ting.bring_index = index
 
         ting.set_input(**pkg_data)
         # ting._set_result(data)
