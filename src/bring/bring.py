@@ -536,17 +536,17 @@ def register_bring_frecklet_types(bring: Bring, freckles: Freckles) -> None:
             )
         to_add["install_assembly"] = prototing_name_install_assembly
 
-    if "template" not in current.keys():
-
-        from bring.frecklets.template import BringTemplateFrecklet
-
-        prototing_name_template = f"{bring.full_name}.frecklets.template"
-        if prototing_name_template not in freckles.tingistry.ting_names:
-            freckles.tingistry.register_prototing(
-                prototing_name_template,
-                BringTemplateFrecklet,
-                init_values={"bring": bring},
-            )
-        to_add["template"] = prototing_name_template
+    # if "template" not in current.keys():
+    #
+    #     from bring.frecklets.template import BringTemplateFrecklet
+    #
+    #     prototing_name_template = f"{bring.full_name}.frecklets.template"
+    #     if prototing_name_template not in freckles.tingistry.ting_names:
+    #         freckles.tingistry.register_prototing(
+    #             prototing_name_template,
+    #             BringTemplateFrecklet,
+    #             init_values={"bring": bring},
+    #         )
+    #     to_add["template"] = prototing_name_template
     if to_add:
         wrap_async_task(freckles.add_frecklet_types, _raise_exception=True, **to_add)

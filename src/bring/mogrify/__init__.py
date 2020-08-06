@@ -290,7 +290,12 @@ class Transmogrificator(SimpleTasks):
                 # msg = "Error executing retrieval pipeline."
                 # exc = MogrifierException(child, last_result.error, msg=msg)  # type: ignore
                 # raise exc
-                raise last_result.error
+                if last_result.error is None:
+                    raise FrklException(
+                        msg=f"Unknown error when executing '{child.__class__.__name__}' mogrifier."
+                    )
+                else:
+                    raise last_result.error
 
     async def create_result_value(self, *tasklets: Task) -> Any:
 

@@ -174,7 +174,12 @@ class InstallAssemblyPostprocessTask(PostprocessTask):
         result = task.result.result_value
 
         if not task.success:
-            raise task.result.error
+            if task.result.error is None:
+                raise FrklException(
+                    f"Unknown error when running task '{task.task_desc.name}'."
+                )
+            else:
+                raise task.result.error
 
         folders: Dict[str, Mapping[str, Any]] = {}
 
