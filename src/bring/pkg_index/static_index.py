@@ -3,9 +3,9 @@ import logging
 from typing import Any, Dict, Mapping, Optional
 
 import arrow
+from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.utils import retrieve_index_file_content
 from frkl.common.exceptions import FrklException
 from frkl.tasks.task import SingleTaskAsync, Task

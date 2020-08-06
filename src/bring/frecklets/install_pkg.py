@@ -9,8 +9,8 @@ from bring.defaults import BRING_RESULTS_FOLDER, BRING_WORKSPACE_FOLDER
 from bring.frecklets import BringFrecklet, parse_target_data
 from bring.mogrify import Transmogrificator
 from bring.mogrify.transform_folder import PkgContentLocalFolder
+from bring.pkg import PkgTing
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.utils.pkg_spec import PkgSpec
 from freckles.core.frecklet import FreckletException, FreckletVar
 from frkl.args.arg import RecordArg

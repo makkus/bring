@@ -4,9 +4,9 @@ from abc import abstractmethod
 from typing import Any, Dict, Iterable, Mapping, Optional
 
 import arrow
+from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from frkl.common.exceptions import FrklException
 from frkl.tasks.task import Task
 from tings.ting import TingMeta

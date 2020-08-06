@@ -7,8 +7,8 @@ from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional,
 
 from anyio import aopen
 from bring.defaults import BRING_INDEX_FILES_CACHE
+from bring.pkg import PkgTing
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.downloads import REMOTE_FILE_TYPE
 from frkl.common.downloads.cache import download_cached_file_async

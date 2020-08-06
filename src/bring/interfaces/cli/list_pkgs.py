@@ -3,8 +3,8 @@ from typing import Any, Mapping, Optional
 
 import asyncclick as click
 from bring.bring import Bring
+from bring.pkg import PkgTing
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.utils import parse_pkg_string
 from bring.utils.pkgs import (
     create_info_table_string,

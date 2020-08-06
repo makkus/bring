@@ -6,8 +6,8 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 import arrow
 from anyio import create_task_group
 from bring.defaults import BRING_NO_METADATA_TIMESTAMP_MARKER
+from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
-from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import PkgMetadata
 from bring.utils.defaults import calculate_defaults
 from frkl.common.async_utils import wrap_async_task

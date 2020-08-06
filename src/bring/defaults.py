@@ -41,6 +41,7 @@ DEFAULT_CONTEXT_NAME = "binaries"
 
 BRINGISTRY_PRELOAD_MODULES = [
     "bring.bring",
+    "bring.pkg",
     "bring.pkg_types.*",
     "bring.mogrify.*",
     "bring.plugins.*",

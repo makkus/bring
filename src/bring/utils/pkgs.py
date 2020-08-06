@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 from anyio import create_task_group
-from bring.pkg_index.pkg import PkgTing
+from bring.pkg import PkgTing
 from colorama import Fore, Style
 from frkl.common.cli.output_utils import create_two_column_table
 from sortedcontainers import SortedDict

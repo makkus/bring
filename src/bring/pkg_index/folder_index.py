@@ -3,9 +3,9 @@ from typing import Mapping, Optional
 
 import arrow
 from bring.defaults import DEFAULT_PKG_EXTENSION
+from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.pkg_index.pkgs import Pkgs
 from bring.utils.git import ensure_repo_cloned
 from frkl.common.exceptions import FrklException

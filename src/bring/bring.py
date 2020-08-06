@@ -9,10 +9,10 @@ from anyio import Lock, create_lock, create_task_group
 from bring.config.bring_config import BringConfig
 from bring.defaults import BRING_WORKSPACE_FOLDER
 from bring.mogrify import Transmogritory
+from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_index.pkg import PkgTing
 from bring.pkg_types import PkgType
 from bring.utils import parse_pkg_string
 from bring.utils.defaults import calculate_defaults
