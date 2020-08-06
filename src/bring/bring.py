@@ -3,7 +3,7 @@
 """Main module."""
 import logging
 import os
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Union
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Tuple, Union
 
 from anyio import Lock, create_lock, create_task_group
 from bring.config.bring_config import BringConfig
@@ -438,9 +438,21 @@ class Bring(SimpleTing):
 
         return result
 
-    async def get_full_package_name(self, package_name: str):
+    async def get_full_package_name(self, package_name: str) -> Optional[str]:
+        """Get the full package name of a provided string.
 
-        _pkg_name, _pkg_index = parse_pkg_string(package_name)
+        Mainly this is used to make sure there is an 'index-components' to
+        a package name. The default index will be used if none was present.
+
+        If the string is not a valid package name can't otherwise not be processed 'None' is returned.
+        """
+
+        if not isinstance(package_name, str):
+            return None
+        try:
+            _pkg_name, _pkg_index = parse_pkg_string(package_name)
+        except ValueError:
+            return None
 
         # TODO: check package exists?
         if _pkg_index is None:
@@ -449,59 +461,57 @@ class Bring(SimpleTing):
         return f"{_pkg_index}.{_pkg_name}"
 
     async def get_pkg(
-        self, name: str, index: Optional[str] = None, raise_exception: bool = False
+        self, name: str, raise_exception: bool = False
     ) -> Optional[PkgTing]:
 
-        if index and "." in name:
-            raise ValueError(
-                f"Can't get pkg '{name}' for index '{index}': either specify index name, or use namespaced pkg name, not both."
-            )
-
-        elif "." in name:
-            tokens = name.rsplit(".", maxsplit=1)
-            _index_name: Optional[str] = tokens[0]
-            _pkg_name = tokens[1]
-            # _full_name = f"{_index_name}.{_pkg_name}"
+        result = await self.get_pkg_and_index(name, raise_exception=raise_exception)
+        if result is None:
+            return None
         else:
-            _pkg_name = name
+            return result[0]
 
-            _index_name = index
-            if index is None:
-                _index_name = await self.get_default_index()
+    async def get_pkg_and_index(
+        self, name: str, raise_exception: bool = False
+    ) -> Optional[Tuple[PkgTing, BringIndexTing]]:
 
-            if _index_name is None:
-                for id_n in self.index_ids:
-                    idx = await self.get_index(id_n)
-                    pkg_names = await idx.pkg_names
-                    if _pkg_name in pkg_names:
-                        _index_name = idx.id
-                        break
+        _pkg_name, _index_name = parse_pkg_string(name)
+        if _index_name is None:
+            _index_name = await self.get_default_index()
 
-            if _index_name is None:
-                if raise_exception:
-                    raise FrklException(
-                        f"No index provided, and none of the registered ones contains a pkg named '{_pkg_name}'."
-                    )
-                else:
-                    return None
+        if _index_name is None:
+            for id_n in self.index_ids:
+                idx = await self.get_index(id_n)
+                pkg_names = await idx.pkg_names
+                if _pkg_name in pkg_names:
+                    _index_name = idx.id
+                    break
 
-            if isinstance(not _index_name, str):
-                raise NotImplementedError()
-
-            # _full_name = f"{_index_name}.{name}"
+        if _index_name is None:
+            if raise_exception:
+                raise FrklException(
+                    f"No index provided, and none of the registered ones contains a pkg named '{_pkg_name}'."
+                )
+            else:
+                log.debug(
+                    f"No index provided, and none of the registered ones contains a pkg named '{_pkg_name}'."
+                )
+                return None
 
         result_index: BringIndexTing = await self.get_index(_index_name)
 
         pkg = await result_index.get_pkg(_pkg_name, raise_exception=raise_exception)
 
-        if pkg is None and raise_exception:
-            raise FrklException(msg=f"Can't retrieve pkg '{name}': no such package")
+        if pkg is None:
+            if raise_exception:
+                raise FrklException(msg=f"Can't retrieve pkg '{name}': no such package")
+            else:
+                return None
 
-        return pkg
+        return pkg, result_index
 
-    async def pkg_exists(self, pkg_name: str, pkg_index: Optional[str] = None):
+    async def pkg_exists(self, pkg_name: str) -> bool:
 
-        pkg = await self.get_pkg(name=pkg_name, index=pkg_index, raise_exception=False)
+        pkg = await self.get_pkg(name=pkg_name, raise_exception=False)
 
         return pkg is not None
 

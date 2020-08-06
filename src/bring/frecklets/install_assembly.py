@@ -101,10 +101,12 @@ class BringAssembly(object):
         self._pkg_map = {}
 
         async def get_pkg(_pkg_data: MutableMapping[str, Any]):
-            _pkg = await self._bring.get_pkg(
-                name=_pkg_data["pkg"]["name"], index=_pkg_data["pkg"]["index"]
-            )
-            self._pkg_map[f"{_pkg_data['pkg']['name']}.{_pkg_data['pkg']['index']}"] = {"pkg": _pkg, "config": _pkg_data}  # type: ignore
+
+            pkg_name = f"{_pkg_data['pkg']['name']}{_pkg_data['pkg']['index']}"
+
+            _pkg = await self._bring.get_pkg(name=pkg_name)
+
+            self._pkg_map[pkg_name] = {"pkg": _pkg, "config": _pkg_data}  # type: ignore
 
         async with create_task_group() as tg:
             for pkg_data in self._pkg_data:
@@ -279,10 +281,9 @@ class ParallelAssemblyTask(Tasks):
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
 
             input_values = dict(vars)
-            input_values.update({"pkg_name": pkg_name, "pkg_index": pkg_index})
-            input_values["target"] = os.path.join(
-                temp_root, f"pkg_{pkg_name}.{pkg_index}_{1}"
-            )
+            _pkg_name = f"{pkg_index}.{pkg_name}"
+            input_values.update({"pkg": _pkg_name})
+            input_values["target"] = os.path.join(temp_root, f"pkg_{_pkg_name}_{1}")
             if transform:
                 input_values["transform"] = transform
 
@@ -338,7 +339,7 @@ class BringInstallAssemblyFrecklet(BringFrecklet):
 
     def get_msg(self) -> str:
 
-        return "installing package assembly"
+        return "installing package-assembly"
 
     async def input_received(self, **input_vars: FreckletVar) -> Any:
 

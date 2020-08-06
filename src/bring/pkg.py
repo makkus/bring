@@ -2,6 +2,7 @@
 import copy
 import logging
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
@@ -29,6 +30,13 @@ DEFAULT_ARG_DICT = {
     },
     "version": {"doc": {"short_help": "The version of the package."}, "type": "string"},
 }
+
+
+class PKG_INPUT_TYPE(Enum):
+
+    pkg_name = 0
+    pkg_desc = 1
+    pkg_desc_file = 2
 
 
 class PkgTing(SimpleTing):

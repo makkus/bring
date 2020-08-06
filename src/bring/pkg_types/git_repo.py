@@ -26,9 +26,9 @@ class GitRepo(PkgType):
 
         super().__init__(**config)
 
-    def _name(self):
-
-        return "git"
+    # def _name(self):
+    #
+    #     return "git"
 
     def get_args(self) -> Mapping[str, Any]:
 

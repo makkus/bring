@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import copy
 import logging
+import os
 import tempfile
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, MutableMapping, Optional
 
@@ -14,6 +16,9 @@ from bring.pkg_index.index import BringIndexTing
 from bring.utils.pkg_spec import PkgSpec
 from freckles.core.frecklet import FreckletException, FreckletVar
 from frkl.args.arg import RecordArg
+from frkl.common.formats.auto import AutoInput
+from frkl.common.formats.serialize import to_value_string
+from frkl.common.strings import generate_valid_identifier
 from frkl.explain.explanation import Explanation
 from frkl.targets.local_folder import TrackingLocalFolder
 from frkl.tasks.exceptions import FrklTaskRunException
@@ -192,16 +197,16 @@ class BringInstallTask(Tasks):
     def __init__(
         self,
         pkg: PkgTing,
-        input_values: Optional[Mapping[str, Any]] = None,
+        input_values: Mapping[str, Any],
+        item_metadata: Mapping[str, Any],
         target: Optional[str] = None,
         target_config: Optional[Mapping[str, Any]] = None,
         transform_pkg: Optional[Mapping[str, Any]] = None,
     ):
 
         self._pkg: PkgTing = pkg
-        if input_values is None:
-            input_values = {}
         self._input_values: Mapping[str, Any] = input_values
+        self._item_metadata: Mapping[str, Any] = item_metadata
         self._target: Optional[str] = target
         self._target_config: Optional[Mapping[str, Any]] = target_config
         self._transform_pkg: Optional[Mapping[str, Any]] = transform_pkg
@@ -224,13 +229,13 @@ class BringInstallTask(Tasks):
 
         prior_task: Task = transmogrificator
 
-        item_metadata: Dict[str, Any] = {}
-        vars: Dict[str, Any] = dict(self._input_values)
-        item_metadata["pkg"] = {
-            "name": vars.pop("pkg_name"),
-            "index": vars.pop("pkg_index"),
-        }
-        item_metadata["vars"] = vars
+        item_metadata: Dict[str, Any] = copy.deepcopy(dict(self._item_metadata))
+        # vars: Dict[str, Any] = dict(self._input_values)
+        # item_metadata["pkg"] = {
+        #     "name": vars.pop("pkg_name"),
+        #     "index": vars.pop("pkg_index"),
+        # }
+        # item_metadata["vars"] = vars
 
         if self._transform_pkg:
 
@@ -252,7 +257,7 @@ class BringInstallTask(Tasks):
             prior_task_result=prior_task.result,
             target=_target,
             target_config=self._target_config,
-            item_metadata={"install": item_metadata},
+            item_metadata=item_metadata,
         )
         await self.add_tasklet(mttt)
 
@@ -278,12 +283,12 @@ class BringInstallFrecklet(BringFrecklet):
     def get_required_base_args(self) -> RecordArg:
 
         args = {
-            "pkg_name": {"type": "string", "doc": "the package name", "required": True},
-            "pkg_index": {
-                "type": "string",
-                "doc": "the name of the index that contains the package",
-                "required": False,
-            },
+            "pkg": {"type": "any", "doc": "the package name or data", "required": True},
+            # "pkg_index": {
+            #     "type": "string",
+            #     "doc": "the name of the index that contains the package",
+            #     "required": False,
+            # },
             "target": {"type": "string", "doc": "the target folder", "required": False},
             "target_config": {
                 "type": "dict",
@@ -305,35 +310,64 @@ class BringInstallFrecklet(BringFrecklet):
 
             defaults = {}
 
-            pkg_name = input_vars["pkg_name"].value
-            _pkg_index = input_vars.get("pkg_index", None)
+            pkg_input = input_vars["pkg"].value
+            pkg_index: Optional[BringIndexTing] = None
+            pkg: Optional[PkgTing] = None
+            pkg_metadata: Dict[str, Any] = {}
 
-            if _pkg_index is None or _pkg_index.value is None:
-                pkg_index = await self._bring.get_default_index()
-                defaults["pkg_index"] = FreckletVar(pkg_index, origin="context default")
-            else:
-                pkg_index = _pkg_index.value
+            if isinstance(pkg_input, str):
+                _result = await self._bring.get_pkg_and_index(pkg_input)
+                if _result is not None:
 
-            # TODO: validate/expand transform value
-            # transform = input_vars.get("transform", None)
+                    pkg_metadata = {"name": _result[0].name, "index": _result[1].id}  # type: ignore
 
-            pkg = await self._bring.get_pkg(pkg_name, pkg_index, raise_exception=True)
+                else:
+                    full_path = os.path.abspath(os.path.expanduser(pkg_input))
+                    ai = AutoInput(full_path)
+                    content = await ai.get_content_async()
+                    if "source" in content.keys():
+                        ting_name = content.get("info", {}).get("name", None)
+                        if ting_name is None:
+                            ting_name = generate_valid_identifier(pkg_input)
+                        pkg = self.tingistry.create_ting(  # type: ignore
+                            "bring.types.dynamic_pkg",
+                            ting_name=f"{self.full_name}.{ting_name}",
+                        )
+                        pkg.set_input(**content)  # type: ignore
+                        pkg_metadata = {"source": content["source"]}
+            elif isinstance(pkg_input, Mapping):
+                ting_name = pkg_input.get("info", {}).get("name", None)
+                if ting_name is None:
+                    ting_name = generate_valid_identifier()
+                pkg = self.tingistry.create_ting(  # type: ignore
+                    "bring.types.dynamic_pkg", ting_name=f"{self.full_name}.{ting_name}"
+                )
+                pkg.set_input(**pkg_input)  # type: ignore
+                pkg_metadata = {"source": pkg_input["source"]}
 
             if pkg is None:
+                input_str = to_value_string(pkg_input, reindent=4)
+
+                reason = f"Invalid input:\n\n{input_str}"
                 raise FreckletException(
                     frecklet=self,
-                    msg="Can't assemble frecklet.",
-                    reason=f"No package with name '{pkg_name}' found in index '{pkg_index}'.",
+                    msg="Can't create package from provided input.",
+                    reason=reason,
+                    solution="Either provide a valid package name string, a pkg description map, or a path to a file containing one.",
                 )
+
             self.set_processed_input("pkg", pkg)
+            self.set_processed_input("pkg_metadata", pkg_metadata)
 
             self._msg = f"installing package '{pkg.name}'"
 
-            index: BringIndexTing = await self._bring.get_index(pkg_index)
-            index_defaults = await index.get_index_defaults()
-            # index_defaults = await pkg.bring_index.get_index_defaults()
-            for k, v in index_defaults.items():
-                defaults[k] = FreckletVar(v, origin="index defaults")
+            if pkg_index:
+
+                index_defaults = await pkg_index.get_index_defaults()
+                # index_defaults = await pkg.bring_index.get_index_defaults()
+                for k, v in index_defaults.items():
+                    defaults[k] = FreckletVar(v, origin="index defaults")
+
             bring_defaults = await self._bring.get_defaults()
             for k, v in bring_defaults.items():
                 if k not in defaults.keys():
@@ -345,7 +379,7 @@ class BringInstallFrecklet(BringFrecklet):
 
             # we don't want defaults overwrite inputs in this case
             for k in input_vars.keys():
-                if k in defaults.keys() and k != "pkg_index":
+                if k in defaults.keys():
                     defaults.pop(k)
 
             pkg_args: RecordArg = await pkg.get_pkg_args()
@@ -353,12 +387,12 @@ class BringInstallFrecklet(BringFrecklet):
             return (pkg_args, defaults)
 
         elif self.current_amount_of_inputs == 1:
-            pkg = self.get_processed_input("pkg")
-            if pkg is None:
+            pkg_input = self.get_processed_input("pkg")
+            if pkg_input is None:
                 raise Exception(
                     "No 'pkg' object saved in processed input, this is a bug."
                 )
-            pkg_aliases: Mapping[str, Mapping[Any, Any]] = await pkg.get_aliases()
+            pkg_aliases: Mapping[str, Mapping[Any, Any]] = await pkg_input.get_aliases()
 
             replacements: Dict[str, FreckletVar] = {}
             for k, v in input_vars.items():
@@ -382,21 +416,25 @@ class BringInstallFrecklet(BringFrecklet):
     async def _create_frecklet_task(self, **input_values: Any) -> Task:
 
         pkg = self.get_processed_input("pkg")
+        pkg_metadata = self.get_processed_input("pkg_metadata")
 
         target = input_values.pop("target", None)
         target_config = input_values.pop("target_config", None)
         transform_pkg = input_values.pop("transform", None)
 
+        input_values.pop("pkg")
+
+        item_metadata: Dict[str, Any] = {
+            "install": {"pkg": pkg_metadata, "vars": input_values}
+        }
+
         frecklet_task = BringInstallTask(
             pkg=pkg,
             input_values=input_values,
+            item_metadata=item_metadata,
             target=target,
             target_config=target_config,
             transform_pkg=transform_pkg,
         )
 
         return frecklet_task
-
-    # def process_frecklet_result(self, result: TaskResult) -> FreckletResult:
-    #
-    #     return InstallFreckletResult(task_result=result)

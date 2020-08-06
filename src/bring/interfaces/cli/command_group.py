@@ -12,7 +12,6 @@ from bring.interfaces.cli.commands.export_index import BringExportIndexCommand
 from freckles.core.freckles import Freckles
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.common.cli import get_console
-from frkl.common.cli.logging import logzero_option_obj_async
 from frkl.common.types import load_modules
 from frkl.events.app_events.mgmt import AppEventManagement
 from rich.console import Console
@@ -54,8 +53,6 @@ class BringCommandGroup(FrklBaseCommand):
         )
         kwargs["context_settings"] = index_setting
 
-        logzero_option = logzero_option_obj_async()
-
         output_option = Option(
             param_decls=["--output", "-o"],
             multiple=True,
@@ -80,7 +77,6 @@ class BringCommandGroup(FrklBaseCommand):
         )
 
         kwargs["params"] = [
-            logzero_option,
             output_option,
             index_option,
             profile_option,

@@ -27,9 +27,9 @@ class TemplateUrlResolver(PkgType):
     def __init__(self, **config: Any):
         super().__init__(**config)
 
-    def _name(self):
-
-        return "template-url"
+    # def _name(self):
+    #
+    #     return "template-url"
 
     # def _supports(self) -> List[str]:
     #

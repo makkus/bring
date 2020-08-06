@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from typing import Dict, Union
+from typing import Dict, Mapping, Optional, Union
 
 import asyncclick as click
 from bring.bring import Bring
-from bring.defaults import DEFAULT_PACKAGE_ASSEMBLY_EXTENSION
 from bring.interfaces.cli.utils import print_pkg_list_help
-from bring.utils import parse_pkg_string
+from bring.pkg import PKG_INPUT_TYPE
 from freckles.core.explanation import FreckletInputExplanation
 from frkl.args.arg import Arg
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.common.async_utils import wrap_async_task
 from frkl.common.cli.exceptions import handle_exc_async
+from frkl.common.formats.auto import AutoInput
 from frkl.common.strings import generate_valid_identifier
 from frkl.events.app_events import ExceptionEvent, ResultEvent
 from frkl.tasks.explain import TaskExplanation
@@ -50,7 +50,7 @@ class BringInstallGroup(FrklBaseCommand):
             chain=False,
             result_callback=None,
             add_help_option=False,
-            subcommand_metavar="PROCESSOR",
+            subcommand_metavar="PACKAGE",
             **kwargs,
         )
 
@@ -143,35 +143,58 @@ class BringInstallGroup(FrklBaseCommand):
         if not load_details:
             return None
 
-        md = {"origin": "user input"}
-        if (
-            not name.endswith(DEFAULT_PACKAGE_ASSEMBLY_EXTENSION)
-            and not name.endswith(".json")
-            and not name.endswith(".yaml")
-            and not name.endswith(".yml")
-            and not name.endswith(".toml")
-        ):
+        input_type: Optional[PKG_INPUT_TYPE] = None
+        pkg_data: Optional[str] = None
 
-            _pkg_name, _pkg_index = parse_pkg_string(name)
-            install_args["pkg_name"] = _pkg_name
-            install_args["pkg_index"] = _pkg_index
+        if isinstance(name, str):
+            try:
+                if os.path.isfile(os.path.expanduser(name)):
+                    # load file
+                    full_path = os.path.abspath(os.path.expanduser(name))
+                    ai = AutoInput(full_path)
+                    content = await ai.get_content_async()
 
-            # pkg = await self._bring.get_pkg(name, raise_exception=True)
-            # install_args["pkg_name"] = pkg.name
-            # install_args["pkg_index"] = pkg.bring_index.id
+                    if isinstance(content, Mapping) and "source" in content.keys():
+                        input_type = PKG_INPUT_TYPE.pkg_desc
+                        pkg_data = content
 
-            frecklet_config = {"type": "install_pkg"}
+                    # doing that here to not accidently use a file
+                    _pkg = await self._bring.get_pkg(name)
+                    if _pkg:
+                        pkg_data = name
+                        input_type = PKG_INPUT_TYPE.pkg_name
 
-            frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
-            await frecklet.add_input_set(_default_metadata=md, **install_args)
+                else:
+                    if input_type is None:
+                        pkg_data = await self._bring.get_full_package_name(name)
+                        if pkg_data is not None:
+                            input_type = PKG_INPUT_TYPE.pkg_name
+
+            except Exception:
+                pass
 
         else:
-            full_path = os.path.abspath(os.path.expanduser(name))
-            install_args["data"] = full_path
+            raise NotImplementedError()
+
+        md = {"origin": "user input"}
+
+        if input_type is None:
+
+            install_args["data"] = content
             frecklet_config = {
                 "id": generate_valid_identifier(full_path, sep="_"),
                 "type": "install_assembly",
             }
+
+            frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
+            await frecklet.add_input_set(_default_metadata=md, **install_args)
+        else:
+
+            # install file from index
+
+            install_args["pkg"] = pkg_data
+
+            frecklet_config = {"type": "install_pkg"}
 
             frecklet = await self._bring.freckles.create_frecklet(frecklet_config)
             await frecklet.add_input_set(_default_metadata=md, **install_args)

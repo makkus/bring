@@ -22,7 +22,7 @@ class BringDynamicIndexTing(BringIndexTing):
 
         super().__init__(name=name, meta=meta)
 
-        self._pkg_namespace = f"bring.indexes.{self.name}.pkgs"
+        self._pkg_namespace = f"bring.indexes.{self.full_name}.pkgs"
         self._pkg_list: Pkgs = self._tingistry_obj.create_singleting(  # type: ignore
             name=self._pkg_namespace,
             ting_class="pkgs",
