@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import os
+import shutil
 from typing import Any, Mapping
 
 import httpx
@@ -9,6 +10,7 @@ from bring.defaults import BRING_DOWNLOAD_CACHE
 from bring.mogrify import SimpleMogrifier
 from frkl.common.downloads.cache import calculate_cache_path
 from frkl.common.filesystem import ensure_folder
+from frkl.common.strings import generate_valid_identifier
 
 
 log = logging.getLogger("bring")
@@ -46,14 +48,22 @@ class DownloadMogrifier(SimpleMogrifier):
 
         ensure_folder(cache_path)
 
+        # download to a temp location, in case another process downloads the same url
+        temp_name = f"{target_path}_{generate_valid_identifier()}"
+
         log.debug(f"Downloading url: {download_url}")
         try:
             client = httpx.AsyncClient()
-            async with await aopen(target_path, "wb") as f:
+            async with await aopen(temp_name, "wb") as f:
                 async with client.stream("GET", download_url) as response:
                     async for chunk in response.aiter_bytes():
                         await f.write(chunk)
         finally:
             await client.aclose()
+
+        if os.path.exists(target_path):
+            os.unlink(temp_name)
+        else:
+            shutil.move(temp_name, target_path)
 
         return {"file_path": target_path}
