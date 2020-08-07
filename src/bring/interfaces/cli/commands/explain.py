@@ -11,13 +11,14 @@ from bring.doc.index import IndexExplanation
 from bring.doc.pkg import PkgExplanation
 from bring.interfaces.cli import console
 from bring.interfaces.cli.config import BringContextGroup
-from bring.pkg_types import PkgType
+from bring.pkg_types import PkgType, get_pkg_type_plugin_factory
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.hive import ArgHive
 from frkl.common.cli.exceptions import handle_exc_async
 from frkl.common.formats.auto import AutoInput
 from frkl.explain.explanations.doc import InfoListExplanation
 from frkl.targets.local_folder import TrackingLocalFolder
+from frkl.types.plugins import PluginFactory
 
 
 log = logging.getLogger("bring")
@@ -190,10 +191,11 @@ class BringInfoPkgsGroup(FrklBaseCommand):
                     source = desc.pop("source")
 
                     pkg_type = source["type"]
-                    plugin_manager = self.arg_hive.typistry.get_plugin_manager(
-                        PkgType, plugin_config={"arg_hive": self.arg_hive}
+                    plugin_factory: PluginFactory = get_pkg_type_plugin_factory(
+                        self.arg_hive
                     )
-                    plugin: PkgType = plugin_manager.get_plugin(pkg_type)
+
+                    plugin: PkgType = plugin_factory.get_singleton(pkg_type)
 
                     pkg_metadata = await plugin.get_pkg_metadata(source_details=source)
 

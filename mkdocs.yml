@@ -2,8 +2,16 @@ site_name: bring
 repo_url: https://gitlab.com/frkl/bring
 theme:
   name: material
+  custom_dir: docs/overrides
   palette:
    scheme: default
+  languate: en
+  features:
+    - tabs
+  font:
+    text: Roboto
+    code: Roboto Mono
+
 site_author: Markus Binsteiner
 docs_dir: docs
 site_dir: build/site
@@ -22,15 +30,30 @@ markdown_extensions:
 - pymdownx.inlinehilite
 - pymdownx.superfences
 
-nav:
-- Home: index.md
-- Install: install.md
-- Quickstart: quick-start.md
-- Usage: usage/getting-started.md
-- API Documentation: api-documentation.md
 plugins:
 - search
 - macros:
    module_name: ci.docs
+- minify:
+    minify_html: true
 extra_css:
   - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/gitlab
+      link: https://gitlab.com/frkl/bring
+    - icon: fontawesome/brands/github
+      link: https://github.com/frkl-io/bring
+
+nav:
+- Home: index.md
+- Getting started:
+  - Getting started: getting-started.md
+- Documentation:
+    - Installation: documentation/install.md
+    - Getting help: documentation/getting-help.md
+    - Plugins:
+        Package types: documentation/plugins/package-types.md
+        Mogrifiers: documentation/plugins/mogrifiers.md
+#- API Documentation: api-documentation.md

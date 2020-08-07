@@ -16,7 +16,7 @@ from frkl.common.strings import generate_valid_identifier
 from frkl.tasks.task import Task
 from frkl.tasks.task_desc import TaskDesc
 from frkl.tasks.tasks import SimpleTasks
-from frkl.types.plugins import PluginManager
+from frkl.types.plugins import PluginFactory
 from tings.defaults import NO_VALUE_MARKER
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -109,8 +109,6 @@ class Mogrifier(Task, SimpleTing):
     the 'provides()' and 'requires()' instance or class level methods. This method will be only read once per Ting prototype
     (TODO: reference), so make sure to not process any calculated values in there.
     """
-
-    _plugin_type = "instance"
 
     def __init__(self, name: str, meta: TingMeta, **kwargs) -> None:
 
@@ -324,11 +322,11 @@ class Transmogritory(SimpleTing):
     def __init__(self, name: str, meta: TingMeta, _load_plugins_at_init: bool = True):
 
         self._tingistry_obj: Tingistry = meta.tingistry
-        self._plugin_manager: Optional[PluginManager] = None
+        self._plugin_factory: Optional[PluginFactory] = None
 
         super().__init__(name=name, meta=meta)
         if _load_plugins_at_init:
-            self.plugin_manager  # noqa
+            self.plugin_factory  # noqa
 
     def provides(self) -> Mapping[str, Union[str, Mapping[str, Any]]]:
 
@@ -344,18 +342,19 @@ class Transmogritory(SimpleTing):
         return {}
 
     @property
-    def plugin_manager(self) -> PluginManager:
+    def plugin_factory(self) -> PluginFactory:
 
-        if self._plugin_manager is not None:
-            return self._plugin_manager
+        if self._plugin_factory is not None:
+            return self._plugin_factory
 
-        self._plugin_manager = self._tingistry_obj.typistry.get_plugin_manager(
-            "bring.mogrify.Mogrifier"
+        self._plugin_factory = self._tingistry_obj.typistry.register_plugin_factory(
+            "mogrifiers", Mogrifier, singleton=False, use_existing=False
         )
-        for k, v in self._plugin_manager._plugins.items():
+
+        for k, v in self._plugin_factory.plugin_type_map.items():
             self._tingistry_obj.register_prototing(f"bring.mogrify.plugins.{k}", v)
 
-        return self._plugin_manager
+        return self._plugin_factory
 
     def create_mogrifier_ting(
         self,
@@ -365,8 +364,7 @@ class Transmogritory(SimpleTing):
         input_vals: Mapping[str, Any],
     ) -> Mogrifier:
 
-        plugin: Mogrifier = self.plugin_manager.get_plugin(mogrify_plugin)
-        if not plugin:
+        if mogrify_plugin not in self.plugin_factory.plugin_names:
             raise FrklException(
                 msg="Can't create transmogrifier.",
                 reason=f"No mogrify plugin '{mogrify_plugin}' available.",

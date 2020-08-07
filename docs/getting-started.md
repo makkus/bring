@@ -1,4 +1,8 @@
-# Quick start
+---
+template: no_left_nav.html
+title: bring
+nav: false
+---
 
 The purpose of `bring` is to copy files and file-sets onto the local system, in a reliable, replicable way. The three main concepts to understand in regards to `bring` are:
 

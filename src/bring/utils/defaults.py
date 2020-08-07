@@ -5,13 +5,11 @@ from typing import Any, Dict, List, Mapping, Tuple
 from bring.utils.system_info import get_current_system_info
 from frkl.common.dicts import get_seeded_dict
 from frkl.common.exceptions import FrklException
+from frkl.types.plugins import PluginFactory
 from frkl.types.typistry import Typistry
 
 
 class DefaultsProducer(metaclass=ABCMeta):
-
-    _plugin_type = "singleton"
-
     @abstractmethod
     def get_values(self, **config) -> Mapping[str, Any]:
         pass
@@ -26,9 +24,21 @@ class SystemInfoProducer(DefaultsProducer):
         return get_current_system_info()
 
 
+def get_defaults_producer_factory(typistry: Typistry) -> PluginFactory:
+
+    factory = typistry.register_plugin_factory(
+        "defaults_producers",
+        DefaultsProducer,
+        singleton=True,
+        allow_config_override=False,
+        use_existing=True,
+    )
+    return factory
+
+
 def calculate_defaults(typistry: Typistry, data: Mapping[str, Any]):
 
-    pm = typistry.get_plugin_manager(DefaultsProducer)
+    pf = get_defaults_producer_factory(typistry)
 
     producers: List[Tuple] = []
     values: Dict[str, Any] = {}
@@ -36,7 +46,7 @@ def calculate_defaults(typistry: Typistry, data: Mapping[str, Any]):
     for k, v in data.items():
         if k.startswith("_"):
             pn = f"{k[1:]}"
-            if pn in pm.plugin_names:
+            if pn in pf.plugin_names:
                 producers.append((pn, v))
         else:
             values[k] = v
@@ -45,7 +55,7 @@ def calculate_defaults(typistry: Typistry, data: Mapping[str, Any]):
 
     for item in producers:
 
-        plugin: DefaultsProducer = pm.get_plugin(item[0])
+        plugin: DefaultsProducer = pf.get_singleton(item[0])
         val = item[1]
         if val is False or (isinstance(val, str) and val.lower() == "false"):
             continue

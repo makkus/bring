@@ -6,7 +6,12 @@ from enum import Enum
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
 
 from bring.mogrify import Transmogrificator, Transmogritory
-from bring.pkg_types import PkgMetadata, PkgType, PkgVersion
+from bring.pkg_types import (
+    PkgMetadata,
+    PkgType,
+    PkgVersion,
+    get_pkg_type_plugin_factory,
+)
 from bring.utils import find_version, replace_var_aliases
 from frkl.args.arg import RecordArg
 from frkl.common.dicts import get_seeded_dict
@@ -14,7 +19,7 @@ from frkl.common.exceptions import FrklException
 from frkl.common.formats.serialize import to_value_string
 from frkl.common.strings import generate_valid_identifier
 from frkl.tasks.task_desc import TaskDesc
-from frkl.types.plugins import PluginManager
+from frkl.types.plugins import PluginFactory
 from tings.exceptions import TingException
 from tings.ting import SimpleTing, TingMeta
 from tings.tingistry import Tingistry
@@ -503,9 +508,10 @@ class DynamicPkgTing(PkgTing):
         if pkg_type is None:
             raise KeyError(f"No 'type' key in package details: {dict(source_dict)}")
 
-        pm: PluginManager = self._tingistry_obj.get_plugin_manager("pkg_type")
+        pf: PluginFactory = get_pkg_type_plugin_factory(self._tingistry_obj.arg_hive)
+        # pm: PluginManager = self._tingistry_obj.get_plugin_manager("pkg_type")
 
-        resolver: PkgType = pm.get_plugin_for(pkg_type)
+        resolver: PkgType = pf.get_singleton(pkg_type, raise_exception=False)
         if resolver is None:
             r_type = source_dict.get("type", source_dict)
             raise TingException(

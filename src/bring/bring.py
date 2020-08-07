@@ -2,8 +2,7 @@
 
 """Main module."""
 import logging
-import os
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union
 
 from anyio import Lock, create_lock, create_task_group
 from bring.config.bring_config import BringConfig
@@ -13,7 +12,7 @@ from bring.pkg import PkgTing
 from bring.pkg_index.config import IndexConfig
 from bring.pkg_index.factory import IndexFactory
 from bring.pkg_index.index import BringIndexTing
-from bring.pkg_types import PkgType
+from bring.pkg_types import get_pkg_type_plugin_factory
 from bring.utils import parse_pkg_string
 from bring.utils.defaults import calculate_defaults
 from freckles.core.freckles import Freckles
@@ -53,15 +52,7 @@ class Bring(SimpleTing):
 
         super().__init__(name=name, meta=meta)
 
-        env_conf: MutableMapping[str, Any] = {}
-        for k, v in os.environ.items():
-            k = k.lower()
-            if not k.startswith("bring_"):
-                continue
-            env_conf[k[6:]] = v
-
-        env_conf["arg_hive"] = self.arg_hive
-        self.typistry.get_plugin_manager(PkgType, plugin_config=env_conf)
+        get_pkg_type_plugin_factory(self.arg_hive)
 
         # self._transmogritory = Transmogritory(self._tingistry_obj)
         self._transmogritory = self._tingistry_obj.get_ting(

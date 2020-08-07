@@ -8,14 +8,14 @@ import asyncclick as click
 from anyio import aopen
 from asyncclick import Argument, Option
 from bring.defaults import DEFAULT_PKG_EXTENSION
-from bring.pkg_types import PkgType
+from bring.pkg_types import PkgType, get_pkg_type_plugin_factory
 from frkl.args.arg import RecordArg
 from frkl.args.cli.click_commands import FrklBaseCommand
 from frkl.args.hive import ArgHive
 from frkl.common.cli import get_console
 from frkl.common.cli.exceptions import handle_exc_async
 from frkl.common.filesystem import ensure_folder
-from frkl.types.plugins import PluginManager
+from frkl.types.plugins import PluginFactory
 
 
 log = logging.getLogger("bring")
@@ -68,17 +68,14 @@ class BringCreatePkgDescGroup(FrklBaseCommand):
             subcommand_metavar="PKG_TYPE",
             **kwargs,
         )
-
-        self._plugin_manager: PluginManager = self.arg_hive.typistry.get_plugin_manager(
-            PkgType, plugin_config={"arg_hive": self.arg_hive}
-        )
+        self._plugin_factory: PluginFactory = get_pkg_type_plugin_factory(self.arg_hive)
 
     async def _list_commands(self, ctx):
 
-        return self._plugin_manager.plugin_names
+        return self._plugin_factory.plugin_names
 
     async def _get_command(self, ctx, name):
-        plugin: PkgType = self._plugin_manager.get_plugin(name, raise_exception=True)
+        plugin: PkgType = self._plugin_factory.get_singleton(name, raise_exception=True)
 
         command = BringCreatePkgDescCommand(
             name=name, plugin=plugin, arg_hive=self.arg_hive

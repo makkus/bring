@@ -8,7 +8,6 @@ from asyncclick.utils import make_default_short_help
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
 from bring.pkg_index.index import BringIndexTing
-from frkl.common.async_utils import wrap_async_task
 
 
 log = logging.getLogger("bring")
@@ -83,28 +82,25 @@ async def create_pkg_list_for_help(
     after the options.
     """
 
-    default_index_name = wrap_async_task(bring.get_default_index)
-
-    pkgs = await bring.get_pkg_property_map("info", "index_name")
+    pkgs = await bring.get_pkg_property_map("info")
 
     short_help_map = []
 
     for pkg_name in sorted(pkgs.keys()):
         details = pkgs[pkg_name]
         info = details["info"]
-        index_name = details["index_name"]
         short_help = info.get("slug", "n/a")
         if short_help.endswith("."):
             short_help = short_help[0:-1]
 
-        if index_name == default_index_name:
-            tokens = pkg_name.split(".")
-            # _name = tokens[1]
-            _name = f"[{tokens[0]}.]{tokens[1]}"
-        else:
-            _name = pkg_name
+        # if index_name == default_index_name:
+        #     tokens = pkg_name.split(".")
+        #     # _name = tokens[1]
+        #     _name = f"[{tokens[0]}.]{tokens[1]}"
+        # else:
+        #     _name = pkg_name
 
-        short_help_map.append((_name, short_help))
+        short_help_map.append((pkg_name, short_help))
 
     return short_help_map
 

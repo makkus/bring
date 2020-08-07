@@ -5,7 +5,10 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from bring import BRING
+from bring.config.bring_config import BringConfig
 from bring.defaults import bring_app_dirs as project_dirs
+from freckles.core.freckles import Freckles
 from frkl.common.downloads.cache import calculate_cache_location_for_url
 from frkl.explain.explanations.exception import ExceptionExplanation
 from pydoc_markdown.main import RenderSession
@@ -17,6 +20,10 @@ if not os.path.exists(CACHE_DIR):
 
 os_env_vars = copy.copy(os.environ)
 os_env_vars["CONSOLE_WIDTH"] = "100"
+
+freckles: Freckles = BRING.get_singleton(Freckles)
+bring_config = BringConfig(freckles=freckles)
+bring = bring_config.get_bring()
 
 
 def define_env(env):
@@ -159,6 +166,12 @@ def define_env(env):
     def inline_file_as_codeblock(path, format: str = ""):
         f = Path(path)
         return f"```{format}\n{f.read_text()}\n```"
+
+    @env.macro
+    def pkg_type_plugins():
+
+        # pm = bring.arg_hive.typistry.get_plugin_manager(PkgType)
+        return "xxx"
 
 
 def build_api_docs(*args, **kwargs):

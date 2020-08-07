@@ -158,11 +158,25 @@ class PkgMetadata(object):
         return result
 
 
+def get_pkg_type_plugin_factory(arg_hive: ArgHive):
+
+    _pkg_type_conf: MutableMapping[str, Any] = {}
+    for k, v in os.environ.items():
+        k = k.lower()
+        if not k.startswith("bring_"):
+            continue
+        _pkg_type_conf[k[6:]] = v
+
+    _pkg_type_conf["arg_hive"] = arg_hive
+
+    return arg_hive.typistry.register_plugin_factory(
+        "pkg_types", PkgType, singleton=True, use_existing=True, **_pkg_type_conf
+    )
+
+
 class PkgType(metaclass=ABCMeta):
     """Abstract base class which acts as an adapter to retrieve package information using the 'source' key in bring pkg metadata.
     """
-
-    _plugin_type = "singleton"
 
     def __init__(self, arg_hive: ArgHive, **config: Any):
         """ The base class to inherit from to create package metadata of a certain type.

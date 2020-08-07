@@ -43,7 +43,7 @@ class BringDevGroup(FrklBaseCommand):
         return ["create-pkg"]
 
     async def _get_command(self, ctx, name):
-        plugin_manager = self._bring.typistry.get_plugin_manager(PkgType)
+        plugin_manager = self._bring.arg_hive.typistry.get_plugin_manager(PkgType)
         plugin: PkgType = plugin_manager.get_plugin("github_release")
         command = BringCreatePkgCommand(
             name="create-pkg", bring=self._bring, plugin=plugin
