@@ -1,0 +1,8 @@
+bring_test_safety:
+  image: python:3.8
+  stage: test
+  before_script:
+    - "pip install --extra-index-url https://pkgs.frkl.io/frkl/dev .[all]"
+    - "pip install safety"
+  script:
+    - safety check
