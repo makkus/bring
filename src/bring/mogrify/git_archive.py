@@ -66,12 +66,10 @@ class GitArchiveMogrifier(SimpleMogrifier):
 
         if not success:
             stderr = await archive_cmd.stderr
+            solution: Optional[str] = None
             if url.startswith("http"):
-                solution: Optional[
-                    str
-                ] = "You use a http url, there is a good chance the remote server does not support that. Try the git or ssh protocol instead."
-            else:
-                solution = None
+                solution = f"You use a http url, there is a good chance the remote server does not support that. Try a url using the git or ssh protocol instead of your current one: {url}"
+
             raise MogrifierException(
                 mogrifier=self,
                 msg="Error running 'git archive' command.",

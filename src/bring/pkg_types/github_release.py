@@ -113,8 +113,6 @@ class GithubRelease(PkgType):
 
     def __init__(self, **config: Any):
 
-        self._github_username = None
-        self._github_token = None
         self._github_username = config.get("github_username", None)
         self._github_token = config.get("github_access_token", None)
 
@@ -170,6 +168,11 @@ class GithubRelease(PkgType):
                 "type": "string",
                 "required": False,
                 "doc": "The url regex to parse the release urls.",
+            },
+            "tag_filter": {
+                "type": "string",
+                "required": False,
+                "doc": "if provided, is used as regex to select wanted tags",
             },
         }
 

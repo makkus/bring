@@ -19,6 +19,7 @@ class GitFiles(PkgType):
 
         return {
             "url": {"type": "string", "required": True, "doc": "The git repo url."},
+            "files": {"type": "list", "doc": "The list of files to retrieve."},
             "tag_filter": {
                 "type": "string",
                 "required": False,
