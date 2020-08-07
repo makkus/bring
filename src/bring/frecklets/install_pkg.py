@@ -117,7 +117,7 @@ class PkgContentTask(Task):
     async def execute_task(self) -> Any:
 
         if not self._prior_task_result.success:
-            raise FrklTaskRunException(task=self, msg="Can't transform package files.", reason="Required previous job did not finish successfully.", run_exception=self._prior_task_result.error)  # type: ignore
+            raise FrklTaskRunException(task=self, msg="Can't transform package files.", reason="Required previous job did not finish successfully.", parent=self._prior_task_result.error)  # type: ignore
 
         source_folder = self._prior_task_result.result_value["folder_path"]
         folder = PkgContentLocalFolder(path=self._target, pkg_spec=self._pkg_spec)
@@ -166,7 +166,7 @@ class MoveToTargetTask(Task):
     async def execute_task(self) -> Any:
 
         if not self._prior_task_result.success:
-            raise FrklTaskRunException(task=self, msg="Can't move files to target folder.", reason="Required previous job did not finish successfully.", run_exception=self._prior_task_result.error)  # type: ignore
+            raise FrklTaskRunException(task=self, msg="Can't move files to target folder.", reason="Required previous job did not finish successfully.", parent=self._prior_task_result.error)  # type: ignore
 
         source_folder = self._prior_task_result.result_value["folder_path"]
 

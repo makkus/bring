@@ -37,6 +37,8 @@ BRING_PLUGIN_CACHE = os.path.join(bring_app_dirs.user_cache_dir, "plugins")
 
 BRING_BACKUP_FOLDER = os.path.join(bring_app_dirs.user_data_dir, "backup")
 
+BRING_DEFAULT_LOG_FILE = os.path.join(bring_app_dirs.user_data_dir, "logs", "bring.log")
+
 DEFAULT_CONTEXT_NAME = "binaries"
 
 BRINGISTRY_PRELOAD_MODULES = [

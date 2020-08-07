@@ -7,7 +7,7 @@ from asyncclick import Option
 from bring import BRING
 from bring.bring import Bring
 from bring.config.bring_config import BringConfig
-from bring.defaults import BRINGISTRY_INIT
+from bring.defaults import BRINGISTRY_INIT, BRING_DEFAULT_LOG_FILE
 from bring.interfaces.cli.commands.export_index import BringExportIndexCommand
 from freckles.core.freckles import Freckles
 from frkl.args.cli.click_commands import FrklBaseCommand
@@ -102,8 +102,16 @@ class BringCommandGroup(FrklBaseCommand):
         else:
             _targets = targets
 
+        log_file = None
+        # TODO: adjust default log level according to current version of this app, and env vars
+        if True:
+            log_file = BRING_DEFAULT_LOG_FILE
         self._app_event_management = AppEventManagement(
-            base_topic=f"{self._freckles.full_name}", target_configs=_targets
+            base_topic=f"{self._freckles.full_name}",
+            target_configs=_targets,
+            typistry=self._tingistry_obj.typistry,
+            log_file=log_file,
+            logger_name="bring",
         )
         self._app_event_management.start_monitoring()
         self._freckles.set_app_event_management(self._app_event_management)
@@ -174,7 +182,11 @@ class BringCommandGroup(FrklBaseCommand):
         config_list = None
 
         group_params = dict(self._group_params)
-        output_config = group_params.pop("output", [{"type": "terminal"}])
+
+        default_output = [{"type": "terminal"}]
+        output_config = group_params.pop("output", None)
+        if not output_config:
+            output_config = default_output
 
         if not is_list_command:
             config_list = self.create_bring_config_list(group_params)
