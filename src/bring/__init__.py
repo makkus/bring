@@ -81,6 +81,7 @@ def set_globals():
         for t in tings:
             tingistry.create_ting(**t)
         BRING.register_singleton(tingistry)
+        BRING.register_singleton(tingistry.arg_hive)
 
         freckles = Freckles.get_freckles_ting(
             tingistry=tingistry, name="bring.freckles"

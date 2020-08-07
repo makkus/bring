@@ -8,7 +8,11 @@ from typing import Optional
 from bring import BRING
 from bring.config.bring_config import BringConfig
 from bring.defaults import bring_app_dirs as project_dirs
+from bring.pkg_types import get_pkg_type_plugin_factory
+from bring.utils.doc import create_pkg_type_markdown_string
 from freckles.core.freckles import Freckles
+from frkl.args.hive import ArgHive
+from frkl.common.async_utils import wrap_async_task
 from frkl.common.downloads.cache import calculate_cache_location_for_url
 from frkl.explain.explanations.exception import ExceptionExplanation
 from pydoc_markdown.main import RenderSession
@@ -170,8 +174,29 @@ def define_env(env):
     @env.macro
     def pkg_type_plugins():
 
-        # pm = bring.arg_hive.typistry.get_plugin_manager(PkgType)
-        return "xxx"
+        arg_hive = BRING.get_singleton(ArgHive)
+
+        factory = get_pkg_type_plugin_factory(arg_hive)
+
+        result = []
+        for plugin_name in factory.plugin_names:
+            doc = factory.get_plugin_doc(plugin_name)
+            desc_string = wrap_async_task(
+                create_pkg_type_markdown_string,
+                bring=bring,
+                plugin_doc=doc,
+                header_level=4,
+                add_description_header=False,
+            )
+            plugin_string = f"## ``{plugin_name}``\n\n{desc_string}\n\n"
+            short_help = doc.get_short_help(default=None)
+            if short_help:
+                plugin_string += short_help + "\n\n"
+            result.append(plugin_string)
+
+        return "\n".join(result)
+
+        return factory.plugin_names
 
 
 def build_api_docs(*args, **kwargs):

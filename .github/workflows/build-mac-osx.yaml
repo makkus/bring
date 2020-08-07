@@ -73,6 +73,8 @@ jobs:
       - run: brew install pyenv
       - run: brew install pyenv-virtualenv
       - uses: actions/checkout@v2
+      - name: update all existing requirements
+        run: pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U
       - name: build_binary
         run: ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec --python-version "3.7.7"
 #      # uncomment to sign binary (needs certificate data in env)

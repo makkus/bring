@@ -92,6 +92,8 @@ jobs:
           path: ~/.pyenv/
           key: ${{ runner.os }}-target-ubuntu-bring-python-build-v3
       - uses: actions/checkout@v2
+      - name: update all existing requirements
+        run: pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U
       - name: build_binary
         run: "PATH=\"$(echo $PATH | tr : '\n' | grep -v linuxbrew | paste -s -d:)\" ./scripts/build-binary/build.sh --spec-file scripts/build-binary/onefile.spec --python-version '3.7.8'"
       - name: Archive Linux binary
