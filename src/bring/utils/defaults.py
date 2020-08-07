@@ -55,7 +55,7 @@ def calculate_defaults(typistry: Typistry, data: Mapping[str, Any]):
 
     for item in producers:
 
-        plugin: DefaultsProducer = pf.get_singleton(item[0])
+        plugin: DefaultsProducer = pf.get_singleton(item[0])  # type: ignore
         val = item[1]
         if val is False or (isinstance(val, str) and val.lower() == "false"):
             continue

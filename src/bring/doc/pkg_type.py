@@ -11,7 +11,7 @@ class PluginDocManagement(object):
 
     def plugin_doc(self, plugin_name) -> Doc:
 
-        self._plugin_manager.get_plugin_doc(plugin_name=plugin_name)
+        return self._plugin_manager.get_plugin_doc(plugin_name=plugin_name)
 
 
 class PkgTypeExplanation(Explanation):
@@ -21,4 +21,4 @@ class PkgTypeExplanation(Explanation):
 
     def get_plugin(self, name):
 
-        self._plugin_manager.get_plugin(name)
+        return self._plugin_manager.get_plugin(name)
