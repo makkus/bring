@@ -118,6 +118,10 @@ flake: ## check style with flake8
 mypy: ## run mypy
 	mypy src/bring
 
+safety: ## run safety
+	safety check
+
+
 check: black flake mypy test ## run dev-related checks
 
 black: ## run black
