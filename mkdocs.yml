@@ -57,6 +57,7 @@ nav:
     - Getting help: documentation/getting-help.md
     - Packages:
         Overview: documentation/packages/overview.md
+        Package description: documentation/packages/package-description.md
         Package types: documentation/packages/package-types.md
     - Indexes:
         Overview: documentation/indexes/overview.md

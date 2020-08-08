@@ -36,6 +36,8 @@ Package description:
 {% endif %}  
 {%- endmacro %}
 
+This page contains documentation and metadata for all package types that come with *bring*. The '*Args*' section in each item lists the argument each package type supports in the ``source`` part of a package description. For more details on how package descritions are build, check [here](/documentation/packages/package_description)
+
 {% for pkg_name, expl in pkg_types.items() %}
 {% if pkg_name != "folder" %}{{ pkg_desc(pkg_name, expl) }}{% endif %}
 {% endfor %}
