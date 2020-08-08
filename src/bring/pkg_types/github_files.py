@@ -33,6 +33,11 @@ class GitFiles(PkgType):
                 "doc": "The github repo name.",
             },
             "files": {"type": "list", "doc": "The list of files to retrieve."},
+            "tag_filter": {
+                "type": "string",
+                "required": False,
+                "doc": "if provided, is used as regex to select wanted tags",
+            },
             # "use_commits_as_versions": {
             #     "type": "boolean",
             #     "required": False,

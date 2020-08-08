@@ -16,9 +16,8 @@ To install `bring`, download the appropriate binary from one of the links below,
 Alternatively, use the 'curly' install script for `bring`:
 
 ``` console
-curl https://gitlab.com/frkl/bring/-/raw/develop/scripts/install/bring.sh | bash
+curl https://bring.sh | bash
 ```
-
 
 This will add a section to your shell init file to add the install location (``$HOME/.local/share/frkl/bin``) to your ``$PATH``.
 

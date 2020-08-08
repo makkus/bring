@@ -169,11 +169,6 @@ class GithubRelease(PkgType):
                 "required": False,
                 "doc": "The url regex to parse the release urls.",
             },
-            "tag_filter": {
-                "type": "string",
-                "required": False,
-                "doc": "if provided, is used as regex to select wanted tags",
-            },
         }
 
     async def _process_pkg_versions(

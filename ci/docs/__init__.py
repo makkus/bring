@@ -8,12 +8,11 @@ from typing import Optional
 from bring import BRING
 from bring.config.bring_config import BringConfig
 from bring.defaults import bring_app_dirs as project_dirs
-from bring.pkg_types import get_pkg_type_plugin_factory
-from bring.utils.doc import create_pkg_type_markdown_string
+from bring.doc.plugins import get_all_pkg_type_explanations
 from freckles.core.freckles import Freckles
-from frkl.args.hive import ArgHive
-from frkl.common.async_utils import wrap_async_task
+from frkl.args.arg import ScalarArg
 from frkl.common.downloads.cache import calculate_cache_location_for_url
+from frkl.common.formats.serialize import serialize
 from frkl.explain.explanations.exception import ExceptionExplanation
 from pydoc_markdown.main import RenderSession
 
@@ -39,6 +38,10 @@ def define_env(env):
     """
 
     # env.variables["baz"] = "John Doe"
+
+    print("retrieving pkg type explanations...")
+    env.variables["pkg_types"] = get_all_pkg_type_explanations(bring)
+    print("done.")
 
     def get_cache_key(key: str, *command: str):
 
@@ -217,32 +220,52 @@ def define_env(env):
         f = Path(path)
         return f"```{format}\n{f.read_text()}\n```"
 
-    @env.macro
-    def pkg_type_plugins():
+    @env.filter
+    def to_yaml(data, indent=0):
 
-        arg_hive = BRING.get_singleton(ArgHive)
+        return serialize(data, format="yaml", indent=indent)
 
-        factory = get_pkg_type_plugin_factory(arg_hive)
-
-        result = []
-        for plugin_name in factory.plugin_names:
-            doc = factory.get_plugin_doc(plugin_name)
-            desc_string = wrap_async_task(
-                create_pkg_type_markdown_string,
-                bring=bring,
-                plugin_doc=doc,
-                header_level=4,
-                add_description_header=False,
+    @env.filter
+    def get_arg_type_string(arg_obj):
+        if isinstance(arg_obj, ScalarArg):
+            arg_type = arg_obj.id
+        elif hasattr(arg_obj, "_parent_type"):
+            parent = arg_obj._parent_type  # type: ignore
+            if not isinstance(parent, ScalarArg):
+                raise NotImplementedError()
+            arg_type = parent.id
+        else:
+            raise Exception(
+                f"Can't determine parent type for: {arg_obj}, this is a bug."
             )
-            plugin_string = f"## ``{plugin_name}``\n\n{desc_string}\n\n"
-            short_help = doc.get_short_help(default=None)
-            if short_help:
-                plugin_string += short_help + "\n\n"
-            result.append(plugin_string)
+        return arg_type
 
-        return "\n".join(result)
-
-        return factory.plugin_names
+    # @env.macro
+    # def pkg_type_plugins():
+    #
+    #     arg_hive = BRING.get_singleton(ArgHive)
+    #
+    #     factory = get_pkg_type_plugin_factory(arg_hive)
+    #
+    #     result = []
+    #     for plugin_name in factory.plugin_names:
+    #         doc = factory.get_plugin_doc(plugin_name)
+    #         desc_string = wrap_async_task(
+    #             create_pkg_type_markdown_string,
+    #             bring=bring,
+    #             plugin_doc=doc,
+    #             header_level=4,
+    #             add_description_header=False,
+    #         )
+    #         plugin_string = f"## ``{plugin_name}``\n\n{desc_string}\n\n"
+    #         short_help = doc.get_short_help(default=None)
+    #         if short_help:
+    #             plugin_string += short_help + "\n\n"
+    #         result.append(plugin_string)
+    #
+    #     return "\n".join(result)
+    #
+    #     return factory.plugin_names
 
 
 def build_api_docs(*args, **kwargs):

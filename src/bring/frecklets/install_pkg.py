@@ -158,7 +158,7 @@ class MoveToTargetTask(Task):
 
         task_desc = TaskDesc(
             name="merge files",
-            msg=f"merging prepared files into {self._target_details['target_msg']}",
+            msg=f"merging files into {self._target_details['target_msg']}",
         )
 
         super().__init__(task_desc=task_desc)
