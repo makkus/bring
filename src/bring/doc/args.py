@@ -64,7 +64,7 @@ def prepare_table_items(
 def create_table_from_pkg_args(
     args: Mapping[str, Any],
     aliases: Mapping[str, Any],
-    limit_allowed: int = 8,
+    limit_allowed: int = 1000000,
     show_headers: bool = True,
     minimal: bool = False,
 ) -> Table:

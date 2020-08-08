@@ -78,6 +78,8 @@ def define_env(env):
         print_command: bool = True,
         code_block: bool = True,
         max_height: Optional[int] = None,
+        start_lines: Optional[int] = None,
+        end_lines: Optional[int] = None,
     ):
 
         stdout = read_cache("cli", *command)
@@ -100,19 +102,61 @@ def define_env(env):
                 stdout = "```\n" + ex_str + "\n```\n"
                 return stdout
 
+        if start_lines or end_lines:
+            stdout = filter_lines(
+                stdout,
+                start_lines,
+                end_lines,
+                repl_lines=["", "      ...", "      ...", "      ...", ""],
+            )
+
         if print_command:
             stdout = f"> {' '.join(command)}\n{stdout}"
+
         if code_block:
-            stdout = "``` console\n" + stdout + "\n```\n"
+            stdout = f"``` console\n{stdout}\n```\n"
 
         if max_height is not None and max_height > 0:
             stdout = f"<div style='max-height:{max_height}px;overflow:auto'>\n{stdout}\n</div>"
 
         return stdout
 
+    def filter_lines(
+        stdout: str,
+        start_lines: Optional[int] = None,
+        end_lines: Optional[int] = None,
+        repl_lines=["<br>      ...", "      ...", "      ...<br>"],
+    ):
+
+        lines = stdout.strip().split("\n")
+
+        new_stdout = []
+        if start_lines:
+            for idx, line in enumerate(lines):
+                if idx <= start_lines:
+                    new_stdout.append(line)
+
+        if new_stdout and not new_stdout[-1]:
+            new_stdout = new_stdout[0:-1]
+
+        new_stdout.extend(repl_lines)
+        if end_lines:
+            for idx, line in enumerate(lines):
+                if idx >= len(lines) - end_lines:
+                    new_stdout.append(line)
+
+        if not len(new_stdout) > 5:
+            return stdout
+
+        return "\n".join(new_stdout)
+
     @env.macro
     def cli_html(
-        *command, print_command: bool = True, max_height: Optional[int] = None,
+        *command,
+        print_command: bool = True,
+        max_height: Optional[int] = None,
+        start_lines: Optional[int] = None,
+        end_lines: Optional[int] = None,
     ):
 
         html_output = read_cache("cli_html", *command)
@@ -149,6 +193,8 @@ def define_env(env):
                 stdout = "```\n" + ex_str + "\n```\n"
                 return stdout
 
+        if start_lines or end_lines:
+            html_output = filter_lines(html_output, start_lines, end_lines)
         pre = """<pre style="font-family:'Roboto Mono',Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace;">"""
         post = "</pre>"
 
@@ -157,7 +203,7 @@ def define_env(env):
         else:
             start = """<div style="overflow:auto" class="terminal-output">\n"""
 
-        html_output = html_output.strip()
+        html_output = html_output.strip()  # type: ignore
         if print_command:
             html_output = f"""> {' '.join(command)}\n\n{html_output}"""
 

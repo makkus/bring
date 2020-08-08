@@ -1,23 +1,31 @@
 ---
 template: no_left_nav.html
-title: bring
+title: Getting started with bring
 nav: false
 ---
 
-The purpose of `bring` is to copy files and file-sets onto the local system, in a reliable, replicable way. The three main concepts to understand in regards to `bring` are:
+To get started with *bring*, it is important to understand two concepts: **packages** and **indexes**.
 
-- **[packages](/docs/reference/packages/overview)**: A *package* is a specific file or file-set, usually versioned in some way (via git, releases, etc.). In most cases, a package is uniquely identified by an index name (see below) and the package name as the right-most part of the string: ``[index.name.space].[package_name]``, e.g. ``gitlab.tingistries.binaries``.
+**package**
+:    A package is metadata that describes how to get a specific version of a file or set of files onto your machine; those files are usually remote, and not managed by yourself. Examples of the type of files where this makes sense are, for example: *single-file binaries*, *configuration files*, *kubernetes manifests*.
 
-- **[indexes](/docs/reference/indexes)**: An *index* is a list that contains metadata for one or several *packages*, usually of one category (single-file binaries, templates, etc...) or otherwise belonging together.  
-  Indexes can be of different types, the most common ones will be pointing to git repositories on GitLab/GitHub/etc in the form of ``[service_name.user_name.repo_name]``, e.g. ``gitlab.tingistries.binaries``. In addition, the *indexes* that are included in ``bring`` usually have single-name aliases (e.g. ``binaries``).
+     More details about packages -- including how to create your own -- can be found [here](/documentation/packages/overview).
 
-- **[contexts](/docs/reference/contexts)**: Sets of indexes are managed within so-called *contexts*; by default `bring` uses a pre-defined default *context* that comes with a set of *indexes* which are deemed of interest for a general audience. Like for example the already mentioned ``binaries`` index, which contains single-file executables.
+**index**
+:    An index is a collection that contains packages, usually sharing a category (e.g. single-file binaries, dotfiles, ...). An index has a (namspaced) unique name (e.g. ``binaries``, ``gitlab.bring-indexes.example``, ...). Packages within an index are referred to by name. This allows you to specify any package managed by *bring* with a single string of the format ``<index_name>.<package_name>``, e.g.:
 
-Even though this is not covered in this quick-start guide it is easily possible to create and share your own *indexes*. Check out the [usage documentation](/docs/usage) for more details. In fact, this is actually the main use-case for ``bring``. But for the purpose of this quick start we will only concern ourselves with the default context, and it's default set of *indexes*. It pays to keep all that in mind though, as that will allow you to extrapolate other, more specific use-cases on your own.
+       - [``binaries.fd``](https://gitlab.com/bring-indexes/binaries/-/blob/master/terminal/filesystem/fd.pkg.br) (installs a *fd* release binary from [here](https://github.com/sharkdp/fd/releases))
+       - [``gitlab.bring-indexes.example-index.pandoc``](https://gitlab.com/bring-indexes/example/-/blob/master/pandoc.pkg.br) (installs a *pandoc* release binary from [here](https://github.com/jgm/pandoc/releases))
 
-## List the contents of the current context
+    *bring* supports different type of indexes, some auto-generated, some manually crafted. Check out the [index documentation](/documentation/indexes/overview) for more details.
 
-Before installing a `bring` package, it is useful to know which *indexes* and *packages* are available in the current context. For this, use the ``list`` sub-command:
+
+For the purpose of this getting-started guide we'll mainly use the *packages* and *indexes* that are included with *bring*. It is important to know though -- and this is where *bring* actually becomes useful -- that you can easily create your own. So make sure to check out the [*bring* documentation](/documentation/overview) later.
+
+
+## List the default indexes
+
+To quickly get a list of available indexes and packages, use the ``list`` sub-command:
 
 <div class="code-max-height">
 {{ cli("bring", "list", max_height=400) }}
@@ -25,68 +33,65 @@ Before installing a `bring` package, it is useful to know which *indexes* and *p
 
 ## Display information
 
-In order to get more information about a context, index or package, you can use the ``explain`` sub-command. It takes they type of the thing you want to know more about as the first argument, and the name of it as the second.
-
-### Context metadata
-
-In line with this, here's how to get information about the default context:
-
-{{ cli_html("bring", "explain", "context", "default") }}
+In order to get more information about an index or package, you can use the ``explain`` sub-command. Use either ``index`` or ``package`` as first argument, and the name of the index or package as second:
 
 ### Index metadata
 
-Similarly, this is how to get metadata for the ``binaries`` index (as configured in the ``default`` context):
+This is how to get metadata for the ``binaries`` index:
 
 {{ cli_html("bring", "explain", "index", "binaries", max_height=400) }}
 
 ### Package metadata
 
-And lastly, here is how we get the details for the ``fd`` package that is a contained in the ``binaries`` index:
+And this is how to get the details for the ``fd`` package that is a part of the ``binaries`` index:
 
 {{ cli_html("bring", "explain", "package", "binaries.fd", max_height=400) }}
 
 ## Install a package
 
-To install one of the packages in any of the available indexes, all we need to do is specify the full name for the package (index- as well as package name within that index).
+There are a few different options you have when installing a package. But often the default behaviour is sufficient, in which case you can install packages...
 
-### Install
+### ... using only default values
+
+To install one of the available packages without any customization, all you need to do is specify the full name for the package:
 
 {{ cli_html("bring", "install", "binaries.fd") }}
 
-As you can see from the output of that command, the ``fd`` binary file was installed into the local ``$HOME/.local/bring`` folder. This is because that is the default folder for the ``binaries`` *index*, configured in the *default* context (check the config above).  
+*bring* always tries be as clear as possible as to what it is doing, which is why it prints the values it ends up using, as well as their origin.
 
-If you want to install a package into a different directory, you can use the ``--target`` parameter:
+For example, as you can see from the output of that command, the ``fd`` binary file was installed into the local ``$HOME/.local/bring`` folder. This is because that is the default folder for the ``binaries`` *index* (check the [config above](#display-information)). In addition to the ``target`` default, that index also comes with a set of auto-generated default values that describe the OS and architecture of the system *bring* is running on (which is helpful to pick the right version of a binary, for example).
 
-{{ cli_html("bring", "install", "--target", "/tmp/bring", "binaries.fd", max_height=200) }}
+In some cases the default target might not be suitable for you though. In that case, you can install the package...
 
- the target directory where the file(s) of the package should be installed using the ``--target`` parameter. That folder (as well as any intermediate ones) will be created should it not exist yet.
+### ... into a specific folder
+
+If customize where to install a package, use the ``--target`` parameter:
+
+{{ cli_html("bring", "install", "--target", "/tmp/bring", "binaries.fd", start_lines=13, end_lines=5) }}
+
+The target folder, as well as any intermediate ones, will be created in case they don't exist yet.
 
 If you don't specify the ``--target`` parameter, and the index does not have a default target set, the files will be copied into a temporary directory somewhere under `~/.local/share/bring/workspace/results/`:
 
-{{ cli_html("bring", "install", "kubernetes.cert-manager") }}
+{{ cli_html("bring", "install", "kubernetes.cert-manager", start_lines=1, end_lines=5) }}
 
-### Install arguments
+To have more fine-grained control of the version of the package to install, you have to use the *install* command...
 
-Arguments for the ``install`` sub-command are split into two parts:
+### ... with arguments
 
-#### 'target'-related arguments
+Packages often come in different flavours (e.g. which architecture, OS, etc.), as well as several versions, which can be specified in the ``install`` command after the package name. Depending on the *index* configuration, ``bring`` assumes certain default values which often make it so that no package arguments at all need to be provided.
 
-The ``install`` command needs to know the name of the package to install, where to install it to, and as how (e.g. ignore existing files, overwrite them, etc.). Use the ``--help`` command line argument to display available options:
-
-{{ cli("bring", "install", "--help", max_height=240) }}
-
-Note: explaining the ``merge_strategy`` parameter is out of scope for this quick-start guide. Check the [reference documentation](/reference/merge_strategies) for details.
-
-#### 'package'-related arguments
-
-Packages often come in different flavours (e.g. which architecture, OS, etc.), as well as several versions, which can be specified in the ``install`` command after the package name. Depending on the *index* configuration, ``bring`` assumes certain default values which often make it so that no package arguments at all need to be provided (assuming one is happy with those defaults).
-
-But, often it is advisable to exactly specify the version of a package to install. If that is desired, you can use the ``--help`` parameter some-where after the package name to get ``bring`` to display information about the supported arguments:
+But, often it is advisable to specify the exact version of a package to install. If that is desired, you can use the ``--help`` parameter some-where after the package name to get ``bring`` to display information about the supported arguments:
 
 {{ cli("bring", "install", "binaries.fd", "--help") }}
 
+To check which values are allowed, the [*explain* subcommand](#package-metadata) is often userful. Here's an example showing how to specifically install version '7.1.0' of the Mac OS X variant of ``fd``:
 
-### Install details
+{{ cli_html("bring", "install", "binaries.fd", "--version", "7.1.0", "--os", "darwin", start_lines=11, end_lines=5) }}
+
+## Install details
+
+### Variable and steps
 
 In case you are wondering what the install command actually does, you can use the ``--explain`` flag to get some information about the variables used, and the tasks that compose the install process:
 

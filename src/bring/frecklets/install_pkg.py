@@ -320,6 +320,7 @@ class BringInstallFrecklet(BringFrecklet):
                 if _result is not None:
                     pkg_metadata = {"name": _result[0].name, "index": _result[1].id}  # type: ignore
                     pkg = _result[0]
+                    pkg_index = _result[1]
 
                 else:
                     full_path = os.path.abspath(os.path.expanduser(pkg_input))

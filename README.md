@@ -18,7 +18,7 @@ Documentation still to be done.
 ## Links
 
  - [Documentation/Homepage](https://bring.frkl.io)
- - [Code](https://gitlab.com/frkl/bring)
+ - Code: [GitLab](https://gitlab.com/frkl/bring) / [Github mirror](https://github.com/frkl-io/bring)
 
 ## Downloads
 

@@ -25,6 +25,7 @@ class PkgExplanation(Explanation):
         self._pkg_name: str = pkg_name
         self._pkg_metadata: PkgMetadata = pkg_metadata
         self._info: Doc = Doc(info, short_help_key="slug", help_key="desc")
+        self._limit_args: int = 1000000
         if tags is None:
             tags = []
         self._tags: Iterable[str] = tags
@@ -74,6 +75,7 @@ class PkgExplanation(Explanation):
             args=self._pkg_metadata.vars["args"],
             aliases=self._pkg_metadata.aliases,
             show_headers=False,
+            limit_allowed=self._limit_args,
         )
         yield args_table
 
